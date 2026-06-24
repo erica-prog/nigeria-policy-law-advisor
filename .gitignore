@@ -1,0 +1,18 @@
+# secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# generated index/eval artifacts
+data/index/
+
+# lawyer accounts/credentials
+data/auth/
+
+# OS
+.DS_Store
