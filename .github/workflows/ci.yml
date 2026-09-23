@@ -36,6 +36,8 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - run: uv python install 3.12
       - run: uv sync --frozen
+      - name: Install OCR dependencies (poppler, tesseract)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
       - name: Build demo corpus index
         run: uv run python -m policy_advisor.ingestion.build_index
       - name: Retrieval/faithfulness eval
