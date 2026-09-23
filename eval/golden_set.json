@@ -1,0 +1,174 @@
+[
+  {
+    "id": "g01",
+    "question": "Order 1 Rule 1 of the Federal High Court Civil Procedure Rules",
+    "jurisdiction": "federal",
+    "expected": [
+      {
+        "source_document": "FHC Civil Procedure Rules.pdf",
+        "locator": "Order 1 Rule 1"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "The Federal High Court (Civil Procedure) Rules 2000 is hereby revoked.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g02",
+    "question": "When did the Federal High Court Civil Procedure Rules 2009 come into force?",
+    "jurisdiction": "federal",
+    "expected": [
+      {
+        "source_document": "FHC Civil Procedure Rules.pdf",
+        "locator": "Order 1 Rule 2"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "They may be cited as the Federal High Court (Civil Procedure) Rules 2009 and came into force on 30 April 2009.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g03",
+    "question": "Under the Federal High Court rules, what documents must accompany civil proceedings commenced by writ of summons?",
+    "jurisdiction": "federal",
+    "expected": [
+      {
+        "source_document": "FHC Civil Procedure Rules.pdf",
+        "locator": "Order 3 Rule 3"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "A statement of claim and copies of every document to be relied on at the trial.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g04",
+    "question": "Does misjoinder or non-joinder of parties defeat a proceeding under the FHC Civil Procedure Rules?",
+    "jurisdiction": "federal",
+    "expected": [
+      {
+        "source_document": "FHC Civil Procedure Rules.pdf",
+        "locator": "Order 9 Rule 14"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "No - no proceeding shall be defeated by reason of misjoinder or non-joinder of parties.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g05",
+    "question": "Under the FHC rules, on what grounds can the Court consolidate two or more pending matters?",
+    "jurisdiction": "federal",
+    "expected": [
+      {
+        "source_document": "FHC Civil Procedure Rules.pdf",
+        "locator": "Order 11 Rule 1"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Where the same question of law or fact arises in both or all of the matters, or the rights to relief claimed are related.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g06",
+    "question": "How long does a claimant have to serve an ordinary summons before it becomes void, under the Lagos State Magistrates' Courts rules?",
+    "jurisdiction": "lagos",
+    "expected": [
+      {
+        "source_document": "Lagos-State-Magistrates-Courts-Civil-Procedure-Rules-2009.pdf",
+        "locator": "Order 2 Rule 3"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Three (3) months from the date of issue, with liberty to file a fresh action subject to any statute of limitation.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g07",
+    "question": "Order 5 Rule 3 of the Lagos State Magistrates' Courts Civil Procedure Rules",
+    "jurisdiction": "lagos",
+    "expected": [
+      {
+        "source_document": "Lagos-State-Magistrates-Courts-Civil-Procedure-Rules-2009.pdf",
+        "locator": "Order 5 Rule 3"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "A summons for service on a defendant in Nigeria but outside Lagos jurisdiction requires the Court's written permission to issue.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g08",
+    "question": "Under the Lagos Magistrates' Courts rules, what must accompany a payment made under Order 2 Rule 8 or Order 3 Rule 3(2)?",
+    "jurisdiction": "lagos",
+    "expected": [
+      {
+        "source_document": "Lagos-State-Magistrates-Courts-Civil-Procedure-Rules-2009.pdf",
+        "locator": "Order 13 Rule 5"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "A notice stating that it is made with a defence of tender.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g09",
+    "question": "Does the Terms of Settlement between Meta and the Nigeria Data Protection Commission constitute an admission of liability?",
+    "jurisdiction": null,
+    "expected": [
+      {
+        "source_document": "Meta v NDPC Terms & Consent Judgment.pdf",
+        "locator": "Paragraph 11"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "No - the parties agreed that execution and performance of the Terms does not constitute an admission of liability or wrongdoing by either party.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g10",
+    "question": "Will the Terms of Settlement between Meta and NDPC be entered as a judgment of the court?",
+    "jurisdiction": null,
+    "expected": [
+      {
+        "source_document": "Meta v NDPC Terms & Consent Judgment.pdf",
+        "locator": "Paragraph 12"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Yes - the parties agreed the Terms are binding and shall be entered as final judgment of the court in the suit.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g11",
+    "question": "Do the Meta/NDPC Terms of Settlement also operate as a contract between the parties, separate from being a judgment?",
+    "jurisdiction": null,
+    "expected": [
+      {
+        "source_document": "Meta v NDPC Terms & Consent Judgment.pdf",
+        "locator": "Paragraph 13"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Yes - the Terms take effect as a contract between the parties notwithstanding that they are also a judgment of the court.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g12",
+    "question": "What is the maximum speed limit on the Lagos-Ibadan expressway?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Not in the corpus - traffic/speed-limit law isn't covered by these civil procedure rules or this judgment.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g13",
+    "question": "What is Nigeria's current minimum wage?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Not in the corpus - labour law/minimum wage isn't covered by these civil procedure rules or this judgment.",
+    "matter_id": "phase1-demo"
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "id": "c01",
+    "matter_id": "phase1-demo",
+    "jurisdiction": "lagos",
+    "case_facts": "A defendant was served with an ordinary summons in a Lagos Magistrates' Court matter on 1 January 2026. The defendant did not respond, file an appearance, or otherwise contest the suit for four months. The claimant now wants to know whether the summons is still valid and whether judgment can be entered against the defendant.",
+    "notes": "Validated manually during Phase B build - tiered faithfulness checking correctly flagged a rule mischaracterization in the final synthesis that the per-step citation checks missed. Good baseline case for reviewer calibration."
+  },
+  {
+    "id": "c02",
+    "matter_id": "phase1-demo",
+    "jurisdiction": "federal",
+    "case_facts": "Two separate matters are pending before the Federal High Court arising from the same accident, involving the same plaintiff and overlapping questions of fact about liability. The plaintiff's counsel wants to know whether the two matters can be heard together, and what the procedural mechanism for doing so would be.",
+    "notes": "Expects retrieval to surface Order 11 (Consolidation). Good check for whether the analysis correctly distinguishes consolidation grounds from unrelated procedural mechanisms."
+  },
+  {
+    "id": "c03",
+    "matter_id": "phase1-demo",
+    "jurisdiction": null,
+    "case_facts": "A Nigerian data subject wants to know whether a foreign technology company processing their personal data without explicit consent for behavioral advertising purposes could face enforcement action, and what remedies a regulator could impose.",
+    "notes": "Authority for this lives in the Meta v NDPC judgment, not the procedure rules - checks whether the system correctly draws on judgment paragraphs (not statute rules) and whether it distinguishes the judgment's specific terms-of-settlement from a general statement of NDPC's enforcement powers (docs/01: judgments interpret/apply law, they aren't the law itself)."
+  }
+]
