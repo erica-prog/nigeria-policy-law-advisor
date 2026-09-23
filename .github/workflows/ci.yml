@@ -22,6 +22,8 @@ jobs:
         run: uv run mypy src
         continue-on-error: true
       - name: Unit tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run pytest
 
   eval-gate:
