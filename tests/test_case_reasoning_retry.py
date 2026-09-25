@@ -24,6 +24,9 @@ def _chain_with_retrieved(chunks: list[RetrievedChunk]) -> CaseReasoningChain:
     chain = object.__new__(CaseReasoningChain)
     chain._retriever = MagicMock()
     chain._retriever.retrieve.return_value = chunks
+    # These chunks are the premise of every test here, so keep the relevance
+    # gate out of the way - it has its own tests in test_relevance_gate.py.
+    chain._retriever.needs_relevance_adjudication.return_value = False
     chain._logger = MagicMock()
     chain._settings = MagicMock(retrieval_top_k=8)
     chain._llm = MagicMock()

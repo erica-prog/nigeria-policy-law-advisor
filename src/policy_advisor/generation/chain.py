@@ -5,12 +5,13 @@ the result before it's returned to the caller."""
 
 from dataclasses import dataclass, field
 
-from tenacity import retry, stop_after_attempt, wait_exponential
 from langchain_anthropic import ChatAnthropic
 
 from policy_advisor.config import get_settings
+from policy_advisor.llm_retry import with_llm_retry
 from policy_advisor.generation.faithfulness import check_faithfulness
 from policy_advisor.generation.prompt import LANGUAGE_NAMES, PROMPT, format_context
+from policy_advisor.generation.relevance_check import judge_relevance
 from policy_advisor.generation.web_search import WebSearchCitation, search_official_sources
 from policy_advisor.logging_utils import get_logger, log_event, timed_request
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
@@ -56,7 +57,7 @@ class RAGChain:
             max_retries=0,  # retried explicitly below, so each attempt is logged
         )
 
-    @retry(reraise=True, stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=8))
+    @with_llm_retry
     def _call_llm(self, messages):
         return self._llm.invoke(messages)
 
@@ -83,6 +84,24 @@ class RAGChain:
             fields["retrieved_scores"] = [round(c.fused_score, 4) for c in retrieved]
 
             response_language = LANGUAGE_NAMES.get(conversation_language, "English")
+
+            # Borderline on distance alone - see relevance_check.py for why a
+            # single threshold can't carry this decision. Discarding the chunks
+            # here routes the question down the same path as "found nothing",
+            # which is what it is.
+            if retrieved and self._retriever.needs_relevance_adjudication(retrieved):
+                verdict = judge_relevance(self._llm, question, retrieved)
+                fields["relevance_adjudicated"] = True
+                fields["relevance_verdict"] = verdict.relevant
+                log_event(
+                    self._logger,
+                    "relevance_adjudicated",
+                    matter_id=matter_id,
+                    relevant=verdict.relevant,
+                    reason=verdict.reason,
+                )
+                if not verdict.relevant:
+                    retrieved = []
 
             if not retrieved:
                 if not allow_web_fallback:

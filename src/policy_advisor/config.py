@@ -27,6 +27,23 @@ class Settings(BaseSettings):
     policy_agent_port: int = 8501
     log_level: str = "info"
     retrieval_top_k: int = 8
+    # Two-band relevance gate, calibrated against eval/golden_set.json by
+    # eval/calibrate_relevance_floor.py. Re-run it after changing
+    # EMBEDDING_MODEL, the distance space, or chunking - all three move the
+    # distributions these are drawn from.
+    #
+    # At or below CERTAIN: relevant, answer from the corpus.
+    # Above MAX: irrelevant, retrieval returns nothing (which is what lets the
+    #   official-sources fallback fire).
+    # In between: too close to call on distance, so ask Claude. The measured
+    #   margin between the hardest answerable question and the easiest
+    #   unanswerable one is 0.0007, far too narrow for a single threshold to
+    #   be anything but overfitting, which is why the middle band exists.
+    #
+    # Set CERTAIN >= MAX to collapse to a plain threshold with no LLM call, and
+    # MAX to 2.0 (the largest possible cosine distance) to disable gating.
+    retrieval_certain_distance: float = 0.21
+    retrieval_max_distance: float = 0.32
     auth_cookie_key: SecretStr = SecretStr("dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-.env")
 
 
