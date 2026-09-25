@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 import anthropic
 
 from policy_advisor.config import get_settings
+from policy_advisor.llm_retry import call_with_retry
 
 OFFICIAL_SOURCE_DOMAINS = ["nass.gov.ng", "ndpc.gov.ng"]
 
@@ -44,27 +45,29 @@ def search_official_sources(question: str, response_language: str = "English") -
     settings = get_settings()
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
 
-    response = client.messages.create(
-        model=settings.anthropic_model,
-        max_tokens=1024,
-        tools=[
-            {
-                "type": "web_search_20250305",
-                "name": "web_search",
-                "allowed_domains": OFFICIAL_SOURCE_DOMAINS,
-                "max_uses": 3,
-            }
-        ],
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Respond in {response_language}. Answer using only what you find on the allowed "
-                    f"official sources. If you can't find a relevant answer there, say so plainly rather "
-                    f"than answering from general knowledge.\n\nQuestion: {question}"
-                ),
-            }
-        ],
+    response = call_with_retry(
+        lambda: client.messages.create(
+            model=settings.anthropic_model,
+            max_tokens=1024,
+            tools=[
+                {
+                    "type": "web_search_20250305",
+                    "name": "web_search",
+                    "allowed_domains": OFFICIAL_SOURCE_DOMAINS,
+                    "max_uses": 3,
+                }
+            ],
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"Respond in {response_language}. Answer using only what you find on the allowed "
+                        f"official sources. If you can't find a relevant answer there, say so plainly rather "
+                        f"than answering from general knowledge.\n\nQuestion: {question}"
+                    ),
+                }
+            ],
+        )
     )
 
     answer_parts = []

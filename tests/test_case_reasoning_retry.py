@@ -24,6 +24,9 @@ def _chain_with_retrieved(chunks: list[RetrievedChunk]) -> CaseReasoningChain:
     chain = object.__new__(CaseReasoningChain)
     chain._retriever = MagicMock()
     chain._retriever.retrieve.return_value = chunks
+    # These chunks are the premise of every test here, so keep the relevance
+    # gate out of the way - it has its own tests in test_relevance_gate.py.
+    chain._retriever.needs_relevance_adjudication.return_value = False
     chain._logger = MagicMock()
     chain._settings = MagicMock(retrieval_top_k=8)
     chain._llm = MagicMock()
@@ -86,6 +89,22 @@ def test_judge_flag_marks_unverified_even_with_clean_citations():
 
     assert gen.call_count == 1  # judge flag doesn't trigger a generation retry
     assert result.unverified is True
+
+
+def test_the_authorities_available_at_analysis_time_are_recorded():
+    # Retrieval cannot be replayed afterwards unless every parameter matches,
+    # so anything auditing whether a citation was supported has to read what
+    # the chain actually had rather than re-running the search. CI caught this
+    # the hard way: a checker that re-retrieved without the jurisdiction filter
+    # reported violations against authorities the chain never saw.
+    chain = _chain_with_retrieved([_chunk("Order 1 Rule 1"), _chunk("Order 2 Rule 5")])
+
+    with patch.object(chain, "_generate_issue_arguments", return_value=_issue_args("Order 1 Rule 1")), patch(
+        JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)
+    ):
+        result = chain._analyze_issue("facts", "some issue", "matter-a", None, "English")
+
+    assert result.retrieved_locators == ["Order 1 Rule 1", "Order 2 Rule 5"]
 
 
 def test_no_retrieved_authorities_yields_no_authority_confidence():
