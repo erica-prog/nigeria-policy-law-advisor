@@ -8,6 +8,17 @@ from dataclasses import dataclass, field
 
 from pydantic import BaseModel, Field
 
+from policy_advisor.generation.web_search import WebSearchCitation
+
+# The vocabulary the chain assigns to each issue. Constants rather than inline
+# strings because the advisory layer and the CI invariant checks both branch on
+# them, and a typo in either place would silently stop protecting anything.
+CONFIDENCE_STRONG = "strongly supported"
+CONFIDENCE_LIMITED = "plausible, limited authority"
+CONFIDENCE_NO_AUTHORITY = "no authority found in corpus"
+CONFIDENCE_UNVERIFIED = "unverified - flagged by faithfulness check"
+CONFIDENCE_FROM_WEB = "from official web sources - not verified against this matter"
+
 
 class Authority(BaseModel):
     locator: str = Field(description="The exact locator of the cited passage, e.g. 'Order 5 Rule 3' or 'Paragraph 11'")
@@ -34,8 +45,21 @@ class IssueAnalysis(BaseModel):
     issue: str
     arguments: list[Argument]
     assessment: str
-    confidence: str  # "strongly supported" | "plausible, limited authority" | "no authority found in corpus"
+    confidence: str  # one of the CONFIDENCE_* constants below
     unverified: bool = False  # set True if a citation failed both the check and one corrective retry
+
+    # Populated only when this matter held no relevant authority for the issue
+    # and the official-sources fallback was allowed. Kept in their own fields
+    # rather than folded into `arguments`/`supporting_authorities` on purpose:
+    # everything in those has been through the citation check against passages
+    # the lawyer put in the matter, and web material has not. Merging the two
+    # would make an unvetted source indistinguishable from a vetted one.
+    web_summary: str | None = None
+    web_sources: list[WebSearchCitation] = Field(default_factory=list)
+
+    @property
+    def from_web(self) -> bool:
+        return bool(self.web_sources)
 
 
 class CaseReasoningResult(BaseModel):
