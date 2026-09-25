@@ -7,6 +7,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
 from policy_advisor.config import get_settings
+from policy_advisor.llm_retry import call_with_retry
 
 LANGUAGE_NAMES = {"en": "English", "fr": "French"}
 
@@ -31,7 +32,7 @@ def get_translation_llm() -> ChatAnthropic:
         api_key=settings.anthropic_api_key.get_secret_value(),
         max_tokens=2048,
         default_request_timeout=45,
-        max_retries=2,
+        max_retries=0,  # retried explicitly in translate_text, so each attempt is visible
     )
 
 
@@ -41,4 +42,4 @@ def translate_text(llm: ChatAnthropic, text: str, source_language: str, target_l
         target_language=LANGUAGE_NAMES.get(target_language, target_language),
         text=text,
     )
-    return llm.invoke(messages).content
+    return call_with_retry(lambda: llm.invoke(messages)).content
