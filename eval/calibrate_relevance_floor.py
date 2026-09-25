@@ -37,6 +37,11 @@ GATE_DISABLED = 2.0
 # rephrasing a question, so a single threshold is not measuring anything real.
 MIN_TRUSTWORTHY_MARGIN = 0.05
 
+# How far past the worst off-corpus question the hard-reject threshold sits.
+# Covers matters whose text is nothing like this corpus - see the note where it
+# is used.
+HARD_REJECT_MARGIN = 0.10
+
 
 def _percentile(values: list[float], pct: float) -> float:
     ordered = sorted(values)
@@ -114,11 +119,31 @@ def main() -> None:
     else:
         print("\nWide enough to split on distance alone, but the two-band values below still apply.")
 
+    # The two thresholds are not calibrated the same way, because being wrong
+    # about them costs different things.
+    #
+    # CERTAIN can be fitted to the observed positives: setting it too high
+    # auto-accepts a weak chunk, and the grounded prompt still refuses when the
+    # passage doesn't answer the question.
+    #
+    # MAX cannot. Setting it too low hides a document the lawyer uploaded, with
+    # no later stage able to recover it, and this golden set covers a single
+    # matter of long formal civil-procedure text. Distances in a short contract
+    # or a witness statement sit much higher for questions the document plainly
+    # answers, so a MAX fitted to the negatives here will reject real documents
+    # elsewhere. It therefore sits a clear margin beyond the worst thing this
+    # corpus has ever scored, and only buys the cheap rejection of the
+    # obviously unrelated.
     certain = _percentile([d for _, d in positives], 50)
-    reject = _percentile([d for _, d in negatives], 50)
+    reject = max(d for _, d in negatives) + HARD_REJECT_MARGIN
     print("\n--- recommended configuration ---")
     print(f"RETRIEVAL_CERTAIN_DISTANCE={certain:.2f}   # at or below: relevant, no LLM call")
-    print(f"RETRIEVAL_MAX_DISTANCE={reject:.2f}       # above: irrelevant, no LLM call")
+    print(f"RETRIEVAL_MAX_DISTANCE={reject:.2f}       # above: unrelated, no LLM call")
+    print(
+        "\nMAX sits a margin beyond the worst negative on purpose - it is a cost optimisation,\n"
+        "not the classifier. Tightening it toward the negatives saves calls and starts hiding\n"
+        "real documents in matters that look nothing like this corpus."
+    )
 
     adjudicated = [q for q, d in positives + negatives if certain < d <= reject]
     auto_accept = [q for q, d in positives + negatives if d <= certain]

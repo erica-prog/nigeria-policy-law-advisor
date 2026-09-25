@@ -42,8 +42,24 @@ class Settings(BaseSettings):
     #
     # Set CERTAIN >= MAX to collapse to a plain threshold with no LLM call, and
     # MAX to 2.0 (the largest possible cosine distance) to disable gating.
+    #
+    # The two are NOT symmetric, and MAX is deliberately loose. The golden set
+    # covers one matter of long, formal civil-procedure text; a lawyer's own
+    # matter looks nothing like it. Measured against a two-sentence contract,
+    # questions the document plainly answers sit at 0.32 ("how long does the
+    # exclusivity clause run for", answered verbatim in the text) and 0.37
+    # ("what is the exclusivity period"), while a genuinely unrelated question
+    # sits at 0.57. A MAX fitted to the demo corpus therefore hard-rejects real
+    # documents in real matters.
+    #
+    # So MAX only buys the cheap rejection of the obviously unrelated. The
+    # adjudicator in relevance_check.py is the actual classifier, and being
+    # wrong in the two directions costs very different things: auto-accepting a
+    # weak chunk leads to a grounded prompt that still refuses when the passage
+    # doesn't answer the question, while auto-rejecting hides the lawyer's own
+    # document behind a web result they never asked for.
     retrieval_certain_distance: float = 0.21
-    retrieval_max_distance: float = 0.32
+    retrieval_max_distance: float = 0.50
     auth_cookie_key: SecretStr = SecretStr("dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-.env")
 
 

@@ -113,6 +113,32 @@ def test_exact_matches_are_never_adjudicated():
     assert retriever.needs_relevance_adjudication(chunks) is False
 
 
+def test_default_threshold_does_not_reject_a_document_that_answers_the_question():
+    """Regression: the first RETRIEVAL_MAX_DISTANCE shipped here was 0.32,
+    fitted to the demo corpus of long formal civil-procedure text, and it
+    hard-rejected an on-topic query against a short contract.
+
+    Measured with the real embedding model against the two-sentence contract in
+    tests/test_matter_isolation.py: "how long does the exclusivity clause run
+    for" scores 0.3205 and "what is the exclusivity period" 0.3721, both
+    answered verbatim by the document, while a genuinely unrelated question
+    scores 0.5664. Distances in a lawyer's own matter simply sit higher than in
+    the demo corpus, so the hard-reject threshold has to clear them.
+    """
+    from policy_advisor.config import get_settings
+
+    on_topic_in_a_real_matter = 0.3721
+    clearly_unrelated = 0.5664
+    max_distance = get_settings().retrieval_max_distance
+
+    assert max_distance > on_topic_in_a_real_matter, (
+        "the hard-reject threshold would hide a document that answers the question"
+    )
+    assert max_distance < clearly_unrelated, (
+        "the threshold no longer rejects anything, so every query pays for adjudication"
+    )
+
+
 def test_raw_distance_survives_normalization():
     # fused_score is min-max normalized per query, so the top candidate always
     # scores ~1.0 however irrelevant it is. vector_distance is the only field
