@@ -223,10 +223,16 @@ class CaseReasoningChain:
             assessment=issue_args.assessment,
             confidence=confidence,
             unverified=unverified,
+            retrieved_locators=sorted(available_locators),
         )
 
     def _synthesize(
-        self, case_facts: str, issues: list[IssueAnalysis], matter_id: str, response_language: str
+        self,
+        case_facts: str,
+        issues: list[IssueAnalysis],
+        matter_id: str,
+        response_language: str,
+        jurisdiction: str | None = None,
     ) -> str:
         # Web-backed issues are labelled rather than summarised into the prompt.
         # Including the web text would let the overall position absorb it as if
@@ -249,13 +255,23 @@ class CaseReasoningChain:
         overall_position = call_with_retry(lambda: self._llm.invoke(messages)).content
 
         # Final synthesis is checked against the union of every issue's own
-        # retrieved authorities, not a fresh retrieval pass - it must only
-        # restate what the per-issue steps already grounded, not introduce
-        # anything new.
+        # retrieved authorities - it must only restate what the per-issue steps
+        # already grounded, not introduce anything new. The jurisdiction filter
+        # has to match what those steps actually used: without it this widens
+        # to other jurisdictions' rules and the judge ends up assessing the
+        # synthesis against authorities the analysis never had, flagging
+        # citations that were properly supported at the time.
         all_chunks: list[RetrievedChunk] = []
         for issue in issues:
+            if issue.from_web:
+                continue
             all_chunks.extend(
-                self._retriever.retrieve(issue.issue, top_k=self._settings.retrieval_top_k, matter_id=matter_id)
+                self._retriever.retrieve(
+                    issue.issue,
+                    top_k=self._settings.retrieval_top_k,
+                    matter_id=matter_id,
+                    jurisdiction=jurisdiction,
+                )
             )
         judge_outcome = judge_check(self._llm, overall_position, all_chunks)
         if judge_outcome.judge_flagged:
@@ -283,7 +299,9 @@ class CaseReasoningChain:
             )
             for issue in issues
         ]
-        overall_position = self._synthesize(case_facts, issue_analyses, matter_id, response_language)
+        overall_position = self._synthesize(
+            case_facts, issue_analyses, matter_id, response_language, jurisdiction
+        )
         web_backed = sum(1 for i in issue_analyses if i.from_web)
         log_event(
             self._logger,
@@ -305,4 +323,5 @@ class CaseReasoningChain:
             issues=issue_analyses,
             overall_position=overall_position,
             disclaimer=disclaimer,
+            jurisdiction=jurisdiction,
         )

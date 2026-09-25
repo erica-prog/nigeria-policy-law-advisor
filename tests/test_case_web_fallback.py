@@ -75,6 +75,14 @@ def test_web_backed_issue_is_never_sent_to_the_judge():
     judge.assert_not_called()
 
 
+def test_web_backed_issue_records_no_corpus_authorities():
+    chain = _chain()
+    with patch(WEB_SEARCH_PATH, return_value=_found()):
+        result = chain._analyze_issue("facts", "i", "m", None, "English", allow_web_fallback=True)
+
+    assert result.retrieved_locators == []
+
+
 def test_web_search_finding_nothing_falls_back_to_no_authority():
     chain = _chain()
     empty = WebSearchResult(answer="", citations=[], found=False)

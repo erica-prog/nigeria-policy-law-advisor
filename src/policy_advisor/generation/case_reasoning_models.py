@@ -48,6 +48,13 @@ class IssueAnalysis(BaseModel):
     confidence: str  # one of the CONFIDENCE_* constants below
     unverified: bool = False  # set True if a citation failed both the check and one corrective retry
 
+    # The locators available when this issue was analysed, recorded because
+    # they cannot be recovered afterwards. Re-running retrieval later gives a
+    # different set unless every parameter matches - the jurisdiction filter in
+    # particular - and anything auditing whether a citation was supported would
+    # then be judging against authorities the chain never saw.
+    retrieved_locators: list[str] = Field(default_factory=list)
+
     # Populated only when this matter held no relevant authority for the issue
     # and the official-sources fallback was allowed. Kept in their own fields
     # rather than folded into `arguments`/`supporting_authorities` on purpose:
@@ -67,6 +74,9 @@ class CaseReasoningResult(BaseModel):
     issues: list[IssueAnalysis]
     overall_position: str
     disclaimer: str
+    # Carried so later stages can reproduce the retrieval this analysis ran on
+    # instead of quietly widening it.
+    jurisdiction: str | None = None
 
 
 @dataclass

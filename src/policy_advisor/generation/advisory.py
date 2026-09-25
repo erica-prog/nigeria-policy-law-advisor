@@ -202,7 +202,12 @@ class AdvisoryChain:
                 continue
             chunks.extend(
                 self._case_chain.retriever.retrieve(
-                    issue.issue, top_k=self._settings.retrieval_top_k, matter_id=matter_id
+                    issue.issue,
+                    top_k=self._settings.retrieval_top_k,
+                    matter_id=matter_id,
+                    # Same filter the analysis ran under, or the judge assesses
+                    # the advice against authorities it never had.
+                    jurisdiction=analysis.jurisdiction,
                 )
             )
         return chunks

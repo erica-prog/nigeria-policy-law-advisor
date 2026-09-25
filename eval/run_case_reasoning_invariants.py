@@ -30,7 +30,7 @@ MIN_ISSUES = 2
 MAX_ISSUES = 6
 
 
-def _check_case(result, retriever, top_k: int, matter_id: str) -> list[str]:
+def _check_case(result) -> list[str]:
     from policy_advisor.generation.case_reasoning_models import CONFIDENCE_STRONG
     from policy_advisor.generation.faithfulness import is_supported_citation
 
@@ -56,12 +56,17 @@ def _check_case(result, retriever, top_k: int, matter_id: str) -> list[str]:
                 violations.append(f"[{label}] web-backed issue carries arguments, which are never web-derived")
             if not issue.web_summary:
                 violations.append(f"[{label}] has web sources but no summary")
+            if issue.retrieved_locators:
+                violations.append(f"[{label}] is web-backed yet records corpus authorities")
             continue
 
-        available = {
-            chunk.metadata["locator"]
-            for chunk in retriever.retrieve(issue.issue, top_k=top_k, matter_id=matter_id)
-        }
+        # The locators the chain actually had, recorded during analysis. An
+        # earlier version of this check re-ran retrieval here and dropped the
+        # jurisdiction filter, so it judged citations against a different set
+        # of authorities and reported violations the chain's own check never
+        # saw. Re-deriving state the pipeline already knows is how a gate ends
+        # up testing itself rather than the pipeline.
+        available = set(issue.retrieved_locators)
         cited = [
             authority.locator
             for argument in issue.arguments
@@ -113,7 +118,6 @@ def _check_advisory(advisory) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default=None, help="run only the seed case with this id")
-    parser.add_argument("--top-k", type=int, default=8)
     parser.add_argument("--with-advisory", action="store_true", help="also check advisory mode")
     args = parser.parse_args()
 
@@ -134,7 +138,7 @@ def main() -> None:
         result = case_chain.analyze(
             case["case_facts"], matter_id=case["matter_id"], jurisdiction=case["jurisdiction"]
         )
-        violations = _check_case(result, case_chain.retriever, args.top_k, case["matter_id"])
+        violations = _check_case(result)
 
         if advisory_chain is not None:
             advisory = advisory_chain.advise_on(result, matter_id=case["matter_id"])
