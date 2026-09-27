@@ -22,6 +22,8 @@ jobs:
         run: uv run mypy src
         continue-on-error: true
       - name: Unit tests
+        # tests/conftest.py points every test at a throwaway database, so no
+        # DATABASE_PATH is needed here.
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run pytest
@@ -38,6 +40,11 @@ jobs:
       - run: uv sync --frozen
       - name: Install OCR dependencies (poppler, tesseract)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Use a throwaway database for this job
+        # The database is an embedded SQLite file, so CI needs no database
+        # service - just a path. Outside the checkout, and shared by every
+        # later step in the job through $GITHUB_ENV.
+        run: echo "DATABASE_PATH=$RUNNER_TEMP/advisor.db" >> "$GITHUB_ENV"
       - name: Build demo corpus index
         run: uv run python -m policy_advisor.ingestion.build_index
       - name: Retrieval/faithfulness eval
@@ -74,6 +81,8 @@ jobs:
       - run: uv sync --frozen
       - name: Install OCR dependencies (poppler, tesseract)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Use a throwaway database for this job
+        run: echo "DATABASE_PATH=$RUNNER_TEMP/advisor.db" >> "$GITHUB_ENV"
       - name: Build demo corpus index
         run: uv run python -m policy_advisor.ingestion.build_index
       - name: Structural invariants (single case)

@@ -14,5 +14,11 @@ data/index/
 # lawyer accounts/credentials
 data/auth/
 
+# the database - matters, uploaded document text and lawyers' chats - and its
+# write-ahead-log files and snapshots. Client data; never commit it.
+data/advisor.db
+data/advisor.db-*
+data/backups/
+
 # OS
 .DS_Store

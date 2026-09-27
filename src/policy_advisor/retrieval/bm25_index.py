@@ -3,8 +3,8 @@ exact rule/order-number matches that dense embeddings handle unreliably
 (docs/03). Built in-memory from one matter's chunks.json sidecar - cheap
 enough at this corpus size to not need persistence.
 
-Per-matter, not global: BM25 has no native metadata filter the way Chroma
-does, and its IDF statistics shouldn't be computed across unrelated matters'
+Per-matter, not global: BM25 has no native metadata filter, and its IDF
+statistics shouldn't be computed across unrelated matters'
 documents anyway - each matter gets its own index built from just its own
 chunks (CLAUDE-2.md capability 1)."""
 
@@ -39,14 +39,19 @@ class BM25Index:
         return ranked[:top_k]
 
 
-def load_bm25_index(matter_id: str) -> BM25Index:
-    raw = load_matter_chunks(matter_id)
+def build_bm25_index(records: list[dict]) -> BM25Index:
+    """From the same chunk records the vector index is built from, so the two
+    can never disagree about what a matter contains."""
     documents = [
         BM25Document(
             metadata={k: v for k, v in item.items() if k != "text"},
             text=item["text"],
             search_text=f"{item['text']} {item.get('translated_text', '')}".strip(),
         )
-        for item in raw
+        for item in records
     ]
     return BM25Index(documents)
+
+
+def load_bm25_index(matter_id: str) -> BM25Index:
+    return build_bm25_index(load_matter_chunks(matter_id))

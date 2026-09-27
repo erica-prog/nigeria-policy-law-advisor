@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 INDEX_DIR = DATA_DIR / "index"
+# Where the pre-SQLite per-matter chunks.json/meta.json files lived. Read only
+# by scripts/migrate_to_sqlite.py now.
 MATTERS_DIR = INDEX_DIR / "matters"
 AUTH_DIR = DATA_DIR / "auth"
 PHASE1_DEMO_MATTER_ID = "phase1-demo"
@@ -24,6 +26,11 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr
     anthropic_model: str = "claude-sonnet-4-6"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # The one database file: matters, chunks with their embeddings, and chat
+    # history. Relative paths resolve against the project root. Keep it inside
+    # data/, which docker-compose.yml mounts from the host - a path outside that
+    # mount is lost whenever the container is rebuilt.
+    database_path: Path = Path("data/advisor.db")
     policy_agent_port: int = 8501
     log_level: str = "info"
     retrieval_top_k: int = 8
