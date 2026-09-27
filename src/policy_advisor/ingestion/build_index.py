@@ -6,8 +6,8 @@ quality can be traced and rolled back (docs/01, docs/06).
 Only this matter's chunks are replaced - the database holds every matter
 (CLAUDE-2.md capability 1). For adding/removing an arbitrary lawyer-uploaded
 document in any matter, use `policy_advisor.ingestion.ingest_document` instead;
-this script is only for re-seeding the fixed demo corpus. Creates the database
-and applies the schema on first run.
+this script is only for re-seeding the fixed demo corpus. Creates the tables on
+first run.
 
 Run with: uv run python -m policy_advisor.ingestion.build_index
 """
@@ -17,7 +17,6 @@ import json
 import time
 
 from policy_advisor.config import DATA_DIR, INDEX_DIR, PHASE1_DEMO_MATTER_ID, get_settings
-from policy_advisor.db import database_path
 from policy_advisor.ingestion.chunk import CORPUS, chunk_corpus
 from policy_advisor.ingestion.embed import embed_texts
 from policy_advisor.ingestion.matter_store import replace_matter_chunks
@@ -54,7 +53,9 @@ def main() -> None:
         # normalized vectors means nothing under any other pairing.
         "distance": "cosine",
         "embeddings_normalized": True,
-        "database": str(database_path()),
+        # Deliberately not the connection string: it carries the database
+        # password, and this manifest is written to disk and logged.
+        "store": "postgres+pgvector",
         "chunk_count": len(chunks),
         "documents": [spec.filename for spec in CORPUS],
         "matter_id": PHASE1_DEMO_MATTER_ID,

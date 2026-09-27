@@ -10,24 +10,31 @@ Runs offline: the matter's indexes are stubbed, so no API key, embedding model,
 or database is needed.
 """
 
-from unittest.mock import MagicMock
-
 import numpy as np
 import pytest
 
-from policy_advisor.retrieval.bm25_index import BM25Index
+from policy_advisor.retrieval.bm25_index import BM25Document, BM25Index
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk, _MatterIndex
 
 CERTAIN = 0.21
 MAX = 0.32
 
 
+# What the stubbed vector search returns; set by `_retriever`.
+_vector_hits: list[tuple[dict, str, float]] = []
+
+
 @pytest.fixture(autouse=True)
 def _offline(monkeypatch):
-    # The stubbed index below is always current, and no query needs a real
-    # embedding because the stub decides the distances.
+    # The stubbed index below is always current, and vector search returns
+    # whatever the test chose, so no database or embedding model is involved.
     monkeypatch.setattr("policy_advisor.retrieval.hybrid_retriever.matter_version", lambda matter_id: 1)
     monkeypatch.setattr("policy_advisor.retrieval.hybrid_retriever.embed_query", lambda query: np.zeros(3))
+    monkeypatch.setattr(
+        "policy_advisor.retrieval.hybrid_retriever.vector_store.search",
+        lambda matter_id, query_vector, k, jurisdiction=None: list(_vector_hits),
+    )
+    _vector_hits.clear()
 
 
 def _hit(chunk_id: str, locator: str, distance: float) -> tuple[dict, str, float]:
@@ -36,12 +43,12 @@ def _hit(chunk_id: str, locator: str, distance: float) -> tuple[dict, str, float
 
 def _retriever(vector_hits: list[tuple[dict, str, float]], locators: dict | None = None) -> HybridRetriever:
     """A retriever whose vector search returns exactly these (metadata, text,
-    distance) hits and whose BM25 index is empty."""
-    vectors = MagicMock()
-    vectors.__len__.return_value = len(vector_hits)
-    vectors.search.return_value = vector_hits
+    distance) hits. Its keyword index holds the same chunks, so the matter
+    isn't empty, but no query term matches them, so BM25 adds nothing."""
+    _vector_hits[:] = vector_hits
     retriever = HybridRetriever(max_distance=MAX, certain_distance=CERTAIN)
-    retriever._indexes["m"] = _MatterIndex(version=1, vectors=vectors, bm25=BM25Index([]), locators=locators or {})
+    bm25 = BM25Index([BM25Document(metadata=meta, text=text) for meta, text, _ in vector_hits])
+    retriever._indexes["m"] = _MatterIndex(version=1, bm25=bm25, locators=locators or {})
     return retriever
 
 

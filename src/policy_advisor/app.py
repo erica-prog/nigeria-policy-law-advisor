@@ -9,11 +9,11 @@ demo corpus.
 Run with: uv run streamlit run src/policy_advisor/app.py
 """
 
-import sqlite3
 import tempfile
 import time
 from pathlib import Path
 
+import psycopg
 import streamlit as st
 
 from policy_advisor.auth import require_login
@@ -32,6 +32,9 @@ from policy_advisor.generation.chain import RAGChain
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES
 from policy_advisor.ingestion.ingest_document import UnsupportedDocumentError, add_document, remove_document
 from policy_advisor.ingestion.matter_store import list_documents, list_matters_for_user, set_matter_owner
+from policy_advisor.logging_utils import get_logger, log_event
+
+logger = get_logger("policy_advisor.app")
 
 st.set_page_config(page_title="Law & Policy Advisor (Demo)", page_icon="⚖️")
 st.title("Law & Policy Advisor")
@@ -181,9 +184,12 @@ if mode == "Ask a question":
 
     try:
         history = recent_exchanges(username, matter_id)
-    except sqlite3.Error as exc:
+    except psycopg.Error as exc:
+        # Logged, not shown: a connection error names the database host, which
+        # is infrastructure detail with no place on a lawyer's screen.
+        log_event(logger, "chat_history_load_failed", matter_id=matter_id, error=str(exc))
         history = []
-        st.warning(f"Couldn't load your recent questions ({exc}). You can still ask new ones.")
+        st.warning("Couldn't load your recent questions just now. You can still ask new ones.")
 
     for exchange in history:
         with st.chat_message("user"):
@@ -217,10 +223,11 @@ if mode == "Ask a question":
 
         try:
             save_exchange(username, matter_id, exchange)
-        except sqlite3.Error as exc:
+        except psycopg.Error as exc:
             # The answer is already on screen; losing its history entry must
             # not take it away.
-            st.caption(f"This answer couldn't be saved to your recent questions ({exc}).")
+            log_event(logger, "chat_history_save_failed", matter_id=matter_id, error=str(exc))
+            st.caption("This answer couldn't be saved to your recent questions.")
 
 else:
     def render_case_analysis(result) -> None:

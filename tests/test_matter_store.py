@@ -10,8 +10,11 @@ def _chunk(chunk_id: str, source_document: str, text: str, **extra) -> dict:
     return {"chunk_id": chunk_id, "source_document": source_document, "text": text, **extra}
 
 
+DIMENSIONS = 384  # bge-small-en-v1.5, as pinned by the schema
+
+
 def _vectors(n: int) -> np.ndarray:
-    return np.eye(n, 3, dtype=np.float32)
+    return np.eye(n, DIMENSIONS, dtype=np.float32)
 
 
 def test_replace_then_load_round_trips(fresh_db):
@@ -21,15 +24,42 @@ def test_replace_then_load_round_trips(fresh_db):
 
 
 def test_embeddings_round_trip_with_their_rows(fresh_db):
-    vectors = np.array([[0.6, 0.8, 0.0], [0.0, 0.0, 1.0]], dtype=np.float32)
+    vectors = np.zeros((2, DIMENSIONS), dtype=np.float32)
+    vectors[0, :2] = [0.6, 0.8]
+    vectors[1, 2] = 1.0
     matter_store.replace_document_chunks(
         "matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "a"), _chunk("c2", "doc.pdf", "b")], vectors
     )
 
-    _version, records, embeddings = matter_store.load_matter_vectors("matter-a")
+    records, embeddings = matter_store.load_matter_vectors("matter-a")
 
     assert [r["chunk_id"] for r in records] == ["c1", "c2"]
     np.testing.assert_array_equal(embeddings, vectors)
+
+
+def test_an_embedding_of_the_wrong_dimension_is_rejected(fresh_db):
+    # vector(384) is the schema's own check that every stored vector came from
+    # a model of the right shape.
+    with pytest.raises(Exception, match="384"):
+        matter_store.replace_document_chunks(
+            "matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "a")], np.ones((1, 3), dtype=np.float32)
+        )
+    assert matter_store.load_matter_chunks("matter-a") == []
+
+
+def test_version_and_rows_come_from_one_snapshot(fresh_db):
+    matter_store.replace_document_chunks("matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "a")], _vectors(1))
+
+    version, records = matter_store.load_matter_snapshot("matter-a")
+
+    assert version == matter_store.matter_version("matter-a")
+    assert [r["chunk_id"] for r in records] == ["c1"]
+
+
+def test_an_existing_matter_with_no_chunks_loads_as_empty(fresh_db):
+    matter_store.set_matter_owner("matter-a", "jdoe")
+
+    assert matter_store.load_matter_snapshot("matter-a") == (0, [])
 
 
 def test_reuploading_a_document_replaces_it_rather_than_merging(fresh_db):
@@ -115,7 +145,7 @@ def test_vectors_from_a_different_embedding_model_are_refused(fresh_db):
         conn.execute("UPDATE index_meta SET value = 'some-other-model' WHERE key = 'embedding_model'")
 
     with pytest.raises(EmbeddingModelMismatch):
-        matter_store.load_matter_vectors("matter-a")
+        matter_store.load_matter_snapshot("matter-a")
     with pytest.raises(EmbeddingModelMismatch):
         matter_store.replace_document_chunks("matter-a", "y.pdf", [_chunk("c2", "y.pdf", "b")], _vectors(1))
 

@@ -1,24 +1,56 @@
-"""Exact vector search over one matter's chunk embeddings.
+"""Exact vector search over one matter's chunk embeddings, run in Postgres.
 
 Every query is already scoped to a single matter (CLAUDE-2.md capability 1), so
 search only ever compares against that matter's rows - 855 for the demo corpus.
-At that size a direct comparison against every row costs well under a
-millisecond, which makes an approximate index all downside: it can return
-different neighbours from run to run, and a filtered approximate search can
-quietly return fewer than `k` results. This is exact and deterministic, and
-stays fast into the tens of thousands of chunks per matter.
+At that size an exact scan costs well under a millisecond, which makes an
+approximate index all downside: it can return different neighbours from run to
+run, and an HNSW index combined with a matter filter can quietly return fewer
+than `k` results. The schema deliberately has no vector index.
 
-Distance is cosine distance, 1 - cos(q, e), the same quantity Chroma's cosine
-space returned, so the relevance thresholds calibrated against it carry over.
-On unit vectors - embed.py normalizes them - cosine similarity is simply the
-dot product.
+Distance is pgvector's cosine distance, `<=>`, which is 1 - cos(q, e): the same
+quantity Chroma's cosine space returned, so the relevance thresholds calibrated
+against it carry over.
 """
 
 from dataclasses import dataclass, field
 
 import numpy as np
 
+from policy_advisor.db import connect
 from policy_advisor.ingestion.chunk import Chunk
+from policy_advisor.ingestion.matter_store import METADATA_COLUMNS, record_from_row
+
+
+def search(
+    matter_id: str, query_vector: np.ndarray, k: int, jurisdiction: str | None = None
+) -> list[tuple[dict, str, float]]:
+    """The k nearest chunks in one matter as (metadata, text, cosine distance),
+    nearest first.
+
+    The jurisdiction filter sits in the WHERE clause, so it applies before the
+    LIMIT, as Chroma's metadata filter did - otherwise a Lagos question could
+    spend its whole candidate pool on Federal High Court rules and find no Lagos
+    ones. Ties break on insertion order so results are reproducible.
+    """
+    with connect() as conn:
+        rows = conn.execute(
+            f"SELECT {', '.join(METADATA_COLUMNS)}, text, embedding <=> %(query)s AS distance "
+            "FROM chunks "
+            "WHERE matter_id = %(matter)s AND (%(jurisdiction)s::text IS NULL OR jurisdiction = %(jurisdiction)s) "
+            "ORDER BY distance, inserted_seq LIMIT %(k)s",
+            {
+                "query": np.asarray(query_vector, dtype=np.float32),
+                "matter": matter_id,
+                "jurisdiction": jurisdiction or None,
+                "k": k,
+            },
+        ).fetchall()
+    hits = []
+    for row in rows:
+        record = record_from_row(row)
+        text = record.pop("text")
+        hits.append((record, text, float(row["distance"])))
+    return hits
 
 
 def chunk_to_record(chunk: Chunk) -> dict:
@@ -42,7 +74,13 @@ def chunk_to_record(chunk: Chunk) -> dict:
 
 @dataclass
 class VectorIndex:
-    """One matter's embeddings, held in memory for querying."""
+    """Embeddings held in memory for querying, with no database.
+
+    Only for eval/evaluate_embedding_candidate.py, which compares candidate
+    models without writing their vectors into the real database. The query
+    path uses `search` above. Same ordering rules - jurisdiction before the
+    limit, ties by insertion order - so the two agree on the same vectors.
+    """
 
     metadatas: list[dict] = field(default_factory=list)
     texts: list[str] = field(default_factory=list)

@@ -1,4 +1,4 @@
-"""One-off: move matters from the pre-SQLite layout into the database.
+"""One-off: move matters from the old Chroma-era layout into Postgres.
 
 Reads data/index/matters/<id>/chunks.json (chunk text, used by BM25) and
 meta.json (the owner), re-embeds each chunk's text with the configured model,
@@ -15,8 +15,8 @@ Skipped:
     left behind.
 
 Usage:
-  uv run python -m scripts.migrate_to_sqlite --dry-run
-  uv run python -m scripts.migrate_to_sqlite
+  uv run python -m scripts.migrate_to_postgres --dry-run
+  uv run python -m scripts.migrate_to_postgres
 """
 
 import argparse

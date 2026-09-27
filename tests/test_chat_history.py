@@ -29,7 +29,7 @@ def test_pruning_deletes_the_rows_not_just_hides_them(fresh_db):
         save_exchange("jdoe", "matter-a", _exchange(f"q{n}"))
 
     with connect() as conn:
-        stored = conn.execute("SELECT COUNT(*) FROM chat_exchanges").fetchone()[0]
+        stored = conn.execute("SELECT COUNT(*) AS n FROM chat_exchanges").fetchone()["n"]
     assert stored == MAX_EXCHANGES
 
 

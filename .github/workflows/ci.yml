@@ -6,9 +6,32 @@ on:
   pull_request:
     branches: [main]
 
+# Every job that needs a database gets its own disposable Postgres with
+# pgvector. CI never connects to the Supabase project and holds no Supabase
+# secret: the tests truncate tables, and tests/conftest.py refuses Supabase
+# hosts outright for that reason.
+#
+# Set here rather than per job: workflow-level variables reach every job and
+# step, while the `env` context can't be referenced inside a job's own env
+# block. DATABASE_URL is what the app and eval scripts use; the tests read
+# TEST_DATABASE_URL and overwrite DATABASE_URL with it.
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/policy_advisor_test
+  TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/policy_advisor_test
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
@@ -22,8 +45,6 @@ jobs:
         run: uv run mypy src
         continue-on-error: true
       - name: Unit tests
-        # tests/conftest.py points every test at a throwaway database, so no
-        # DATABASE_PATH is needed here.
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run pytest
@@ -31,6 +52,16 @@ jobs:
   eval-gate:
     runs-on: ubuntu-latest
     needs: lint-and-test
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
@@ -40,11 +71,6 @@ jobs:
       - run: uv sync --frozen
       - name: Install OCR dependencies (poppler, tesseract)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
-      - name: Use a throwaway database for this job
-        # The database is an embedded SQLite file, so CI needs no database
-        # service - just a path. Outside the checkout, and shared by every
-        # later step in the job through $GITHUB_ENV.
-        run: echo "DATABASE_PATH=$RUNNER_TEMP/advisor.db" >> "$GITHUB_ENV"
       - name: Build demo corpus index
         run: uv run python -m policy_advisor.ingestion.build_index
       - name: Retrieval/faithfulness eval
@@ -72,6 +98,16 @@ jobs:
     # without spending the account's rate limit on every push.
     runs-on: ubuntu-latest
     needs: lint-and-test
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
@@ -81,8 +117,6 @@ jobs:
       - run: uv sync --frozen
       - name: Install OCR dependencies (poppler, tesseract)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
-      - name: Use a throwaway database for this job
-        run: echo "DATABASE_PATH=$RUNNER_TEMP/advisor.db" >> "$GITHUB_ENV"
       - name: Build demo corpus index
         run: uv run python -m policy_advisor.ingestion.build_index
       - name: Structural invariants (single case)

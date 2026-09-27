@@ -6,20 +6,21 @@ Federal High Court rule doesn't get treated as interchangeable with a Lagos
 Magistrates' Court rule just because both mention the same topic.
 
 Every query is scoped to one matter (CLAUDE-2.md capability 1) - there is no
-"search everything" mode. Each matter's vector and BM25 indexes are built
-together from the same database rows, held in memory, and rebuilt when the
-matter's content_version changes. Reading the version on every query is one
-indexed lookup, and it means an upload is visible to every retriever instance
-and every process - not only the one that happened to be told about it."""
+"search everything" mode. Vector search runs in Postgres against the matter's
+rows. BM25 has no database equivalent here, so each matter's keyword index is
+built from those same rows, held in memory, and rebuilt when the matter's
+content_version changes. Reading the version on every query is one indexed
+lookup, and it means an upload is visible to every retriever instance and every
+app process - not only the one that happened to be told about it."""
 
 import re
 from dataclasses import dataclass, field
 
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion.embed import embed_query
-from policy_advisor.ingestion.matter_store import load_matter_vectors, matter_version
+from policy_advisor.ingestion.matter_store import load_matter_snapshot, matter_version
+from policy_advisor.retrieval import vector_store
 from policy_advisor.retrieval.bm25_index import BM25Index, build_bm25_index
-from policy_advisor.retrieval.vector_store import VectorIndex
 
 _LOCATOR_RE = re.compile(r"order\s+(\d+)\D{1,5}?rule\s+(\d+)", re.IGNORECASE)
 
@@ -63,9 +64,12 @@ def _build_locator_index(bm25_index: BM25Index) -> dict[str, list[tuple[str, dic
 @dataclass
 class _MatterIndex:
     version: int
-    vectors: VectorIndex
     bm25: BM25Index
     locators: dict[str, list[tuple[str, dict]]]
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.bm25.documents
 
 
 class HybridRetriever:
@@ -89,14 +93,9 @@ class HybridRetriever:
         cached = self._indexes.get(matter_id)
         if cached is not None and cached.version == matter_version(matter_id):
             return cached
-        version, records, embeddings = load_matter_vectors(matter_id)
+        version, records = load_matter_snapshot(matter_id)
         bm25 = build_bm25_index(records)
-        index = _MatterIndex(
-            version=version,
-            vectors=VectorIndex.from_records(records, embeddings),
-            bm25=bm25,
-            locators=_build_locator_index(bm25),
-        )
+        index = _MatterIndex(version=version, bm25=bm25, locators=_build_locator_index(bm25))
         self._indexes[matter_id] = index
         return index
 
@@ -137,11 +136,11 @@ class HybridRetriever:
         by_chunk_id: dict[str, RetrievedChunk] = {}
 
         # Skip embedding the query for an empty matter - it would load the
-        # model for nothing.
+        # model, and query the database, for nothing.
         vector_hits = (
-            index.vectors.search(embed_query(query), k=candidate_pool, jurisdiction=jurisdiction)
-            if len(index.vectors)
-            else []
+            []
+            if index.is_empty
+            else vector_store.search(matter_id, embed_query(query), k=candidate_pool, jurisdiction=jurisdiction)
         )
         # Distance: lower is more similar. Negate before normalizing so higher
         # always means "better" in the fused score.
