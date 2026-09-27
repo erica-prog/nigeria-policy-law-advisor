@@ -18,12 +18,15 @@ RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY src ./src
+# Operational scripts run inside the container (docs/16): the one-off
+# migration from the old layout, and the nightly database snapshot.
+COPY scripts ./scripts
 COPY pyproject.toml ./
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Index, eval artifacts, and lawyer credentials live under data/ - this
-# directory is a mount point at runtime (see docker-compose.yml), not
-# baked into the image.
+# The database file (matters, chunks, chat history), lawyer credentials and
+# the source PDFs live under data/ - this directory is a mount point at
+# runtime (see docker-compose.yml), not baked into the image.
 RUN mkdir -p data && chown -R appuser:appuser /app
 USER appuser
 
