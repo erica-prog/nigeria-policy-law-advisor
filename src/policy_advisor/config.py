@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
+        # An exported but empty variable (`export ANTHROPIC_API_KEY=`) must not
+        # shadow the value in .env; otherwise /api/health reports the model as
+        # unconfigured even though the file is correct.
+        env_ignore_empty=True,
         extra="ignore",
     )
 

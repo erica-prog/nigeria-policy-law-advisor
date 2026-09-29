@@ -58,6 +58,10 @@ def _build_harness(tmp_path: Path, monkeypatch, llm_key: str) -> ApiHarness:
     monkeypatch.setenv("ANTHROPIC_API_KEY", llm_key)
     monkeypatch.setenv("TRANSLATE_ON_INGEST", "false")
     monkeypatch.setenv("AUTH_COOKIE_KEY", "unit-test-cookie-key")
+    # Settings ignore empty environment values (env_ignore_empty), so point the
+    # .env lookup at a file that does not exist; a developer's real .env must
+    # never leak into the "no model key" fixture.
+    monkeypatch.setitem(config.Settings.model_config, "env_file", str(tmp_path / "absent.env"))
     get_settings.cache_clear()
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")
     monkeypatch.setattr(matter_store, "MATTERS_DIR", tmp_path / "matters")
