@@ -70,13 +70,20 @@ for that request. Unresolved locators appear in `unsupported_citations` and set
 
 ### Matters
 
-Matter ids match `^[a-z0-9][a-z0-9-]{1,63}$`.
+Matter ids match `^[a-z0-9][a-z0-9-]{1,63}$`. Since revision 2 the browser client never
+shows an id; it shows `title`.
 
 - `GET /api/matters` -> `{ "matters": [Matter] }` where
-  `Matter = { "id", "owner", "read_only", "document_count" }`. Includes the shared
-  `phase1-demo` matter with `read_only: true`.
-- `POST /api/matters` `{ "id": "smith-v-acme-2026" }` -> `201 Matter`.
-  `409 matter_exists` if taken.
+  `Matter = { "id", "owner", "read_only", "document_count", "title", "created_at",
+  "updated_at" }`. `title` is `null` until the first chat message derives one (or the
+  caller set it at creation); `created_at`/`updated_at` are ISO-8601 UTC strings or
+  `null` for legacy matters. Ordered most recently used first. Includes the shared
+  `phase1-demo` matter with `read_only: true` and the fixed title
+  `"Reference library (shared, read-only)"`, always last.
+- `POST /api/matters` `{ "id"?: "smith-v-acme-2026", "title"?: "Late invoices" }` ->
+  `201 Matter`. Both fields optional (revision 2): without `id` the server generates
+  `case-<12 hex>`; without `title` the first chat message sets it. `409 matter_exists`
+  if an explicit id is taken. `title` is 1-80 characters.
 - `GET /api/matters/{matter_id}` -> `Matter`. `404 matter_not_found` unless owned or
   shared.
 
@@ -158,6 +165,73 @@ does not produce them yet, and the API will not invent them. Each side's `argume
 inside an issue are the closest existing output. `authorities[].source` is `null` when
 the locator did not resolve; such issues are already `unverified: true`.
 
+### Chat (revision 2)
+
+The chat-first client sends every message here; the server decides what to run. Ask and
+analyze above remain available and unchanged.
+
+`POST /api/matters/{id}/chat`
+
+```json
+{ "message": "Acme stopped paying our invoices in March...", "allow_web": false,
+  "intent": "auto", "jurisdiction": null, "language": "en" }
+```
+
+- `intent`: `auto` (default: the server decides), `analyze` (the user pressed the
+  "Analyse my case" chip), `ask` (force a question).
+- Routing, in this order:
+  1. Analysis is wanted when `intent == "analyze"`, or when `intent == "auto"` and this
+     is the first user message of a conversation that has no analysis yet (never for the
+     shared read-only library, whose first message is a question).
+  2. Analysis wanted **and the matter has documents** -> `mode: "analysis"` via the
+     analyze pipeline with `case_facts = message`.
+  3. Analysis wanted **and the matter has no documents** -> `mode: "research"`: the ask
+     pipeline with `allow_web` forced to `true`, labelled as general legal research.
+     `notice` is set and no `evidence` citation can appear (there are no documents).
+  4. Otherwise `mode: "question"`: the ask pipeline with the caller's `allow_web`.
+
+Response `200 ChatReply`:
+
+```json
+{
+  "id": "5f1c...", "role": "assistant", "created_at": "2026-09-29T22:10:00+00:00",
+  "mode": "analysis" | "research" | "question",
+  "bubble": "I have analysed your case: 2 issues, 1 without support in your documents. The details are below.",
+  "notice": null | "This is general legal research from official web sources and the model, not evidence from your documents. ...",
+  "avatar_state": "verified_source",
+  "citations": [SourceReference],
+  "answer": AskResponse | null,
+  "analysis": AnalyzeResponse | null,
+  "chips": [{ "label": "Ask a follow-up question", "action": "ask" }]
+}
+```
+
+- Exactly one of `answer` (question, research) and `analysis` (analysis) is set;
+  `citations` and `avatar_state` mirror it. Citations use the source-reference schema
+  above with the same `kind` labels.
+- `bubble` is one short sentence for the speech bubble; `notice` is a caveat the client
+  must show next to the reply (`research` always; `question` when `source == "web"`).
+- `chips[].action` is one of `analyze`, `add_documents`, `ask_web`, `ask`. The client
+  decides what each does (run analysis, open the file picker, resend with `allow_web`,
+  focus the composer). Labels are display text only.
+- Errors as for ask/analyze: `404 matter_not_found` (ownership is checked before any
+  document listing or retrieval), `503 llm_unavailable`, `422 validation_error`.
+
+Side effects for owned matters: the user message and the reply are appended to the
+matter's conversation; `updated_at` is set; if the matter has no `title` and this is
+the first user message, `title` becomes the first ~60 characters of the message, cut at a
+word boundary with `…`. Nothing is stored for the shared read-only library.
+
+`GET /api/matters/{id}/chat` -> `ChatHistory`:
+
+```json
+{ "title": "Acme stopped paying our invoices in March and terminated the…",
+  "has_analysis": true,
+  "messages": [ { "id", "role": "user", "text", "created_at" }, ChatReply, ... ] }
+```
+
+Empty `messages` for the shared library.
+
 ## Avatar state
 
 `avatar_state` is one of `idle`, `listening`, `verified_source`, `web_source`,
@@ -180,3 +254,7 @@ error state. The client shows a caption per state and keeps it in sync with the 
 
 Unversioned path for the MVP. Additive changes (new optional fields) need no version
 bump; removing or renaming a field requires `/api/v2` and a note here.
+
+Revision 2 (chat-first client) was additive only: `Matter.title/created_at/updated_at`,
+optional `MatterCreate.id/title`, and the `chat` endpoints. No field was removed or
+renamed.

@@ -16,21 +16,25 @@ Browser (web/, plain HTML + CSS + ES modules)
 FastAPI app  src/policy_advisor/api/          <- trust boundary: all secrets live here
    |- auth: credentials.yaml (bcrypt) + signed cookie (itsdangerous)
    |- permissions: get_matter() dependency (owner check before anything else)
-   |- routers: auth, matters, documents, ask, analyze, health
+   |- routers: auth, matters, documents, ask, analyze, chat, health
+   |- chat flow: routers/chat.py decides analysis / research / question (revision 2)
+   |- conversations: per-matter conversation.json log + title derivation
    |- services: lazily built RAGChain / CaseReasoningChain / HybridRetriever
    |- jobs: in-process document-processing table (queued/processing/ready/failed)
    |- static: web/ at "/", assets/avatar at "/avatar"
    v
 Existing prototype modules (reused, not rewritten)
    ingestion/ingest_document.py   add_document, remove_document
-   ingestion/matter_store.py      owner mapping, list_documents, list_matters_for_user
+   ingestion/matter_store.py      owner mapping (+ title/timestamps), list_documents,
+                                  list_matters_for_user
    retrieval/hybrid_retriever.py  HybridRetriever (used only to resolve cited locators)
    generation/chain.py            RAGChain.answer
    generation/case_reasoning.py   CaseReasoningChain.analyze
    generation/web_search.py       reached only through RAGChain(allow_web_fallback=True)
    v
-Storage (unchanged from main): Chroma under data/index/chroma, per-matter chunks and
-owner metadata under data/index/matters/<matter_id>/, credentials under data/auth/.
+Storage (unchanged from main): Chroma under data/index/chroma, per-matter chunks,
+meta.json (owner, title, created_at, updated_at) and conversation.json under
+data/index/matters/<matter_id>/, credentials under data/auth/.
 ```
 
 The API layer never opens Chroma or the chunk files itself. Everything goes through the
@@ -105,21 +109,58 @@ locators the same way, using a retriever query identical to the one the chain ra
 `faithful` and is the only thing the client uses to pick a frame; the client never
 derives trust from answer text.
 
+## Chat flow (revision 2)
+
+The chat-first client sends every message to `POST .../chat` and the server decides
+what to run (`routers/chat.py`, `decide_mode`). The rules are deliberately small so a
+non-technical user never has to pick a mode:
+
+| Situation                                                                      | Mode       | Pipeline                                   |
+| ------------------------------------------------------------------------------ | ---------- | ------------------------------------------ |
+| First message of an unanalysed conversation, or the "Analyse my case" chip, and the matter has documents | `analysis` | `run_analyze` (CaseReasoningChain)         |
+| Same, but the matter has no documents                                          | `research` | `run_ask` with `allow_web` forced on, labelled as research |
+| Anything else (including every message to the shared read-only library)        | `question` | `run_ask` with the caller's `allow_web`    |
+
+Research mode is how rules 4 and 5 survive a user who describes a case before uploading
+anything: there is no evidence to retrieve, so the reply says so in the bubble and in a
+`notice`, its citations can only be `web`, and the only follow-up offered is to add
+documents. It never pretends to be an analysis of the case.
+
+Each reply carries a one-sentence `bubble`, `avatar_state`, citations and follow-up
+`chips`; the full ask/analyze payload rides along unchanged so the transcript renders
+citations with the same chips and passage dialog as before.
+
+Conversations are persisted per owned matter in `conversation.json`
+(`api/conversations.py`) so "Your cases" can reopen them and so the server can tell a
+first message from a follow-up. The shared library gets no log: several users talk to
+it and their transcripts must not mix, so the client keeps that one in memory. The
+first user message also derives the matter `title` (first ~60 characters, word
+boundary), stored in `meta.json` next to `owner`.
+
+The client creates matters behind the scenes (`POST /api/matters` with no id; the server
+generates `case-<hex>`), remembers the current one in `sessionStorage`, and never shows
+an id. Everything the client does still goes through `get_matter`.
+
 ## What is new versus reused
 
 | New (this MVP)                                   | Reused unchanged                        |
 | ------------------------------------------------ | --------------------------------------- |
-| `src/policy_advisor/api/` (app, auth, deps, jobs) | ingestion, retrieval, generation, eval  |
+| `src/policy_advisor/api/` (app, auth, deps, jobs, chat, conversations) | ingestion, retrieval, generation, eval |
 | `web/` static client                              | `scripts/add_user.py`, credentials file |
 | `docs/architecture/`, `docs/contracts/`, doc 17   | `assets/avatar/` masters (mounted)      |
 
-Changes to existing modules are limited to `config.py` (three new settings and an empty
-default for the API key so the server can start and report "model not configured"), and
-`chunk_translation.py` (the `TRANSLATE_ON_INGEST` switch). Both are flagged in the PR.
+Changes to existing modules are limited to `config.py` (three new settings, an empty
+default for the API key so the server can start and report "model not configured", and
+`env_ignore_empty=True` so an empty exported variable cannot shadow `.env`),
+`chunk_translation.py` (the `TRANSLATE_ON_INGEST` switch), and `matter_store.py`
+(`get_matter_meta`/`update_matter_meta`: optional `title`, `created_at`, `updated_at` in
+the existing `meta.json`, `owner` untouched). All are flagged in the PR.
 
 ## Known limitations of this slice
 
 Single-process job table; no password reset or sign-up over the API; no rate limiting
 on login; the web fallback returns URLs without verbatim quoted spans; evidence versus
 authority is inferred from the prototype's `doc_type` rather than from a curated
-library. See `docs/17-web-app-mvp.md` for the full list and how to run it.
+library; the conversation log is a JSON file per matter (the storage PR should move it
+with `chunks.json` and `meta.json`). See `docs/17-web-app-mvp.md` for the full list and
+how to run it.
