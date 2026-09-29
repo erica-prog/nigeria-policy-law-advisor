@@ -27,7 +27,7 @@ const CAPTION = {
   idle: "Ready",
   listening: "Listening",
   verified_source: "Verified source: citations checked against your documents",
-  no_results: "No results in this matter's documents",
+  no_results: "No results in your documents",
   web_source: "From an official website, not checked against your documents",
   unverified: "Unverified: a cited passage was not among the retrieved text",
   error: "Advisor unavailable",
@@ -73,6 +73,13 @@ export function createAvatar(root) {
     caption.textContent = text;
     detail.textContent = options.detail || "";
     root.dataset.state = state;
+    // Gentle bounce on a real state change; CSS disables it under
+    // prefers-reduced-motion, so the class is harmless there.
+    if (state !== current && !reducedMotion.matches) {
+      root.classList.remove("advisor--pop");
+      void root.offsetWidth; // restart the animation
+      root.classList.add("advisor--pop");
+    }
     if (img.getAttribute("src") !== nextSrc) {
       if (reducedMotion.matches) {
         swap();

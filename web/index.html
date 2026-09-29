@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <title>Law &amp; Policy Advisor</title>
   <link rel="stylesheet" href="/styles.css" />
@@ -10,27 +10,31 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#/">
+    <button class="topbar__menu" id="drawer-toggle" type="button" aria-expanded="false"
+            aria-controls="drawer" hidden>
+      <span aria-hidden="true">☰</span> Your cases
+    </button>
+    <a class="brand" href="/">
       <span class="brand__mark" aria-hidden="true">⚖</span>
       <span class="brand__text">Law &amp; Policy Advisor</span>
     </a>
     <div class="topbar__right" id="topbar-user" hidden>
       <span class="topbar__name" id="user-name"></span>
-      <button class="btn btn--ghost" id="logout-btn" type="button">Log out</button>
+      <button class="btn btn--ghost btn--tiny" id="logout-btn" type="button">Log out</button>
     </div>
   </header>
 
-  <div class="banner banner--warn" id="llm-banner" hidden role="status">
-    The advisor model is not configured on this server (ANTHROPIC_API_KEY). You can log in,
-    create matters and upload documents; asking and analysis are disabled.
-  </div>
-
   <main id="app">
-    <!-- Login -->
+    <!-- Login: one friendly card with the character -->
     <section class="view view--center" id="view-login" hidden>
-      <form class="card card--narrow" id="login-form" autocomplete="on">
-        <h1 class="card__title">Log in</h1>
-        <p class="muted">Research aid only, not a substitute for your own legal judgment.</p>
+      <form class="card login" id="login-form" autocomplete="on">
+        <div class="login__character" aria-hidden="true">
+          <div class="advisor__frame advisor__frame--static">
+            <img alt="" src="/avatar/advisor-idle.png" decoding="async" />
+          </div>
+        </div>
+        <h1 class="login__title">Hi, I'm your advisor</h1>
+        <p class="muted login__lead">Log in and tell me about your case.</p>
         <label class="field">
           <span>Username</span>
           <input name="username" type="text" required autocomplete="username" />
@@ -40,128 +44,86 @@
           <input name="password" type="password" required autocomplete="current-password" />
         </label>
         <p class="form-error" id="login-error" role="alert" hidden></p>
-        <button class="btn btn--primary btn--block" type="submit">Log in</button>
-        <p class="muted small">
-          No account? Ask your administrator to run <code>scripts/add_user.py</code>.
-          Password reset is not available in this version.
+        <button class="btn btn--primary btn--block btn--big" type="submit">Let's go</button>
+        <p class="muted small login__foot">
+          No account yet? Ask whoever runs this app to create one for you (they run
+          <code>scripts/add_user.py</code>). There is no sign-up or password reset in this version.
+          Research aid only, not a substitute for legal advice.
         </p>
       </form>
     </section>
 
-    <!-- Matter list -->
-    <section class="view" id="view-matters" hidden>
-      <div class="view__header">
-        <h1>Your matters</h1>
-        <p class="muted">Each matter is a private corpus. Only you can see its documents and answers.</p>
-      </div>
-      <div class="grid">
-        <div class="card">
-          <h2 class="card__title">Create a matter</h2>
-          <form id="create-matter-form" class="row">
-            <label class="field field--grow">
-              <span>Matter id</span>
-              <input name="id" type="text" required pattern="[a-z0-9][a-z0-9\-]{1,63}"
-                     placeholder="e.g. foxglove-v-acme-2026"
-                     title="Lowercase letters, digits and hyphens, 2 to 64 characters" />
-            </label>
-            <button class="btn btn--primary" type="submit">Create</button>
-          </form>
-          <p class="form-error" id="create-matter-error" role="alert" hidden></p>
+    <!-- Chat: the character in the middle, the conversation around it -->
+    <section class="chat chat--empty" id="view-chat" hidden>
+      <div class="stage" id="stage">
+        <div class="bubble" id="bubble" role="status">
+          <p class="bubble__text" id="bubble-text"></p>
+          <div class="bubble__typing" id="bubble-typing" hidden aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="bubble__chips" id="bubble-chips" hidden></div>
         </div>
-        <div class="card">
-          <h2 class="card__title">Open a matter</h2>
-          <ul class="matter-list" id="matter-list"></ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- Matter view -->
-    <section class="view view--matter" id="view-matter" hidden>
-      <aside class="rail">
         <div class="advisor advisor--idle" id="advisor">
           <div class="advisor__frame">
             <img id="advisor-img" alt="" aria-hidden="true" src="/avatar/advisor-idle.png" decoding="async" />
           </div>
           <p class="advisor__caption" id="advisor-caption" aria-live="polite">Ready</p>
           <p class="advisor__detail" id="advisor-detail"></p>
-          <button class="btn btn--ghost btn--tiny" id="toggle-avatar" type="button"
-                  aria-pressed="false">Hide character</button>
         </div>
-
-        <div class="card">
-          <div class="card__head">
-            <h2 class="card__title" id="matter-title">Matter</h2>
-            <a class="link" href="#/">All matters</a>
-          </div>
-          <p class="muted small" id="matter-readonly-note" hidden>
-            Shared reference matter: visible to everyone and read-only.
-          </p>
-          <h3 class="subhead">Documents</h3>
-          <ul class="doc-list" id="doc-list"></ul>
-          <form id="upload-form" class="upload">
-            <label class="field">
-              <span>Add a PDF or DOCX</span>
-              <input name="file" type="file" accept=".pdf,.docx" required />
-            </label>
-            <label class="field">
-              <span>Jurisdiction (optional)</span>
-              <select name="jurisdiction">
-                <option value="">Any</option>
-                <option value="federal">Federal High Court</option>
-                <option value="lagos">Lagos Magistrates' Courts</option>
-              </select>
-            </label>
-            <button class="btn btn--primary btn--block" type="submit">Upload</button>
-            <p class="form-error" id="upload-error" role="alert" hidden></p>
-          </form>
-        </div>
-      </aside>
-
-      <div class="main-col">
-        <div class="card controls">
-          <div class="tabs" role="tablist">
-            <button class="tab is-active" role="tab" data-mode="ask" aria-selected="true" type="button">Ask a question</button>
-            <button class="tab" role="tab" data-mode="analyze" aria-selected="false" type="button">Analyze a case</button>
-          </div>
-          <div class="row row--wrap">
-            <label class="field">
-              <span>Jurisdiction filter</span>
-              <select id="jurisdiction">
-                <option value="">Any</option>
-                <option value="federal">Federal High Court</option>
-                <option value="lagos">Lagos Magistrates' Courts</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Converse in</span>
-              <select id="language">
-                <option value="en">English</option>
-                <option value="fr">French</option>
-              </select>
-            </label>
-            <label class="check" id="allow-web-wrap">
-              <input type="checkbox" id="allow-web" />
-              <span>Search official websites if my documents don't have this</span>
-            </label>
-          </div>
-        </div>
-
-        <section class="transcript" id="transcript" aria-live="polite" aria-label="Conversation"></section>
-
-        <form class="composer card" id="ask-form">
-          <label class="field">
-            <span id="composer-label">Ask a question about the documents in this matter</span>
-            <textarea id="composer-input" rows="3" required maxlength="20000"
-                      aria-labelledby="composer-label"></textarea>
-          </label>
-          <div class="row row--end">
-            <span class="muted small" id="composer-hint">Answers cite only passages retrieved from this matter.</span>
-            <button class="btn btn--primary" id="composer-submit" type="submit">Ask</button>
-          </div>
-        </form>
+        <button class="btn btn--ghost btn--tiny stage__hide" id="toggle-avatar" type="button"
+                aria-pressed="false">Hide character</button>
       </div>
+
+      <section class="transcript" id="transcript" aria-label="Conversation"></section>
     </section>
   </main>
+
+  <!-- Composer, fixed at the bottom like a chat app -->
+  <form class="composer" id="composer" hidden>
+    <div class="composer__inner">
+      <div class="composer__files" id="file-chips" hidden aria-label="Attached documents"></div>
+      <div class="composer__row">
+        <button class="composer__add" id="add-files" type="button"
+                aria-label="Add documents (PDF or DOCX)" title="Add documents (PDF or DOCX)">+</button>
+        <input type="file" id="file-input" accept=".pdf,.docx" multiple hidden />
+        <textarea id="composer-input" rows="1" maxlength="20000"
+                  placeholder="Describe your case or ask a question"
+                  aria-label="Describe your case or ask a question"></textarea>
+        <button class="composer__send" id="composer-send" type="submit" aria-label="Send" title="Send">
+          <span aria-hidden="true">➤</span>
+        </button>
+      </div>
+      <div class="composer__foot">
+        <label class="switch">
+          <input type="checkbox" id="allow-web" />
+          <span class="switch__track" aria-hidden="true"></span>
+          <span>Also search official web sources</span>
+        </label>
+        <span class="muted small" id="composer-hint">Enter to send, Shift+Enter for a new line.</span>
+      </div>
+      <p class="form-error composer__error" id="composer-error" role="alert" hidden></p>
+    </div>
+  </form>
+
+  <!-- "Your cases": the only place past conversations are visible -->
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="drawer" hidden aria-label="Your cases">
+    <div class="drawer__head">
+      <h2>Your cases</h2>
+      <button class="btn btn--ghost btn--tiny" id="drawer-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <button class="btn btn--primary btn--block" id="new-case" type="button">+ Start a new case</button>
+    <ul class="case-list" id="case-list"></ul>
+    <div class="drawer__foot">
+      <label class="field field--inline">
+        <span>The advisor replies in</span>
+        <select id="language">
+          <option value="en">English</option>
+          <option value="fr">French</option>
+        </select>
+      </label>
+    </div>
+  </aside>
 
   <dialog class="passage" id="passage-dialog">
     <form method="dialog" class="passage__inner">

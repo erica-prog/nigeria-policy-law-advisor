@@ -50,7 +50,8 @@ export const api = {
   login: (username, password) => request("POST", "/api/auth/login", { json: { username, password } }),
   logout: () => request("POST", "/api/auth/logout"),
   matters: () => request("GET", "/api/matters"),
-  createMatter: (id) => request("POST", "/api/matters", { json: { id } }),
+  // No id: the server generates one. The user only ever sees the title.
+  createMatter: (body = {}) => request("POST", "/api/matters", { json: body }),
   matter: (id) => request("GET", `/api/matters/${encodeURIComponent(id)}`),
   documents: (id) => request("GET", `/api/matters/${encodeURIComponent(id)}/documents`),
   upload: (id, file, jurisdiction) => {
@@ -63,4 +64,6 @@ export const api = {
     request("DELETE", `/api/matters/${encodeURIComponent(id)}/documents/${encodeURIComponent(name)}`),
   ask: (id, body) => request("POST", `/api/matters/${encodeURIComponent(id)}/ask`, { json: body }),
   analyze: (id, body) => request("POST", `/api/matters/${encodeURIComponent(id)}/analyze`, { json: body }),
+  chat: (id, body) => request("POST", `/api/matters/${encodeURIComponent(id)}/chat`, { json: body }),
+  chatHistory: (id) => request("GET", `/api/matters/${encodeURIComponent(id)}/chat`),
 };
