@@ -457,7 +457,7 @@ function applyDocuments(documents, { announce }) {
       { chips: [{ label: "Analyse my case now", onClick: analyseNow }] },
     );
   } else if (newlyReady.length) {
-    advisor.setState("idle");
+    advisor.setState("error", { detail: "Model key missing" });
     bubble.say(`${newlyReady.length === 1 ? "Your document is" : "Your documents are"} ready. ${MISSING_KEY}`, {
       tone: "error",
     });
