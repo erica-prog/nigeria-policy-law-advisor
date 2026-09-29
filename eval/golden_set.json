@@ -170,5 +170,77 @@
     "expect_refusal": true,
     "example_answer": "Not in the corpus - labour law/minimum wage isn't covered by these civil procedure rules or this judgment.",
     "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g14",
+    "question": "What are the grounds for divorce under the Matrimonial Causes Act?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Family law - not covered by these civil procedure rules or the Meta v NDPC judgment.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g15",
+    "question": "What is the penalty for armed robbery in Nigeria?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Criminal law - the corpus is civil procedure and a data-protection judgment.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g16",
+    "question": "How do I register a private limited company with the CAC?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Company registration procedure - not in this corpus.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g17",
+    "question": "What notice period must an employer give before terminating a contract of employment?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Labour law - not covered by these documents.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g18",
+    "question": "What is the rate of value added tax in Nigeria?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Tax law - not in this corpus.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g19",
+    "question": "What are the requirements for a valid will under Nigerian law?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Succession law - not covered by these civil procedure rules.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g20",
+    "question": "Who has the right of occupancy over land under the Land Use Act?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Land law - not in this corpus.",
+    "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g21",
+    "question": "What is the quorum for a meeting of the National Assembly?",
+    "jurisdiction": null,
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "Constitutional/legislative procedure - not in this corpus.",
+    "matter_id": "phase1-demo"
   }
 ]

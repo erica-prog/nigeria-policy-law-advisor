@@ -41,4 +41,44 @@ jobs:
       - name: Build demo corpus index
         run: uv run python -m policy_advisor.ingestion.build_index
       - name: Retrieval/faithfulness eval
-        run: uv run python -m eval.run_golden_set --fail-below 0.85
+        # Raised from 0.85: the cosine/normalized-embedding configuration
+        # measures recall@8 of 1.0 on the golden set, so 0.85 would no longer
+        # catch a single question dropping out entirely (11 scored questions,
+        # so one total miss costs about 0.09).
+        run: uv run python -m eval.run_golden_set --fail-below 0.9
+
+      - name: Relevance-floor calibration report
+        # Advisory: prints where the answerable and off-corpus questions sit
+        # relative to RETRIEVAL_CERTAIN_DISTANCE / RETRIEVAL_MAX_DISTANCE, so a
+        # chunking or embedding change that moves them is visible in the log
+        # before it silently starts gating real questions out.
+        run: uv run python -m eval.calibrate_relevance_floor
+        continue-on-error: true
+
+  case-reasoning-invariants:
+    # Structural guarantees only - whether the legal reasoning is any good is a
+    # human judgement against eval/case_reasoning_rubric.md, which is why
+    # eval/run_case_reasoning_seed.py still has no automated verdict.
+    #
+    # Each case costs roughly 1 + 3N + 2 Claude calls, so pull requests check a
+    # single case and main checks all three. That keeps the gate meaningful
+    # without spending the account's rate limit on every push.
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - name: Install OCR dependencies (poppler, tesseract)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Build demo corpus index
+        run: uv run python -m policy_advisor.ingestion.build_index
+      - name: Structural invariants (single case)
+        if: github.event_name == 'pull_request'
+        run: uv run python -m eval.run_case_reasoning_invariants --id c01 --with-advisory
+      - name: Structural invariants (all seed cases)
+        if: github.event_name != 'pull_request'
+        run: uv run python -m eval.run_case_reasoning_invariants --with-advisory

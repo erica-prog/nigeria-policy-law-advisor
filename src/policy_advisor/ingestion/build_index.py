@@ -22,7 +22,7 @@ from policy_advisor.config import DATA_DIR, INDEX_DIR, PHASE1_DEMO_MATTER_ID, ge
 from policy_advisor.ingestion.chunk import CORPUS, chunk_corpus
 from policy_advisor.ingestion.matter_store import save_matter_chunks
 from policy_advisor.logging_utils import get_logger, log_event
-from policy_advisor.retrieval.vector_store import chunk_to_document, load_vector_store
+from policy_advisor.retrieval.vector_store import DISTANCE_SPACE, chunk_to_document, load_vector_store
 
 logger = get_logger(__name__)
 
@@ -78,6 +78,11 @@ def main() -> None:
         "built_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "corpus_hash": _corpus_hash(),
         "embedding_model": settings.embedding_model,
+        # Recorded because the retrieval relevance floor is calibrated against
+        # this specific combination - a threshold picked under cosine on
+        # normalized vectors means nothing under any other pairing.
+        "distance_space": DISTANCE_SPACE,
+        "embeddings_normalized": True,
         "chunk_count": len(chunks),
         "documents": [spec.filename for spec in CORPUS],
         "matter_id": PHASE1_DEMO_MATTER_ID,

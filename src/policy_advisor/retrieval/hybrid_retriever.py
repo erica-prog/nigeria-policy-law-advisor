@@ -14,6 +14,7 @@ its IDF statistics shouldn't mix across unrelated matters' documents."""
 import re
 from dataclasses import dataclass, field
 
+from policy_advisor.config import get_settings
 from policy_advisor.retrieval.bm25_index import BM25Index, load_bm25_index
 from policy_advisor.retrieval.vector_store import load_vector_store
 
@@ -27,6 +28,12 @@ class RetrievedChunk:
     vector_score: float | None = None
     bm25_score: float | None = None
     fused_score: float = field(default=0.0)
+    # Raw cosine distance from Chroma, kept *before* normalization. vector_score
+    # and fused_score are min-max normalized per query, so the best candidate
+    # always scores ~1.0 however irrelevant it is - they carry ranking, not
+    # relevance. This is the only field with an absolute, cross-query meaning,
+    # and it's what the relevance gate below tests.
+    vector_distance: float | None = None
 
 
 def _normalize(scores: list[float]) -> list[float]:
@@ -48,10 +55,21 @@ def _build_locator_index(bm25_index: BM25Index) -> dict[str, list[RetrievedChunk
 
 
 class HybridRetriever:
-    def __init__(self, vector_weight: float = 0.5, bm25_weight: float = 0.5):
+    def __init__(
+        self,
+        vector_weight: float = 0.5,
+        bm25_weight: float = 0.5,
+        max_distance: float | None = None,
+        certain_distance: float | None = None,
+    ):
+        settings = get_settings()
         self._vector_store = load_vector_store()
         self._vector_weight = vector_weight
         self._bm25_weight = bm25_weight
+        self._max_distance = settings.retrieval_max_distance if max_distance is None else max_distance
+        self._certain_distance = (
+            settings.retrieval_certain_distance if certain_distance is None else certain_distance
+        )
         self._bm25_by_matter: dict[str, BM25Index] = {}
         self._locator_index_by_matter: dict[str, dict[str, list[RetrievedChunk]]] = {}
 
@@ -110,10 +128,13 @@ class HybridRetriever:
             query, k=candidate_pool, filter=self._vector_filter(matter_id, jurisdiction)
         )
         vector_similarities = _normalize([-distance for _, distance in vector_hits])
-        for (doc, _distance), norm_score in zip(vector_hits, vector_similarities):
+        for (doc, distance), norm_score in zip(vector_hits, vector_similarities):
             chunk_id = doc.metadata["chunk_id"]
             by_chunk_id[chunk_id] = RetrievedChunk(
-                text=doc.page_content, metadata=doc.metadata, vector_score=norm_score
+                text=doc.page_content,
+                metadata=doc.metadata,
+                vector_score=norm_score,
+                vector_distance=distance,
             )
 
         bm25_hits = self._bm25_for_matter(matter_id).search(query, top_k=candidate_pool)
@@ -140,5 +161,50 @@ class HybridRetriever:
                 candidates = filtered
 
         candidates = [c for c in candidates if c.metadata["chunk_id"] not in exact_chunk_ids]
+
+        if not exact_matches and not self._clears_relevance_floor(candidates):
+            # Nothing in this matter is actually about the question. Returning
+            # the least-bad eight chunks here is what made "no relevant
+            # results" unrepresentable, and with it the web fallback in
+            # chain.py unreachable - it only fires on an empty list.
+            return []
+
         candidates.sort(key=lambda c: c.fused_score, reverse=True)
         return (exact_matches + candidates)[:top_k]
+
+    def _clears_relevance_floor(self, candidates: list[RetrievedChunk]) -> bool:
+        """Whether this matter plausibly holds anything relevant to the query.
+
+        Deliberately a query-level gate rather than a per-candidate filter: it
+        can only change the outcome for queries whose *best* match is weak, so
+        it cannot quietly trim recall on questions the corpus does answer.
+
+        Tested on raw cosine distance because that is the only absolute signal
+        available - see the note on RetrievedChunk.vector_distance. BM25-only
+        candidates are not rescued here: rank_bm25 scores depend on corpus
+        statistics and have no comparable scale across matters, so there is no
+        honest absolute threshold for them. The calibration script reports
+        whether any known-answerable question would be gated out on that basis.
+
+        This only rejects the clearly-irrelevant. Anything between the two
+        thresholds survives to be adjudicated by `needs_relevance_adjudication`.
+        """
+        if self._max_distance is None:
+            return True
+        distances = [c.vector_distance for c in candidates if c.vector_distance is not None]
+        return bool(distances) and min(distances) <= self._max_distance
+
+    def needs_relevance_adjudication(self, chunks: list[RetrievedChunk]) -> bool:
+        """Whether these results are too borderline to trust on distance alone.
+
+        Calibration measured only 0.0007 between the hardest answerable
+        question and the easiest unanswerable one, so a single threshold there
+        is fitted to the golden set rather than to the corpus. Results in the
+        middle band get a cheap Claude call instead of a coin flip - see
+        generation/relevance_check.py. Exact locator matches carry no distance
+        and are never adjudicated: the lawyer named the rule.
+        """
+        if self._certain_distance >= self._max_distance:
+            return False
+        distances = [c.vector_distance for c in chunks if c.vector_distance is not None]
+        return bool(distances) and min(distances) > self._certain_distance
