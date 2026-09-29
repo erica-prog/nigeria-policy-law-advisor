@@ -43,6 +43,9 @@ relied on (e.g. "Order 5 Rule 3" or "Paragraph 11") - never cite a locator that 
 specifically - not by your own general knowledge of law. If one side has no supporting authority in \
 the context, say so explicitly rather than inventing a counterargument for them.
 3. If the context doesn't contain enough to address this issue at all, say so in the assessment.
+4. Finish every field, including the assessment. Keep the answer short so it is not cut off: at \
+most two arguments for each side, one sentence for each summary and each authority's relevance, \
+and one short paragraph for the assessment.
 
 Case facts (for context only - cite only the passages below, not facts you infer from this):
 {case_facts}
