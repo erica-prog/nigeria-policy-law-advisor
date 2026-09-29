@@ -18,12 +18,15 @@ RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY src ./src
+# Operational scripts run inside the container (docs/16), such as the one-off
+# migration of matters from the old Chroma-era layout.
+COPY scripts ./scripts
 COPY pyproject.toml ./
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Index, eval artifacts, and lawyer credentials live under data/ - this
-# directory is a mount point at runtime (see docker-compose.yml), not
-# baked into the image.
+# Lawyer credentials and the source PDFs live under data/ (matters, chunks and
+# chat history live in Supabase) - this directory is a mount point at
+# runtime (see docker-compose.yml), not baked into the image.
 RUN mkdir -p data && chown -R appuser:appuser /app
 USER appuser
 

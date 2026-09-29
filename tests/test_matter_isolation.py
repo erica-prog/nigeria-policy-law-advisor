@@ -1,9 +1,10 @@
 """Integration test for the client-confidentiality boundary added in Phase A:
 a query scoped to one matter must never return another matter's chunks, even
 when both matters contain a document with the exact same filename and even
-near-identical text. Uses the real embedding model and persisted Chroma
-store (no mocks) because this guarantee is the one thing in this phase that
-must not be wrong - worth the extra runtime."""
+near-identical text. Uses the real embedding model and a real database (no
+mocks) because this guarantee is the one thing in this phase that must not be
+wrong - worth the extra runtime. The database is the throwaway one
+tests/conftest.py sets up, never data/advisor.db."""
 
 import uuid
 

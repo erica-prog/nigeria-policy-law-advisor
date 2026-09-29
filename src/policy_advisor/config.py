@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 INDEX_DIR = DATA_DIR / "index"
+# Where the Chroma-era per-matter chunks.json/meta.json files lived. Read only
+# by scripts/migrate_to_postgres.py now.
 MATTERS_DIR = INDEX_DIR / "matters"
 AUTH_DIR = DATA_DIR / "auth"
 PHASE1_DEMO_MATTER_ID = "phase1-demo"
@@ -24,6 +26,12 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr
     anthropic_model: str = "claude-sonnet-4-6"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # Supabase Postgres: matters, chunks with their embeddings, and chat
+    # history. Use the Session pooler string (port 5432) from Dashboard >
+    # Connect - the direct connection is IPv6-only without the paid IPv4
+    # add-on. Optional here so tools that never touch the database still
+    # import; db.py raises a clear error if it's missing when needed.
+    database_url: SecretStr | None = None
     policy_agent_port: int = 8501
     log_level: str = "info"
     retrieval_top_k: int = 8

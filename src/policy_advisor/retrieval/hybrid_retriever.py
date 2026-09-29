@@ -6,17 +6,21 @@ Federal High Court rule doesn't get treated as interchangeable with a Lagos
 Magistrates' Court rule just because both mention the same topic.
 
 Every query is scoped to one matter (CLAUDE-2.md capability 1) - there is no
-"search everything" mode. The vector store is one shared Chroma collection
-filtered by `matter_id` at query time; BM25 is a separate in-memory index per
-matter, built lazily and cached, since it has no native metadata filter and
-its IDF statistics shouldn't mix across unrelated matters' documents."""
+"search everything" mode. Vector search runs in Postgres against the matter's
+rows. BM25 has no database equivalent here, so each matter's keyword index is
+built from those same rows, held in memory, and rebuilt when the matter's
+content_version changes. Reading the version on every query is one indexed
+lookup, and it means an upload is visible to every retriever instance and every
+app process - not only the one that happened to be told about it."""
 
 import re
 from dataclasses import dataclass, field
 
 from policy_advisor.config import get_settings
-from policy_advisor.retrieval.bm25_index import BM25Index, load_bm25_index
-from policy_advisor.retrieval.vector_store import load_vector_store
+from policy_advisor.ingestion.embed import embed_query
+from policy_advisor.ingestion.matter_store import load_matter_snapshot, matter_version
+from policy_advisor.retrieval import vector_store
+from policy_advisor.retrieval.bm25_index import BM25Index, build_bm25_index
 
 _LOCATOR_RE = re.compile(r"order\s+(\d+)\D{1,5}?rule\s+(\d+)", re.IGNORECASE)
 
@@ -28,7 +32,7 @@ class RetrievedChunk:
     vector_score: float | None = None
     bm25_score: float | None = None
     fused_score: float = field(default=0.0)
-    # Raw cosine distance from Chroma, kept *before* normalization. vector_score
+    # Raw cosine distance, kept *before* normalization. vector_score
     # and fused_score are min-max normalized per query, so the best candidate
     # always scores ~1.0 however irrelevant it is - they carry ranking, not
     # relevance. This is the only field with an absolute, cross-query meaning,
@@ -45,13 +49,27 @@ def _normalize(scores: list[float]) -> list[float]:
     return [(s - lo) / (hi - lo) for s in scores]
 
 
-def _build_locator_index(bm25_index: BM25Index) -> dict[str, list[RetrievedChunk]]:
-    locator_index: dict[str, list[RetrievedChunk]] = {}
+def _build_locator_index(bm25_index: BM25Index) -> dict[str, list[tuple[str, dict]]]:
+    """Locator -> (text, metadata) for the exact-match short-circuit. Plain
+    tuples rather than RetrievedChunks, because a cached RetrievedChunk would
+    carry one query's fused_score into the next."""
+    locator_index: dict[str, list[tuple[str, dict]]] = {}
     for doc in bm25_index.documents:
         locator = doc.metadata.get("locator")
         if locator:
-            locator_index.setdefault(locator, []).append(RetrievedChunk(text=doc.text, metadata=doc.metadata))
+            locator_index.setdefault(locator, []).append((doc.text, doc.metadata))
     return locator_index
+
+
+@dataclass
+class _MatterIndex:
+    version: int
+    bm25: BM25Index
+    locators: dict[str, list[tuple[str, dict]]]
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.bm25.documents
 
 
 class HybridRetriever:
@@ -63,33 +81,35 @@ class HybridRetriever:
         certain_distance: float | None = None,
     ):
         settings = get_settings()
-        self._vector_store = load_vector_store()
         self._vector_weight = vector_weight
         self._bm25_weight = bm25_weight
         self._max_distance = settings.retrieval_max_distance if max_distance is None else max_distance
         self._certain_distance = (
             settings.retrieval_certain_distance if certain_distance is None else certain_distance
         )
-        self._bm25_by_matter: dict[str, BM25Index] = {}
-        self._locator_index_by_matter: dict[str, dict[str, list[RetrievedChunk]]] = {}
+        self._indexes: dict[str, _MatterIndex] = {}
 
-    def _bm25_for_matter(self, matter_id: str) -> BM25Index:
-        if matter_id not in self._bm25_by_matter:
-            self._bm25_by_matter[matter_id] = load_bm25_index(matter_id)
-        return self._bm25_by_matter[matter_id]
-
-    def _locator_index_for_matter(self, matter_id: str) -> dict[str, list[RetrievedChunk]]:
-        if matter_id not in self._locator_index_by_matter:
-            self._locator_index_by_matter[matter_id] = _build_locator_index(self._bm25_for_matter(matter_id))
-        return self._locator_index_by_matter[matter_id]
+    def _index_for_matter(self, matter_id: str) -> _MatterIndex:
+        cached = self._indexes.get(matter_id)
+        if cached is not None and cached.version == matter_version(matter_id):
+            return cached
+        version, records = load_matter_snapshot(matter_id)
+        bm25 = build_bm25_index(records)
+        index = _MatterIndex(version=version, bm25=bm25, locators=_build_locator_index(bm25))
+        self._indexes[matter_id] = index
+        return index
 
     def invalidate_matter(self, matter_id: str) -> None:
-        """Call after add_document/remove_document so a stale in-memory BM25
-        cache doesn't keep serving the pre-update chunk list for this matter."""
-        self._bm25_by_matter.pop(matter_id, None)
-        self._locator_index_by_matter.pop(matter_id, None)
+        """Drop this matter's cached indexes now rather than on the next query.
 
-    def _exact_locator_matches(self, query: str, matter_id: str, jurisdiction: str | None) -> list[RetrievedChunk]:
+        No longer required for correctness - every query checks the matter's
+        content_version and rebuilds when it has moved - but kept so callers can
+        release memory or force a rebuild."""
+        self._indexes.pop(matter_id, None)
+
+    def _exact_locator_matches(
+        self, query: str, index: _MatterIndex, jurisdiction: str | None
+    ) -> list[RetrievedChunk]:
         """A lawyer typing "Order 5 Rule 3" wants that rule, not whatever a
         vector/BM25 search over rule *bodies* happens to rank highest - rules
         almost never restate their own number in their own text. Short-circuit
@@ -98,46 +118,42 @@ class HybridRetriever:
         if not match:
             return []
         locator = f"Order {int(match.group(1))} Rule {int(match.group(2))}"
-        candidates = self._locator_index_for_matter(matter_id).get(locator, [])
+        candidates = index.locators.get(locator, [])
         if jurisdiction:
-            jurisdiction_matches = [c for c in candidates if c.metadata.get("jurisdiction") == jurisdiction]
+            jurisdiction_matches = [c for c in candidates if c[1].get("jurisdiction") == jurisdiction]
             candidates = jurisdiction_matches or candidates
-        for candidate in candidates:
-            candidate.fused_score = 1.0
-        return candidates
-
-    def _vector_filter(self, matter_id: str, jurisdiction: str | None) -> dict:
-        if jurisdiction:
-            return {"$and": [{"matter_id": matter_id}, {"jurisdiction": jurisdiction}]}
-        return {"matter_id": matter_id}
+        return [RetrievedChunk(text=text, metadata=metadata, fused_score=1.0) for text, metadata in candidates]
 
     def retrieve(
         self, query: str, top_k: int, matter_id: str, jurisdiction: str | None = None
     ) -> list[RetrievedChunk]:
-        exact_matches = self._exact_locator_matches(query, matter_id, jurisdiction)
+        index = self._index_for_matter(matter_id)
+        exact_matches = self._exact_locator_matches(query, index, jurisdiction)
         exact_chunk_ids = {c.metadata["chunk_id"] for c in exact_matches}
 
         candidate_pool = max(top_k * 4, 20)
 
         by_chunk_id: dict[str, RetrievedChunk] = {}
 
-        # Chroma's similarity_search_with_score returns distance (lower = more
-        # similar); negate before normalizing so higher always means "better"
-        # in the fused score, regardless of the underlying metric.
-        vector_hits = self._vector_store.similarity_search_with_score(
-            query, k=candidate_pool, filter=self._vector_filter(matter_id, jurisdiction)
+        # Skip embedding the query for an empty matter - it would load the
+        # model, and query the database, for nothing.
+        vector_hits = (
+            []
+            if index.is_empty
+            else vector_store.search(matter_id, embed_query(query), k=candidate_pool, jurisdiction=jurisdiction)
         )
-        vector_similarities = _normalize([-distance for _, distance in vector_hits])
-        for (doc, distance), norm_score in zip(vector_hits, vector_similarities):
-            chunk_id = doc.metadata["chunk_id"]
-            by_chunk_id[chunk_id] = RetrievedChunk(
-                text=doc.page_content,
-                metadata=doc.metadata,
+        # Distance: lower is more similar. Negate before normalizing so higher
+        # always means "better" in the fused score.
+        vector_similarities = _normalize([-distance for _, _, distance in vector_hits])
+        for (metadata, text, distance), norm_score in zip(vector_hits, vector_similarities):
+            by_chunk_id[metadata["chunk_id"]] = RetrievedChunk(
+                text=text,
+                metadata=metadata,
                 vector_score=norm_score,
                 vector_distance=distance,
             )
 
-        bm25_hits = self._bm25_for_matter(matter_id).search(query, top_k=candidate_pool)
+        bm25_hits = index.bm25.search(query, top_k=candidate_pool)
         bm25_scores = _normalize([score for _, score in bm25_hits])
         for (bm25_doc, _raw_score), norm_score in zip(bm25_hits, bm25_scores):
             chunk_id = bm25_doc.metadata["chunk_id"]
