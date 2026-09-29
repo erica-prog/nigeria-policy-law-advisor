@@ -25,6 +25,10 @@ NOT_FOUND_EVEN_ON_WEB_MESSAGE = (
     "have a relevant answer either. Please rephrase, narrow the question, or consult a source directly."
 )
 
+# Named so callers (the web API) can recognise the LLM-failure outcome without
+# string-matching prose.
+LLM_UNAVAILABLE_MESSAGE = "The advisor is temporarily unavailable - please try again shortly."
+
 
 @dataclass
 class AnswerResult:
@@ -115,7 +119,7 @@ class RAGChain:
                 fields["outcome"] = "llm_call_failed"
                 log_event(self._logger, "llm_call_failed", error=str(exc))
                 return AnswerResult(
-                    answer="The advisor is temporarily unavailable - please try again shortly.",
+                    answer=LLM_UNAVAILABLE_MESSAGE,
                     retrieved=retrieved,
                     faithful=True,
                 )

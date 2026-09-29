@@ -21,13 +21,23 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    anthropic_api_key: SecretStr
+    # Empty means "not configured": the web API starts, reports it on /api/health
+    # and refuses ask/analyze with a clear error instead of crashing at import.
+    anthropic_api_key: SecretStr = SecretStr("")
     anthropic_model: str = "claude-sonnet-4-6"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     policy_agent_port: int = 8501
     log_level: str = "info"
     retrieval_top_k: int = 8
     auth_cookie_key: SecretStr = SecretStr("dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-.env")
+    # Web API (docs/architecture/web-mvp.md)
+    session_cookie_secure: bool = False
+    max_upload_mb: int = 25
+    # Per-chunk Claude translation at ingestion; off allows fully offline uploads.
+    translate_on_ingest: bool = True
+
+    def llm_configured(self) -> bool:
+        return bool(self.anthropic_api_key.get_secret_value().strip())
 
 
 @lru_cache

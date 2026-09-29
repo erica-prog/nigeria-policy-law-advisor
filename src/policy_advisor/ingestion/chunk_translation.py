@@ -5,6 +5,7 @@ runs once at ingestion, like embedding, never per query."""
 
 from dataclasses import replace
 
+from policy_advisor.config import get_settings
 from policy_advisor.ingestion.chunk import Chunk
 from policy_advisor.ingestion.language_detect import detect_language
 from policy_advisor.ingestion.translate import get_translation_llm, translate_text
@@ -23,6 +24,10 @@ def translate_chunks(chunks: list[Chunk]) -> list[Chunk]:
     decoupled from a session preference that can change later."""
     if not chunks:
         return chunks
+    if not get_settings().translate_on_ingest:
+        # Offline/dev mode (TRANSLATE_ON_INGEST=false): keep language detection,
+        # skip the Claude round-trips. Original text is untouched either way.
+        return [replace(chunk, language=detect_language(chunk.text)) for chunk in chunks]
 
     llm = get_translation_llm()
     translated_chunks = []
