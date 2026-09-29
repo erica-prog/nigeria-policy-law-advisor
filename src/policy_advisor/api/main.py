@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from policy_advisor.api.errors import install_error_handlers
 from policy_advisor.api.jobs import JobTable
-from policy_advisor.api.routers import advice, auth, documents, matters
+from policy_advisor.api.routers import advice, auth, chat, documents, matters
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.config import PROJECT_ROOT, Settings, get_settings
 from policy_advisor.logging_utils import log_event
@@ -64,6 +64,7 @@ def create_app(settings: Settings | None = None, serve_static: bool = True) -> F
     app.include_router(matters.router)
     app.include_router(documents.router)
     app.include_router(advice.router)
+    app.include_router(chat.router)
 
     if serve_static:
         if AVATAR_DIR.is_dir():

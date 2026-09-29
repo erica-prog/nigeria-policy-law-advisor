@@ -1,8 +1,12 @@
-"""Ask and analyze: the only handlers that reach the language model. Both
-depend on `Matter`, so ownership is checked before the chains run, and both
-pass the matter id from that dependency, never from the body."""
+"""Ask and analyze: the handlers that reach the language model (the chat
+endpoint in routers/chat.py reuses `run_ask` and `run_analyze`). Both depend
+on `Matter`, so ownership is checked before the chains run, and both pass the
+matter id from that dependency, never from the body."""
 
 from fastapi import APIRouter
+
+from policy_advisor.api.deps import MatterAccess
+from policy_advisor.api.services import AdvisorServices
 
 from policy_advisor.api.avatar import (
     NO_AUTHORITY_CONFIDENCE,
@@ -39,7 +43,7 @@ router = APIRouter(prefix="/api/matters/{matter_id}", tags=["advice"])
 MISSING_SUPPORT_NOTE = "No passage in this matter's documents was retrieved for this issue."
 
 
-def _require_llm(services: Services) -> None:
+def require_llm(services: AdvisorServices) -> None:
     if not services.llm_configured():
         raise ApiError(
             503,
@@ -50,7 +54,11 @@ def _require_llm(services: Services) -> None:
 
 @router.post("/ask", response_model=AskResponse)
 def ask(body: AskRequest, matter: Matter, services: Services) -> AskResponse:
-    _require_llm(services)
+    return run_ask(body, matter, services)
+
+
+def run_ask(body: AskRequest, matter: MatterAccess, services: AdvisorServices) -> AskResponse:
+    require_llm(services)
     result = services.rag_chain.answer(
         body.question,
         matter_id=matter.id,
@@ -98,7 +106,13 @@ def ask(body: AskRequest, matter: Matter, services: Services) -> AskResponse:
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 def analyze(body: AnalyzeRequest, matter: Matter, services: Services) -> AnalyzeResponse:
-    _require_llm(services)
+    return run_analyze(body, matter, services)
+
+
+def run_analyze(
+    body: AnalyzeRequest, matter: MatterAccess, services: AdvisorServices
+) -> AnalyzeResponse:
+    require_llm(services)
     result = services.case_chain.analyze(
         body.case_facts,
         matter_id=matter.id,

@@ -5,13 +5,14 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, Response, UploadFile, status
 
+from policy_advisor.api.conversations import now_iso
 from policy_advisor.api.deps import Jobs, Matter, Services, WritableMatter
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.schemas import DocumentList, DocumentOut
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES
 from policy_advisor.ingestion.ingest_document import remove_document
-from policy_advisor.ingestion.matter_store import list_documents
+from policy_advisor.ingestion.matter_store import list_documents, update_matter_meta
 from policy_advisor.logging_utils import log_event
 
 router = APIRouter(prefix="/api/matters/{matter_id}/documents", tags=["documents"])
@@ -82,6 +83,7 @@ async def upload_document(
         raise ApiError(415, "unsupported_document", "The uploaded file is empty.")
 
     job = jobs.create(matter.id, name, temp_dir)
+    update_matter_meta(matter.id, updated_at=now_iso())
     log_event(services.logger, "document_upload_queued", matter_id=matter.id, document=name)
     background.add_task(jobs.run, job, services, jurisdiction)
     return job.to_document()

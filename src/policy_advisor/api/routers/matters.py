@@ -1,5 +1,8 @@
+import uuid
+
 from fastapi import APIRouter, status
 
+from policy_advisor.api.conversations import now_iso
 from policy_advisor.api.deps import (
     CurrentUser,
     Matter,
@@ -11,23 +14,39 @@ from policy_advisor.api.errors import ApiError
 from policy_advisor.api.schemas import MatterCreate, MatterList, MatterOut
 from policy_advisor.config import PHASE1_DEMO_MATTER_ID
 from policy_advisor.ingestion.matter_store import (
+    get_matter_meta,
     list_documents,
     list_matters,
     list_matters_for_user,
     set_matter_owner,
+    update_matter_meta,
 )
 from policy_advisor.logging_utils import log_event
 
 router = APIRouter(prefix="/api/matters", tags=["matters"])
 
+SHARED_MATTER_TITLE = "Reference library (shared, read-only)"
+
 
 def matter_out(matter: MatterAccess) -> MatterOut:
+    meta = get_matter_meta(matter.id)
     return MatterOut(
         id=matter.id,
         owner=matter.owner,
         read_only=matter.read_only,
         document_count=len(list_documents(matter.id)),
+        title=SHARED_MATTER_TITLE if matter.read_only else meta.get("title"),
+        created_at=meta.get("created_at"),
+        updated_at=meta.get("updated_at"),
     )
+
+
+def _generate_matter_id() -> str:
+    taken = set(list_matters()) | {PHASE1_DEMO_MATTER_ID}
+    while True:
+        candidate = f"case-{uuid.uuid4().hex[:12]}"
+        if candidate not in taken:
+            return candidate
 
 
 @router.get("", response_model=MatterList)
@@ -38,16 +57,24 @@ def list_my_matters(user: CurrentUser) -> MatterList:
             matters.append(matter_out(resolve_matter_access(matter_id, user)))
         except ApiError:
             continue  # legacy directory without a valid id or owner; never listed
+    # Stable sorts, least significant first: most recently used at the top, the
+    # shared library (no timestamps) last.
+    matters.sort(key=lambda m: m.id)
+    matters.sort(key=lambda m: m.updated_at or m.created_at or "", reverse=True)
+    matters.sort(key=lambda m: m.read_only)
     return MatterList(matters=matters)
 
 
 @router.post("", response_model=MatterOut, status_code=status.HTTP_201_CREATED)
 def create_matter(body: MatterCreate, user: CurrentUser, services: Services) -> MatterOut:
-    if body.id == PHASE1_DEMO_MATTER_ID or body.id in list_matters():
+    if body.id is not None and (body.id == PHASE1_DEMO_MATTER_ID or body.id in list_matters()):
         raise ApiError(409, "matter_exists", "A matter with this id already exists.")
-    set_matter_owner(body.id, user.username)
-    log_event(services.logger, "matter_created", matter_id=body.id, owner=user.username)
-    return matter_out(resolve_matter_access(body.id, user))
+    matter_id = body.id or _generate_matter_id()
+    set_matter_owner(matter_id, user.username)
+    stamp = now_iso()
+    update_matter_meta(matter_id, title=body.title, created_at=stamp, updated_at=stamp)
+    log_event(services.logger, "matter_created", matter_id=matter_id, owner=user.username)
+    return matter_out(resolve_matter_access(matter_id, user))
 
 
 @router.get("/{matter_id}", response_model=MatterOut)
