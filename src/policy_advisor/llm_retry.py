@@ -39,8 +39,17 @@ _NON_RETRYABLE = tuple(
 )
 
 
+class OutputTruncated(Exception):
+    """Structured output stopped at max_tokens before the schema was complete.
+
+    The same prompt and the same budget fail the same way, so this is outside
+    the transient-error retry policy. Callers that can ask for a shorter
+    answer should do that once.
+    """
+
+
 def is_retryable(exception: BaseException) -> bool:
-    return not isinstance(exception, _NON_RETRYABLE)
+    return not isinstance(exception, (*_NON_RETRYABLE, OutputTruncated))
 
 
 # Same policy the chain has always used: three attempts, exponential backoff
@@ -63,3 +72,27 @@ def call_with_retry(operation: Callable[[], T]) -> T:
     indirection than the retry is worth.
     """
     return with_llm_retry(operation)()
+
+
+def invoke_structured(structured, messages):
+    """Invoke a `with_structured_output(..., include_raw=True)` runnable.
+
+    A max_tokens stop leaves a required field unparsed (case-reasoning CI
+    died on `IssueArguments.assessment` this way). That is raised as
+    `OutputTruncated` instead of the parser's ValidationError, so the retry
+    policy does not spend two more identical calls on it. Any other parse
+    failure is re-raised for that policy to handle.
+    """
+    result = structured.invoke(messages)
+    if not isinstance(result, dict) or "parsing_error" not in result:
+        return result
+    error = result["parsing_error"]
+    if error is None:
+        return result["parsed"]
+    raw = result.get("raw")
+    metadata = getattr(raw, "response_metadata", None) or {}
+    if metadata.get("stop_reason") == "max_tokens":
+        raise OutputTruncated(
+            "structured output hit max_tokens before it was complete"
+        ) from error
+    raise error

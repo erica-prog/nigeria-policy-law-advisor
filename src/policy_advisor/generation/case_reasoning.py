@@ -34,9 +34,24 @@ from policy_advisor.generation.judge_check import judge_check
 from policy_advisor.generation.prompt import LANGUAGE_NAMES
 from policy_advisor.generation.relevance_check import judge_relevance
 from policy_advisor.generation.web_search import search_official_sources
-from policy_advisor.llm_retry import call_with_retry
+from policy_advisor.llm_retry import OutputTruncated, call_with_retry, invoke_structured
 from policy_advisor.logging_utils import get_logger, log_event
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
+
+# Issue identification, the judge, and the relevance check fit in the shared
+# client's budget. IssueArguments does not. The assessment is the last field,
+# and a generation that spends 2048 tokens on the arguments omits it. That
+# ValidationError is what case-reasoning-invariants crashed on, three identical
+# retries in a row. This ceiling only has to be large enough for a short
+# answer; a response that still hits it is asked once more, more briefly.
+ARGUMENT_MAX_TOKENS = 8192
+ARGUMENT_TIMEOUT_SECONDS = 120
+
+_TRUNCATED_ARGUMENTS_CORRECTION = (
+    "Your previous answer was cut off before it finished, so it had no assessment. "
+    "Answer again and much more briefly: at most one argument for each side, one "
+    "sentence each, and you must include the assessment."
+)
 
 DISCLAIMER = (
     "This is a research aid, not a prediction of any court's actual decision and not a substitute for "
@@ -76,13 +91,18 @@ class CaseReasoningChain:
         self._settings = settings
         self._retriever = HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
-        self._llm = ChatAnthropic(
-            model=settings.anthropic_model,
-            api_key=settings.anthropic_api_key.get_secret_value(),
-            max_tokens=2048,
-            default_request_timeout=45,
-            max_retries=0,
-        )
+
+        def _client(max_tokens: int, timeout: float) -> ChatAnthropic:
+            return ChatAnthropic(
+                model=settings.anthropic_model,
+                api_key=settings.anthropic_api_key.get_secret_value(),
+                max_tokens=max_tokens,
+                default_request_timeout=timeout,
+                max_retries=0,
+            )
+
+        self._llm = _client(2048, 45)
+        self._argument_llm = _client(ARGUMENT_MAX_TOKENS, ARGUMENT_TIMEOUT_SECONDS)
 
     @property
     def retriever(self) -> HybridRetriever:
@@ -110,8 +130,16 @@ class CaseReasoningChain:
             # of the prior structured-output call, which doesn't round-trip
             # cleanly through tool-calling-based structured output).
             messages.append(HumanMessage(content=correction))
-        structured = self._llm.with_structured_output(IssueArguments)
-        return call_with_retry(lambda: structured.invoke(messages))
+        structured = self._argument_llm.with_structured_output(IssueArguments, include_raw=True)
+
+        def _invoke(msgs):
+            return call_with_retry(lambda: invoke_structured(structured, msgs))
+
+        try:
+            return _invoke(messages)
+        except OutputTruncated:
+            log_event(self._logger, "issue_arguments_truncated_retrying", issue=issue)
+            return _invoke([*messages, HumanMessage(content=_TRUNCATED_ARGUMENTS_CORRECTION)])
 
     def _issue_from_web(self, issue: str, response_language: str) -> IssueAnalysis:
         """This matter has no authority on the issue, so consult the allowlisted
