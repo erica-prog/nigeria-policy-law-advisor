@@ -15,6 +15,14 @@ from policy_advisor.ingestion.ingest_document import add_document, remove_docume
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever
 
 
+@pytest.fixture(autouse=True)
+def _no_translation(monkeypatch):
+    """Isolation doesn't depend on translation, which needs a live Claude call per chunk."""
+    monkeypatch.setattr(
+        "policy_advisor.ingestion.ingest_document.translate_chunks", lambda chunks: chunks
+    )
+
+
 @pytest.fixture
 def two_isolated_matters(tmp_path):
     matter_a = f"test-matter-a-{uuid.uuid4().hex[:8]}"
