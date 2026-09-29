@@ -30,8 +30,14 @@ class HealthOut(BaseModel):
     llm_configured: bool
 
 
+MATTER_TITLE_MAX = 80
+
+
 class MatterCreate(BaseModel):
-    id: str = Field(pattern=MATTER_ID_PATTERN)
+    # Both optional since revision 2: the chat client creates a matter behind
+    # the scenes and lets the server pick an id. Explicit ids remain valid.
+    id: str | None = Field(default=None, pattern=MATTER_ID_PATTERN)
+    title: str | None = Field(default=None, min_length=1, max_length=MATTER_TITLE_MAX)
 
 
 class MatterOut(BaseModel):
@@ -39,6 +45,11 @@ class MatterOut(BaseModel):
     owner: str | None
     read_only: bool
     document_count: int
+    # Human title shown in "Your cases". None until the first chat message
+    # derives one (or the caller sets it at creation).
+    title: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class MatterList(BaseModel):
@@ -128,3 +139,54 @@ class AnalyzeResponse(BaseModel):
     counterarguments: list[GapOut] = Field(default_factory=list)
     citations: list[SourceReference] = Field(default_factory=list)
     avatar_state: AvatarState
+
+
+# ---- Chat (revision 2, docs/contracts/web-api.md "Chat") ----
+
+ChatIntent = Literal["auto", "analyze", "ask"]
+ChatMode = Literal["analysis", "research", "question"]
+ChipAction = Literal["analyze", "add_documents", "ask_web", "ask"]
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=20000)
+    allow_web: bool = False
+    intent: ChatIntent = "auto"
+    jurisdiction: Literal["federal", "lagos"] | None = None
+    language: Literal["en", "fr"] = "en"
+
+
+class Chip(BaseModel):
+    label: str
+    action: ChipAction
+
+
+class UserMessage(BaseModel):
+    id: str
+    role: Literal["user"] = "user"
+    text: str
+    created_at: str
+
+
+class ChatReply(BaseModel):
+    id: str
+    role: Literal["assistant"] = "assistant"
+    created_at: str
+    mode: ChatMode
+    # Short sentence for the speech bubble. The full result is in `answer`
+    # (question/research) or `analysis` (analysis); exactly one is set.
+    bubble: str
+    # Plain-language caveat the client must show next to the reply, e.g. that
+    # research mode is not evidence from the user's documents (rules 4 and 5).
+    notice: str | None = None
+    avatar_state: AvatarState
+    citations: list[SourceReference] = Field(default_factory=list)
+    answer: AskResponse | None = None
+    analysis: AnalyzeResponse | None = None
+    chips: list[Chip] = Field(default_factory=list)
+
+
+class ChatHistory(BaseModel):
+    title: str | None
+    has_analysis: bool
+    messages: list[UserMessage | ChatReply]

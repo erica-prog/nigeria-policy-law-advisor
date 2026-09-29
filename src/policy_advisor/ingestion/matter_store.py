@@ -28,11 +28,37 @@ def set_matter_owner(matter_id: str, owner: str) -> None:
     path.write_text(json.dumps({"owner": owner}), encoding="utf-8")
 
 
-def get_matter_owner(matter_id: str) -> str | None:
+def get_matter_meta(matter_id: str) -> dict:
+    """The whole meta.json sidecar: `owner` plus the optional display fields
+    added for the chat-first web client (`title`, `created_at`, `updated_at`).
+    Empty dict when the matter does not exist."""
     path = matter_meta_path(matter_id)
     if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8")).get("owner")
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
+def update_matter_meta(matter_id: str, **fields: str | None) -> dict:
+    """Merge display fields into meta.json without touching `owner`. Only
+    call for a matter that already exists (has an owner); the ownership check
+    in the API layer runs before this."""
+    meta = get_matter_meta(matter_id)
+    if "owner" not in meta:
+        raise KeyError(f"matter {matter_id!r} has no owner; create it first")
+    for key, value in fields.items():
+        if key == "owner":
+            continue
+        if value is None:
+            meta.pop(key, None)
+        else:
+            meta[key] = value
+    matter_meta_path(matter_id).write_text(json.dumps(meta), encoding="utf-8")
+    return meta
+
+
+def get_matter_owner(matter_id: str) -> str | None:
+    return get_matter_meta(matter_id).get("owner")
 
 
 def list_matters_for_user(username: str) -> list[str]:
