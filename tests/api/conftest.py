@@ -88,9 +88,7 @@ def api(tmp_path, monkeypatch):
 def api_with_llm(tmp_path, monkeypatch):
     """API with a server key that users are allowed to share
     (ALLOW_SHARED_ANTHROPIC_KEY=true); tests must inject fake chains."""
-    harness = _build_harness(
-        tmp_path, monkeypatch, llm_key="fake-key-for-tests", shared_key=True
-    )
+    harness = _build_harness(tmp_path, monkeypatch, llm_key="fake-key-for-tests", shared_key=True)
     yield harness
     get_settings.cache_clear()
 

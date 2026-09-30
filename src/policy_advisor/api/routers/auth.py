@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 
-from policy_advisor.api.credentials import verify_credentials
+from policy_advisor.api.credentials import get_user, verify_credentials
 from policy_advisor.api.deps import CurrentUser, Services
 from policy_advisor.api.errors import ApiError
-from policy_advisor.api.schemas import HealthOut, LoginRequest, UserOut
-from policy_advisor.api.sessions import clear_session_cookie, set_session_cookie
+from policy_advisor.api.schemas import HealthOut, LoginRequest, SessionOut, UserOut
+from policy_advisor.api.sessions import (
+    SESSION_COOKIE,
+    clear_session_cookie,
+    read_session_token,
+    set_session_cookie,
+)
 from policy_advisor.api.user_keys import key_source_for
 from policy_advisor.config import get_settings
 from policy_advisor.logging_utils import log_event
@@ -51,3 +56,13 @@ def logout(response: Response) -> Response:
 @router.get("/me", response_model=UserOut)
 def me(user: CurrentUser) -> UserOut:
     return user_out(user.username, user.display_name)
+
+
+@router.get("/session", response_model=SessionOut)
+def session(request: Request) -> SessionOut:
+    """Who is logged in, if anyone: 200 either way so the client's first
+    request on page load never produces a 401 in the browser console."""
+    token = request.cookies.get(SESSION_COOKIE)
+    username = read_session_token(token) if token else None
+    user = get_user(username) if username else None
+    return SessionOut(user=user_out(user.username, user.display_name) if user else None)

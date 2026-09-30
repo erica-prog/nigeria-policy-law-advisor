@@ -31,6 +31,10 @@ class UserOut(BaseModel):
     key_source: KeySource | None = None
 
 
+class SessionOut(BaseModel):
+    user: UserOut | None = None
+
+
 class HealthOut(BaseModel):
     status: Literal["ok"] = "ok"
     # Server-level view: is a server key configured at all? Whether a given

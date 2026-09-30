@@ -61,3 +61,13 @@ def test_me_and_logout_round_trip(api):
     assert client.get("/api/me").json()["username"] == "alice"
     assert client.post("/api/auth/logout").status_code == 204
     assert client.get("/api/me").status_code == 401
+
+
+def test_session_is_200_logged_in_or_out(api):
+    assert api.client.get("/api/session").status_code == 200
+    assert api.client.get("/api/session").json() == {"user": None}
+    client = api.login("alice")
+    body = client.get("/api/session").json()
+    assert body["user"]["username"] == "alice" and body["user"]["advisor_ready"] is False
+    api.client.cookies.set(SESSION_COOKIE, "eyJ1IjogImFsaWNlIn0.forged.signature")
+    assert api.client.get("/api/session").json() == {"user": None}
