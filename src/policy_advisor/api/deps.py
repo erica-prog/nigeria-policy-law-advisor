@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import Depends, Path, Request
 
+from policy_advisor.api.chat_jobs import ChatJobTable
 from policy_advisor.api.credentials import UserRecord, get_user
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.jobs import JobTable
@@ -72,5 +73,10 @@ def get_jobs(request: Request) -> JobTable:
     return request.app.state.jobs
 
 
+def get_chat_jobs(request: Request) -> ChatJobTable:
+    return request.app.state.chat_jobs
+
+
 Services = Annotated[AdvisorServices, Depends(get_services)]
 Jobs = Annotated[JobTable, Depends(get_jobs)]
+ChatJobs = Annotated[ChatJobTable, Depends(get_chat_jobs)]

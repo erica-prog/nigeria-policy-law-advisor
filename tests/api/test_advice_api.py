@@ -22,12 +22,12 @@ def _alice_with_matter(api):
     return alice
 
 
-def test_ask_without_model_key_is_a_clear_503(api):
+def test_ask_without_any_usable_key_is_a_clear_403(api):
     alice = _alice_with_matter(api)
     response = alice.post(ASK, json={"question": "What are the payment terms?"})
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "llm_unavailable"
-    assert "ANTHROPIC_API_KEY" in response.json()["error"]["message"]
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "claude_key_required"
+    assert "Claude key" in response.json()["error"]["message"]
 
 
 def test_grounded_answer_resolves_citations_and_labels_kinds(api_with_llm):
@@ -185,8 +185,8 @@ def test_analyze_avatar_states_for_unverified_and_no_authority(api_with_llm):
     ]
 
 
-def test_analyze_without_model_key_is_503(api):
+def test_analyze_without_any_usable_key_is_403(api):
     alice = _alice_with_matter(api)
     response = alice.post(ANALYZE, json={"case_facts": "f"})
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "llm_unavailable"
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "claude_key_required"

@@ -11,9 +11,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
+from policy_advisor.api.chat_jobs import ChatJobTable
 from policy_advisor.api.errors import install_error_handlers
 from policy_advisor.api.jobs import JobTable
-from policy_advisor.api.routers import advice, auth, chat, documents, matters
+from policy_advisor.api.routers import advice, auth, chat, documents, keys, matters
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.config import PROJECT_ROOT, Settings, get_settings
 from policy_advisor.logging_utils import log_event
@@ -34,17 +35,25 @@ def create_app(settings: Settings | None = None, serve_static: bool = True) -> F
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger = app.state.services.logger
-        log_event(logger, "api_started", llm_configured=settings.llm_configured())
-        if settings.auth_cookie_key.get_secret_value().startswith("dev-only-insecure-key"):
+        log_event(
+            logger,
+            "api_started",
+            llm_configured=settings.llm_configured(),
+            shared_key_allowed=settings.allow_shared_anthropic_key,
+        )
+        if settings.auth_cookie_key_is_insecure_default():
             logger.warning(
-                "AUTH_COOKIE_KEY is the insecure development default; set it in .env",
+                "AUTH_COOKIE_KEY is the insecure development default; set it in .env "
+                "(users cannot store their Claude keys until it is set)",
                 extra={"fields": {"setting": "AUTH_COOKIE_KEY"}},
             )
         yield
+        app.state.chat_jobs.shutdown()
 
     app = FastAPI(title="Nigeria Policy & Law Advisor API", version="0.1.0", lifespan=lifespan)
     app.state.services = AdvisorServices()
     app.state.jobs = JobTable()
+    app.state.chat_jobs = ChatJobTable()
     install_error_handlers(app)
 
     @app.middleware("http")
@@ -61,6 +70,7 @@ def create_app(settings: Settings | None = None, serve_static: bool = True) -> F
         return response
 
     app.include_router(auth.router)
+    app.include_router(keys.router)
     app.include_router(matters.router)
     app.include_router(documents.router)
     app.include_router(advice.router)

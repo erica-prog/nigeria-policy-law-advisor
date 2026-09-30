@@ -89,15 +89,26 @@ class JobTable:
             ]:
                 del self._jobs[job_id]
 
-    def run(self, job: DocumentJob, services, jurisdiction: str | None) -> None:
-        """Executes one ingestion job. Called from FastAPI BackgroundTasks."""
+    def run(
+        self, job: DocumentJob, services, jurisdiction: str | None, api_key: str | None = None
+    ) -> None:
+        """Executes one ingestion job. Called from FastAPI BackgroundTasks.
+        `api_key` is the uploading user's resolved Claude key: ingestion-time
+        translation runs on it, and is skipped (detection only) when the user
+        has none, so uploads never spend the server's key."""
         from policy_advisor.ingestion.ingest_document import add_document
 
         job.status = "processing"
         file_path = (job.temp_dir or Path()) / job.document_name
         try:
             with services.ingest_lock:
-                job.chunk_count = add_document(job.matter_id, file_path, jurisdiction=jurisdiction)
+                job.chunk_count = add_document(
+                    job.matter_id,
+                    file_path,
+                    jurisdiction=jurisdiction,
+                    api_key=api_key,
+                    translate=None if api_key else False,
+                )
             services.invalidate_matter(job.matter_id)
             job.status = "ready"
             log_event(

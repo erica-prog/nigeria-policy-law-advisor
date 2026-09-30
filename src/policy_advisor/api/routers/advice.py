@@ -1,12 +1,19 @@
 """Ask and analyze: the handlers that reach the language model (the chat
 endpoint in routers/chat.py reuses `run_ask` and `run_analyze`). Both depend
 on `Matter`, so ownership is checked before the chains run, and both pass the
-matter id from that dependency, never from the body."""
+matter id from that dependency, never from the body.
+
+Since revision 3 every model call runs on the requesting user's own Claude
+key (`require_key`): the chain is built for that key, and a user without a
+usable key gets `403 claude_key_required` before anything is retrieved."""
 
 from fastapi import APIRouter
 
-from policy_advisor.api.deps import MatterAccess
+from policy_advisor.api.credentials import UserRecord
+from policy_advisor.api.deps import CurrentUser, MatterAccess
 from policy_advisor.api.services import AdvisorServices
+from policy_advisor.api.user_keys import resolve_anthropic_key
+from policy_advisor.progress import report_stage
 
 from policy_advisor.api.avatar import (
     NO_AUTHORITY_CONFIDENCE,
@@ -43,23 +50,30 @@ router = APIRouter(prefix="/api/matters/{matter_id}", tags=["advice"])
 MISSING_SUPPORT_NOTE = "No passage in this matter's documents was retrieved for this issue."
 
 
-def require_llm(services: AdvisorServices) -> None:
-    if not services.llm_configured():
-        raise ApiError(
-            503,
-            "llm_unavailable",
-            "The advisor model is not configured on this server (ANTHROPIC_API_KEY).",
-        )
+KEY_REQUIRED_MESSAGE = (
+    "I need your Claude key before I can start thinking. Add it under Activate the advisor; "
+    "your documents and past conversations are unaffected."
+)
+
+
+def require_key(user: UserRecord) -> str:
+    """The Claude key this user's request runs on. Their own key, or the server
+    key when ALLOW_SHARED_ANTHROPIC_KEY is on; otherwise a clear 403."""
+    api_key = resolve_anthropic_key(user.username)
+    if not api_key:
+        raise ApiError(403, "claude_key_required", KEY_REQUIRED_MESSAGE)
+    return api_key
 
 
 @router.post("/ask", response_model=AskResponse)
-def ask(body: AskRequest, matter: Matter, services: Services) -> AskResponse:
-    return run_ask(body, matter, services)
+def ask(body: AskRequest, matter: Matter, services: Services, user: CurrentUser) -> AskResponse:
+    return run_ask(body, matter, services, require_key(user))
 
 
-def run_ask(body: AskRequest, matter: MatterAccess, services: AdvisorServices) -> AskResponse:
-    require_llm(services)
-    result = services.rag_chain.answer(
+def run_ask(
+    body: AskRequest, matter: MatterAccess, services: AdvisorServices, api_key: str
+) -> AskResponse:
+    result = services.rag_chain_for(api_key).answer(
         body.question,
         matter_id=matter.id,
         jurisdiction=body.jurisdiction,
@@ -70,6 +84,7 @@ def run_ask(body: AskRequest, matter: MatterAccess, services: AdvisorServices) -
         raise ApiError(
             503, "llm_unavailable", "The advisor model did not respond. Try again shortly."
         )
+    report_stage("writing")
 
     source: AnswerSource = "corpus"
     if result.source == "web":
@@ -105,21 +120,23 @@ def run_ask(body: AskRequest, matter: MatterAccess, services: AdvisorServices) -
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-def analyze(body: AnalyzeRequest, matter: Matter, services: Services) -> AnalyzeResponse:
-    return run_analyze(body, matter, services)
+def analyze(
+    body: AnalyzeRequest, matter: Matter, services: Services, user: CurrentUser
+) -> AnalyzeResponse:
+    return run_analyze(body, matter, services, require_key(user))
 
 
 def run_analyze(
-    body: AnalyzeRequest, matter: MatterAccess, services: AdvisorServices
+    body: AnalyzeRequest, matter: MatterAccess, services: AdvisorServices, api_key: str
 ) -> AnalyzeResponse:
-    require_llm(services)
-    result = services.case_chain.analyze(
+    result = services.case_chain_for(api_key).analyze(
         body.case_facts,
         matter_id=matter.id,
         jurisdiction=body.jurisdiction,
         conversation_language=body.language,
     )
 
+    report_stage("writing")
     top_k = get_settings().retrieval_top_k
     issues_out: list[IssueOut] = []
     citations: list[SourceReference] = []

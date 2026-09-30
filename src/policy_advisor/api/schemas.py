@@ -20,14 +20,37 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=1024)
 
 
+KeySource = Literal["user", "shared"]
+
+
 class UserOut(BaseModel):
     username: str
     display_name: str
+    # Revision 3 (BYOK): can THIS user think, and with whose key?
+    advisor_ready: bool = False
+    key_source: KeySource | None = None
 
 
 class HealthOut(BaseModel):
     status: Literal["ok"] = "ok"
+    # Server-level view: is a server key configured at all? Whether a given
+    # user can think is on /api/me (advisor_ready).
     llm_configured: bool
+    shared_key_allowed: bool = False
+
+
+class ClaudeKeyIn(BaseModel):
+    api_key: str = Field(min_length=1, max_length=512)
+
+
+class ClaudeKeyOut(BaseModel):
+    # `configured`: this user has a key on file. `source`: whose key would be
+    # used right now (`user`, `shared`, or None = cannot think). The key itself
+    # is never returned; `last4` is for "ends in …abcd" only.
+    configured: bool
+    last4: str | None = None
+    source: KeySource | None = None
+    advisor_ready: bool = False
 
 
 MATTER_TITLE_MAX = 80
@@ -190,3 +213,26 @@ class ChatHistory(BaseModel):
     title: str | None
     has_analysis: bool
     messages: list[UserMessage | ChatReply]
+
+
+# ---- Chat jobs (revision 3): the same reply, produced in the background so
+# the client can narrate progress while the server works. ----
+
+ChatJobStatus = Literal["queued", "running", "done", "failed"]
+ChatStage = Literal["reading_documents", "searching_web", "checking_citations", "writing"]
+
+
+class ChatJobError(BaseModel):
+    code: str
+    message: str
+
+
+class ChatJobOut(BaseModel):
+    job_id: str
+    status: ChatJobStatus
+    # Current stage while running (the bubble narrates it); `stages` is the
+    # sequence so far, in order.
+    stage: ChatStage | None = None
+    stages: list[ChatStage] = Field(default_factory=list)
+    reply: ChatReply | None = None
+    error: ChatJobError | None = None

@@ -54,8 +54,11 @@ class ApiHarness:
         return self.app.state.services  # type: ignore[attr-defined]
 
 
-def _build_harness(tmp_path: Path, monkeypatch, llm_key: str) -> ApiHarness:
+def _build_harness(
+    tmp_path: Path, monkeypatch, llm_key: str, shared_key: bool = False
+) -> ApiHarness:
     monkeypatch.setenv("ANTHROPIC_API_KEY", llm_key)
+    monkeypatch.setenv("ALLOW_SHARED_ANTHROPIC_KEY", "true" if shared_key else "false")
     monkeypatch.setenv("TRANSLATE_ON_INGEST", "false")
     monkeypatch.setenv("AUTH_COOKIE_KEY", "unit-test-cookie-key")
     # Settings ignore empty environment values (env_ignore_empty), so point the
@@ -74,7 +77,8 @@ def _build_harness(tmp_path: Path, monkeypatch, llm_key: str) -> ApiHarness:
 
 @pytest.fixture
 def api(tmp_path, monkeypatch):
-    """API with no model key configured (ask/analyze return 503)."""
+    """API with no server key and no user keys: ask/analyze/chat return
+    403 claude_key_required until a user stores a key."""
     harness = _build_harness(tmp_path, monkeypatch, llm_key="")
     yield harness
     get_settings.cache_clear()
@@ -82,7 +86,19 @@ def api(tmp_path, monkeypatch):
 
 @pytest.fixture
 def api_with_llm(tmp_path, monkeypatch):
-    """API that believes a model key exists; tests must inject fake chains."""
-    harness = _build_harness(tmp_path, monkeypatch, llm_key="fake-key-for-tests")
+    """API with a server key that users are allowed to share
+    (ALLOW_SHARED_ANTHROPIC_KEY=true); tests must inject fake chains."""
+    harness = _build_harness(
+        tmp_path, monkeypatch, llm_key="fake-key-for-tests", shared_key=True
+    )
+    yield harness
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def api_byok(tmp_path, monkeypatch):
+    """Bring-your-own-key: the server has a key but sharing is OFF (the
+    default), so every user needs their own key."""
+    harness = _build_harness(tmp_path, monkeypatch, llm_key="server-key-never-shared")
     yield harness
     get_settings.cache_clear()

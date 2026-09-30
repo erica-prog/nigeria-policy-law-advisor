@@ -6,9 +6,10 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, BackgroundTasks, File, Form, Response, UploadFile, status
 
 from policy_advisor.api.conversations import now_iso
-from policy_advisor.api.deps import Jobs, Matter, Services, WritableMatter
+from policy_advisor.api.deps import CurrentUser, Jobs, Matter, Services, WritableMatter
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.schemas import DocumentList, DocumentOut
+from policy_advisor.api.user_keys import resolve_anthropic_key
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES
 from policy_advisor.ingestion.ingest_document import remove_document
@@ -60,6 +61,7 @@ async def upload_document(
     matter: WritableMatter,
     jobs: Jobs,
     services: Services,
+    user: CurrentUser,
     background: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     jurisdiction: Annotated[Literal["federal", "lagos"] | None, Form()] = None,
@@ -85,7 +87,9 @@ async def upload_document(
     job = jobs.create(matter.id, name, temp_dir)
     update_matter_meta(matter.id, updated_at=now_iso())
     log_event(services.logger, "document_upload_queued", matter_id=matter.id, document=name)
-    background.add_task(jobs.run, job, services, jurisdiction)
+    # Translation during ingestion runs on the uploader's own key (or is
+    # skipped when they have none); the server key is never spent here.
+    background.add_task(jobs.run, job, services, jurisdiction, resolve_anthropic_key(user.username))
     return job.to_document()
 
 

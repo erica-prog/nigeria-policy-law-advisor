@@ -279,15 +279,18 @@ def test_chat_on_another_users_matter_is_404_and_never_reaches_the_chains(api_wi
     ]
 
 
-def test_chat_requires_login_and_a_model_key(api):
+def test_chat_requires_login_and_a_usable_claude_key(api):
     assert (
         api.client.post("/api/matters/phase1-demo/chat", json={"message": "x"}).status_code == 401
     )
     alice = api.login("alice")
     matter = _new_case(alice)
-    response = _chat(alice, matter["id"], CASE)
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "llm_unavailable"
+    for response in [
+        _chat(alice, matter["id"], CASE),
+        alice.post(f"/api/matters/{matter['id']}/chat/jobs", json={"message": CASE}),
+    ]:
+        assert response.status_code == 403, response.text
+        assert response.json()["error"]["code"] == "claude_key_required"
     assert alice.get(f"/api/matters/{matter['id']}/chat").json()["messages"] == []
 
 

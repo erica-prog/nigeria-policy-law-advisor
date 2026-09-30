@@ -39,9 +39,16 @@ class Settings(BaseSettings):
     max_upload_mb: int = 25
     # Per-chunk Claude translation at ingestion; off allows fully offline uploads.
     translate_on_ingest: bool = True
+    # Bring-your-own-key (docs/17): web users normally think with their own
+    # Claude key. Only when this is true may a user without a key fall back to
+    # the server's ANTHROPIC_API_KEY. The Streamlit prototype is unaffected.
+    allow_shared_anthropic_key: bool = False
 
     def llm_configured(self) -> bool:
         return bool(self.anthropic_api_key.get_secret_value().strip())
+
+    def auth_cookie_key_is_insecure_default(self) -> bool:
+        return self.auth_cookie_key.get_secret_value().startswith("dev-only-insecure-key")
 
 
 @lru_cache

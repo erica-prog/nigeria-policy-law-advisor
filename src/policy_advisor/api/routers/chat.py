@@ -8,7 +8,7 @@ Depends on `Matter`, so ownership is verified before any document listing,
 retrieval or generation (rule 1). The ask/analyze endpoints in advice.py stay
 as they are; this module composes them."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 
 from policy_advisor.api.conversations import (
     append_messages,
@@ -19,8 +19,9 @@ from policy_advisor.api.conversations import (
     new_message_id,
     now_iso,
 )
-from policy_advisor.api.deps import Matter, Services
-from policy_advisor.api.routers.advice import require_llm, run_analyze, run_ask
+from policy_advisor.api.deps import ChatJobs, CurrentUser, Matter, MatterAccess, Services
+from policy_advisor.api.errors import ApiError
+from policy_advisor.api.routers.advice import require_key, run_analyze, run_ask
 from policy_advisor.api.schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -28,12 +29,14 @@ from policy_advisor.api.schemas import (
     AskResponse,
     ChatHistory,
     ChatIntent,
+    ChatJobOut,
     ChatMode,
     ChatReply,
     ChatRequest,
     Chip,
     UserMessage,
 )
+from policy_advisor.api.services import AdvisorServices
 from policy_advisor.ingestion.matter_store import (
     get_matter_meta,
     list_documents,
@@ -153,8 +156,42 @@ def chat_history(matter: Matter) -> ChatHistory:
 
 
 @router.post("/chat", response_model=ChatReply)
-def chat(body: ChatRequest, matter: Matter, services: Services) -> ChatReply:
-    require_llm(services)
+def chat(body: ChatRequest, matter: Matter, services: Services, user: CurrentUser) -> ChatReply:
+    """Synchronous form: the reply in one response. The client uses the job
+    form below so it can narrate progress; this stays for scripts and tests."""
+    return run_chat(body, matter, services, require_key(user))
+
+
+@router.post("/chat/jobs", response_model=ChatJobOut, status_code=status.HTTP_202_ACCEPTED)
+def start_chat_job(
+    body: ChatRequest, matter: Matter, services: Services, user: CurrentUser, jobs: ChatJobs
+) -> ChatJobOut:
+    """Same routing and side effects as POST /chat, run in a worker thread.
+    Ownership and the key check happen here, before the job exists."""
+    api_key = require_key(user)
+    job = jobs.submit(
+        matter.id,
+        user.username,
+        lambda: run_chat(body, matter, services, api_key),
+        logger=services.logger,
+    )
+    return job.to_out()
+
+
+@router.get("/chat/jobs/{job_id}", response_model=ChatJobOut)
+def chat_job_status(job_id: str, matter: Matter, user: CurrentUser, jobs: ChatJobs) -> ChatJobOut:
+    # `matter` has already passed the ownership check; the job must also be
+    # this user's on this matter, otherwise it does not exist as far as the
+    # caller is concerned.
+    job = jobs.get(job_id, matter.id, user.username)
+    if job is None:
+        raise ApiError(404, "not_found", "Not found.")
+    return job.to_out()
+
+
+def run_chat(
+    body: ChatRequest, matter: MatterAccess, services: AdvisorServices, api_key: str
+) -> ChatReply:
     persist = not matter.read_only
     history = load_messages(matter.id) if persist else []
     documents = list_documents(matter.id)
@@ -172,6 +209,7 @@ def chat(body: ChatRequest, matter: Matter, services: Services) -> ChatReply:
             ),
             matter,
             services,
+            api_key,
         )
         bubble, chips = bubble_for_analysis(analysis)
         avatar_state = analysis.avatar_state
@@ -189,6 +227,7 @@ def chat(body: ChatRequest, matter: Matter, services: Services) -> ChatReply:
             ),
             matter,
             services,
+            api_key,
         )
         bubble, chips = bubble_for_answer(answer, mode, allow_web)
         avatar_state = answer.avatar_state
