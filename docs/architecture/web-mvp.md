@@ -110,11 +110,13 @@ table is in memory: a restart forgets in-flight jobs, but documents that reached
 are persisted by the ingestion module and reappear in the list. This is the MVP stand-in
 for the job queue in the long-term design.
 
-Ingestion translates every chunk with Claude (`chunk_translation.py`). For offline
-development the new `TRANSLATE_ON_INGEST=false` setting skips that step (language
-detection still runs). Default is unchanged. Since revision 3 the upload handler
-resolves the uploader's key and passes it to `add_document(api_key=...)`; with no
-usable key translation is skipped for that upload rather than spending the server key.
+Web uploads index the original text and do not translate it. Translating every
+chunk through Claude held the document in `processing` for the whole file, so it
+could not be reviewed, and it spent the user's key before any question. Language
+detection still runs. `TRANSLATE_ON_INGEST` still applies to the Streamlit app and
+the ingestion scripts (default unchanged). The upload handler still resolves the
+uploader's key and passes it to `add_document(api_key=...)` for anything else that
+call spends a key on.
 
 ## Chat jobs and progress stages (revision 3)
 

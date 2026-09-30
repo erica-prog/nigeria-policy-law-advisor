@@ -19,7 +19,8 @@ from policy_advisor.api.conversations import (
     new_message_id,
     now_iso,
 )
-from policy_advisor.api.deps import ChatJobs, CurrentUser, Matter, MatterAccess, Services
+from policy_advisor.api.deps import ChatJobs, CurrentUser, Jobs, Matter, MatterAccess, Services
+from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.routers.advice import require_key, run_analyze, run_ask
 from policy_advisor.api.schemas import (
@@ -156,23 +157,30 @@ def chat_history(matter: Matter) -> ChatHistory:
 
 
 @router.post("/chat", response_model=ChatReply)
-def chat(body: ChatRequest, matter: Matter, services: Services, user: CurrentUser) -> ChatReply:
+def chat(
+    body: ChatRequest, matter: Matter, services: Services, user: CurrentUser, jobs: Jobs
+) -> ChatReply:
     """Synchronous form: the reply in one response. The client uses the job
     form below so it can narrate progress; this stays for scripts and tests."""
-    return run_chat(body, matter, services, require_key(user))
+    return run_chat(body, matter, services, require_key(user), jobs)
 
 
 @router.post("/chat/jobs", response_model=ChatJobOut, status_code=status.HTTP_202_ACCEPTED)
 def start_chat_job(
-    body: ChatRequest, matter: Matter, services: Services, user: CurrentUser, jobs: ChatJobs
+    body: ChatRequest,
+    matter: Matter,
+    services: Services,
+    user: CurrentUser,
+    jobs: Jobs,
+    chat_jobs: ChatJobs,
 ) -> ChatJobOut:
     """Same routing and side effects as POST /chat, run in a worker thread.
     Ownership and the key check happen here, before the job exists."""
     api_key = require_key(user)
-    job = jobs.submit(
+    job = chat_jobs.submit(
         matter.id,
         user.username,
-        lambda: run_chat(body, matter, services, api_key),
+        lambda: run_chat(body, matter, services, api_key, jobs),
         logger=services.logger,
     )
     return job.to_out()
@@ -189,12 +197,42 @@ def chat_job_status(job_id: str, matter: Matter, user: CurrentUser, jobs: ChatJo
     return job.to_out()
 
 
+def _documents_still_being_read(jobs: JobTable | None, matter_id: str) -> list[str]:
+    """Names of uploads that are queued or processing and so not searchable yet."""
+    if jobs is None:
+        return []
+    return [
+        name
+        for name, job in jobs.latest_for_matter(matter_id).items()
+        if job.status in ("queued", "processing")
+    ]
+
+
+def _still_reading_reply(names: list[str]) -> tuple[AskResponse, str]:
+    shown = ", ".join(names[:3])
+    if len(names) > 3:
+        shown += f" and {len(names) - 3} more"
+    sentence = f"I'm still reading {shown}. Ask me again in a moment and I will answer from it."
+    answer = AskResponse(
+        answer=sentence,
+        source="none",
+        faithful=True,
+        avatar_state="listening",
+    )
+    return answer, f"I'm still reading {shown}."
+
+
 def run_chat(
-    body: ChatRequest, matter: MatterAccess, services: AdvisorServices, api_key: str
+    body: ChatRequest,
+    matter: MatterAccess,
+    services: AdvisorServices,
+    api_key: str,
+    jobs: JobTable | None = None,
 ) -> ChatReply:
     persist = not matter.read_only
     history = load_messages(matter.id) if persist else []
     documents = list_documents(matter.id)
+    pending = _documents_still_being_read(jobs, matter.id)
     mode = decide_mode(body.intent, history, bool(documents), matter.read_only)
 
     user_message = UserMessage(id=new_message_id(), text=body.message, created_at=now_iso())
@@ -202,7 +240,15 @@ def run_chat(
     analysis: AnalyzeResponse | None = None
     notice: str | None = None
 
-    if mode == "analysis":
+    # Nothing is searchable yet, but an upload is in flight. Say so instead of
+    # answering "there are no documents" or spending a model call on a guess.
+    if pending and not documents:
+        answer, bubble = _still_reading_reply(pending)
+        chips: list[Chip] = []
+        mode = "question"
+        avatar_state = answer.avatar_state
+        citations = answer.citations
+    elif mode == "analysis":
         analysis = run_analyze(
             AnalyzeRequest(
                 case_facts=body.message, jurisdiction=body.jurisdiction, language=body.language

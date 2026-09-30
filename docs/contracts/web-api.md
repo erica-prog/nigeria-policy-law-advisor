@@ -100,7 +100,8 @@ characters are ever shown.
 Ask, analyze and chat use, in this order: the user's own key; the server's `.env` key
 if `ALLOW_SHARED_ANTHROPIC_KEY=true`; otherwise they fail with `403 claude_key_required`
 (a permission problem for this user, not a server outage, hence not 503). Uploads and
-history keep working without a key; ingestion-time translation uses the resolved key
+history keep working without a key. Web uploads are indexed from the original text
+and are not translated (so they can be reviewed without a Claude call per chunk)
 and is skipped when there is none.
 
 ### Matters
@@ -216,6 +217,10 @@ analyze above remain available and unchanged.
 - `intent`: `auto` (default: the server decides), `analyze` (the user pressed the
   "Analyse my case" chip), `ask` (force a question).
 - Routing, in this order:
+  0. If uploads are still `queued` or `processing` and nothing is searchable yet, the
+     reply is `mode: "question"` with `avatar_state: "listening"` and a bubble that names
+     the files ("I'm still reading …"). The model is not called, and the reply does not
+     say the case has no documents.
   1. Analysis is wanted when `intent == "analyze"`, or when `intent == "auto"` and this
      is the first user message of a conversation that has no analysis yet (never for the
      shared read-only library, whose first message is a question).

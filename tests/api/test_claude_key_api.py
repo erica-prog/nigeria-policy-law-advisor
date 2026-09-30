@@ -391,8 +391,9 @@ def test_each_users_chain_is_built_with_their_own_key_never_anothers(api_byok):
 
 
 def test_upload_translation_runs_on_the_uploaders_key_or_is_skipped(api_byok, monkeypatch):
-    """Ingestion-time translation must spend the uploader's key, never the
-    server's; with no usable key the upload still succeeds untranslated."""
+    """Web uploads index the original text and never translate, so a document
+    becomes reviewable without a Claude call per chunk. The uploader's key is
+    still the one recorded for the job; the server key is never used."""
     seen: list[dict] = []
 
     def fake_add_document(matter_id, file_path, jurisdiction=None, *, api_key=None, translate=None):
@@ -418,7 +419,7 @@ def test_upload_translation_runs_on_the_uploaders_key_or_is_skipped(api_byok, mo
 
     assert _put(alice, ALICE_KEY)[0].status_code == 200
     upload("after-key.docx")
-    assert seen[-1] == {"api_key": ALICE_KEY, "translate": None}
+    assert seen[-1] == {"api_key": ALICE_KEY, "translate": False}
 
 
 @pytest.mark.parametrize(

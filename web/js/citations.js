@@ -3,6 +3,8 @@
 // kind label (evidence / authority / web) is never re-derived client-side,
 // and an unsupported locator is shown struck through, never as a source.
 
+import { renderMarkdown } from "./markdown.js";
+
 const KIND_LABEL = { evidence: "Case evidence", authority: "Legal authority", web: "Web source" };
 const SOURCE_TAG = /\[Source:\s*([^\]]+)\]/g;
 
@@ -53,19 +55,28 @@ export function unsupportedChip(locator) {
 }
 
 // Replaces [Source: X] tags in the answer with clickable chips.
-export function renderAnswerText(answer, citations, unsupported, onOpen) {
-  const body = el("div", { class: "msg__body" });
+function renderTextPart(body, text, citations, unsupported, onOpen) {
+  if (!text) return;
+  // A [Source: …] tag sits between formatted blocks, never inside one, so the
+  // chip stays a button and the surrounding markdown still formats.
   let last = 0;
-  for (const match of answer.matchAll(SOURCE_TAG)) {
-    body.append(document.createTextNode(answer.slice(last, match.index)));
+  let sawTag = false;
+  for (const match of text.matchAll(SOURCE_TAG)) {
+    sawTag = true;
+    renderMarkdown(body, text.slice(last, match.index));
     const citedAs = match[1].trim();
     const ref = findCitation(citations, citedAs);
     if (ref) body.append(citationChip(ref, onOpen, citedAs));
     else if (unsupported.includes(citedAs)) body.append(unsupportedChip(citedAs));
-    else body.append(document.createTextNode(match[0]));
+    else renderMarkdown(body, match[0]);
     last = match.index + match[0].length;
   }
-  body.append(document.createTextNode(answer.slice(last)));
+  renderMarkdown(body, sawTag ? text.slice(last) : text);
+}
+
+export function renderAnswerText(answer, citations, unsupported, onOpen) {
+  const body = el("div", { class: "msg__body prose" });
+  renderTextPart(body, answer, citations, unsupported, onOpen);
   return body;
 }
 

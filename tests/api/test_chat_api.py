@@ -294,6 +294,25 @@ def test_chat_requires_login_and_a_usable_claude_key(api):
     assert alice.get(f"/api/matters/{matter['id']}/chat").json()["messages"] == []
 
 
+def test_question_while_an_upload_is_still_being_read_does_not_call_the_model(api_with_llm, fakes):
+    rag, case = fakes
+    alice = api_with_llm.login("alice")
+    matter = _new_case(alice)
+    job = api_with_llm.app.state.jobs.create(matter["id"], "FHC Civil Procedure Rules.pdf", None)
+    job.status = "processing"
+
+    response = _chat(alice, matter["id"], "what are the rules in this file")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["mode"] == "question"
+    assert body["avatar_state"] == "listening"
+    assert "FHC Civil Procedure Rules.pdf" in body["bubble"]
+    assert "still reading" in body["bubble"]
+    assert body["notice"] is None
+    assert rag.calls == [] and case.calls == []
+
+
 def test_chat_validation_error_shape(api_with_llm, fakes):
     alice = api_with_llm.login("alice")
     matter = _new_case(alice)

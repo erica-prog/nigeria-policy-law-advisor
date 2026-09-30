@@ -83,8 +83,9 @@ their own use the server's `ANTHROPIC_API_KEY`. The greeting then says so and of
 deployment where you do not want to pay for other people's questions. The server's key
 never reaches the browser in either mode; only the chosen key's *source* is reported.
 
-Uploads by a user without a usable key are still ingested, but the translation step is
-skipped (it would otherwise spend a key the user does not have).
+Web uploads are indexed from the original text and are not translated, so a document
+can be reviewed as soon as it is read. `TRANSLATE_ON_INGEST` still applies to the
+Streamlit app and the ingestion scripts.
 
 ## The live speech bubble (revision 3)
 

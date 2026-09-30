@@ -102,12 +102,16 @@ class JobTable:
         file_path = (job.temp_dir or Path()) / job.document_name
         try:
             with services.ingest_lock:
+                # Index the original text only. Translating every chunk through
+                # Claude (the prototype's English/French pass) holds the document
+                # in "processing" for the whole file and spends the user's key
+                # before anyone can ask about it. Review uses the original text.
                 job.chunk_count = add_document(
                     job.matter_id,
                     file_path,
                     jurisdiction=jurisdiction,
                     api_key=api_key,
-                    translate=None if api_key else False,
+                    translate=False,
                 )
             services.invalidate_matter(job.matter_id)
             job.status = "ready"
