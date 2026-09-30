@@ -18,6 +18,38 @@ def _upload(client, matter_id, name="supply-agreement.docx", data=None):
     )
 
 
+def test_upload_and_removal_survive_a_cached_chain_without_invalidate(api):
+    """A case-analysis chain built before it had invalidate_matter must not turn
+    a finished upload, or the Remove button, into a 500."""
+    api.services._case_chain = object()
+    alice = api.login("alice")
+    assert alice.post("/api/matters", json={"id": "alice-v-acme"}).status_code == 201
+    assert _upload(alice, "alice-v-acme").status_code == 202
+    assert (
+        alice.get("/api/matters/alice-v-acme/documents/supply-agreement.docx").json()["status"]
+        == "ready"
+    )
+    assert (
+        alice.delete("/api/matters/alice-v-acme/documents/supply-agreement.docx").status_code == 204
+    )
+    assert alice.get("/api/matters/alice-v-acme/documents").json()["documents"] == []
+
+
+def test_owner_can_delete_a_case_and_nobody_else_can(api):
+    alice, bob = api.login("alice"), api.login("bob")
+    matter = alice.post("/api/matters", json={"title": "Old chat"}).json()
+    assert _upload(alice, matter["id"]).status_code == 202
+
+    assert bob.delete(f"/api/matters/{matter['id']}").status_code == 404
+    assert alice.delete("/api/matters/phase1-demo").status_code == 403
+    assert alice.delete(f"/api/matters/{matter['id']}").status_code == 204
+
+    assert alice.get(f"/api/matters/{matter['id']}").status_code == 404
+    assert matter["id"] not in {m["id"] for m in alice.get("/api/matters").json()["matters"]}
+    assert alice.get(f"/api/matters/{matter['id']}/documents").status_code == 404
+    assert alice.get(f"/api/matters/{matter['id']}/chat").status_code == 404
+
+
 def test_synthetic_docx_upload_reaches_ready_and_is_listed(api):
     alice = api.login("alice")
     assert alice.post("/api/matters", json={"id": "alice-v-acme"}).status_code == 201

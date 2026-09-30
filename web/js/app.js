@@ -689,14 +689,15 @@ function renderFileChips() {
           el("span", { class: "file-chip__icon", "aria-hidden": "true", text: "📄" }),
           el("span", { class: "file-chip__name", text: row.name }),
           el("span", { class: `file-chip__status`, text: STATUS_LABEL[row.status] || row.status }),
-          row.status === "ready" || row.status === "failed"
+          row.error ? el("span", { class: "file-chip__error", text: row.error }) : null,
+          row.status !== "uploading"
             ? el("button", {
                 type: "button",
                 class: "file-chip__remove",
                 "aria-label": `Remove ${row.name}`,
-                title: "Remove",
+                title: "Remove this document",
                 onclick: () => removeDocument(row.name),
-              }, "✕")
+              }, "Remove")
             : null,
         ],
       ),
@@ -706,6 +707,7 @@ function renderFileChips() {
 }
 
 async function removeDocument(name) {
+  if (!window.confirm(`Remove "${name}" from this case?`)) return;
   if (state.uploads.has(name) && !state.documents.some((d) => d.name === name)) {
     state.uploads.delete(name);
     renderFileChips();
@@ -753,6 +755,20 @@ document.addEventListener("keydown", (event) => {
 });
 $("#new-case").addEventListener("click", () => startNewCase());
 
+async function deleteCase(matter) {
+  const title = matter.title || "Untitled case";
+  if (!window.confirm(`Delete "${title}"? Its chat and documents will be removed. This cannot be undone.`)) {
+    return;
+  }
+  try {
+    await api.deleteMatter(matter.id);
+    if (state.matter && state.matter.id === matter.id) startNewCase();
+    else await loadCases();
+  } catch (error) {
+    if (!handleAuthError(error)) setError($("#composer-error"), error);
+  }
+}
+
 async function loadCases() {
   if (!state.user) return;
   const list = $("#case-list");
@@ -761,7 +777,7 @@ async function loadCases() {
     list.replaceChildren(
       ...matters.map((m) => {
         const current = state.matter && state.matter.id === m.id;
-        return el("li", {}, [
+        return el("li", { class: "case-row" }, [
           el(
             "button",
             {
@@ -778,6 +794,17 @@ async function loadCases() {
               }),
             ],
           ),
+          m.read_only
+            ? null
+            : el("button", {
+                type: "button",
+                class: "case__delete",
+                "aria-label": `Delete ${m.title || "Untitled case"}`,
+                onclick: (event) => {
+                  event.stopPropagation();
+                  deleteCase(m);
+                },
+              }, "Delete"),
         ]);
       }),
     );

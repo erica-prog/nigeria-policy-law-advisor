@@ -77,6 +77,10 @@ class CaseReasoningChain:
             max_retries=0,
         )
 
+    def invalidate_matter(self, matter_id: str) -> None:
+        """Drop the cached index for this matter after a document is added or removed."""
+        self._retriever.invalidate_matter(matter_id)
+
     def _identify_issues(self, case_facts: str, response_language: str) -> list[str]:
         structured = self._llm.with_structured_output(IssueList)
         messages = ISSUE_IDENTIFICATION_PROMPT.format_messages(

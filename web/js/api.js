@@ -59,6 +59,7 @@ export const api = {
   matters: () => request("GET", "/api/matters"),
   // No id: the server generates one. The user only ever sees the title.
   createMatter: (body = {}) => request("POST", "/api/matters", { json: body }),
+  deleteMatter: (id) => request("DELETE", `/api/matters/${encodeURIComponent(id)}`),
   matter: (id) => request("GET", `/api/matters/${encodeURIComponent(id)}`),
   documents: (id) => request("GET", `/api/matters/${encodeURIComponent(id)}/documents`),
   upload: (id, file, jurisdiction) => {

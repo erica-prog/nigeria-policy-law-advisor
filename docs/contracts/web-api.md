@@ -106,6 +106,11 @@ and is skipped when there is none.
 
 ### Matters
 
+`DELETE /api/matters/{id}` -> `204`. Removes the case, its documents and its chat.
+The shared library returns `403 matter_read_only`. Another user's case returns `404`.
+
+### Matters (list and create)
+
 Matter ids match `^[a-z0-9][a-z0-9-]{1,63}$`. Since revision 2 the browser client never
 shows an id; it shows `title`.
 

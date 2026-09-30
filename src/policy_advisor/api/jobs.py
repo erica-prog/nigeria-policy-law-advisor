@@ -17,6 +17,10 @@ from policy_advisor.logging_utils import log_event
 GENERIC_FAILURE = "Processing failed. The server log has the details."
 EMPTY_FAILURE = "No readable text was found in this file."
 MODEL_FAILURE = "Processing needs the language model, which is not reachable right now."
+SCANNED_FAILURE = (
+    "This PDF looks scanned, and this server cannot read scanned pages "
+    "(the poppler tools are not installed)."
+)
 
 
 @dataclass
@@ -29,6 +33,7 @@ class DocumentJob:
     error: str | None = None
     created_at: float = field(default_factory=time)
     temp_dir: Path | None = None
+    cancelled: bool = False
 
     def to_document(self) -> DocumentOut:
         return DocumentOut(
@@ -45,6 +50,8 @@ def failure_message(exc: Exception) -> str:
         return "Unsupported document format. Upload a PDF or DOCX file."
     if isinstance(exc, ValueError) and "zero chunks" in str(exc):
         return EMPTY_FAILURE
+    if type(exc).__name__ == "PDFInfoNotInstalledError":
+        return SCANNED_FAILURE
     name = type(exc).__name__.lower()
     if "authentication" in name or "apiconnection" in name or "apistatus" in name:
         return MODEL_FAILURE
@@ -81,13 +88,22 @@ class JobTable:
         return {job.document_name: job for job in jobs}
 
     def forget_document(self, matter_id: str, document_name: str) -> None:
+        """Drop the chip. If ingestion is still running, mark it cancelled so
+        the finished chunks are deleted instead of becoming a document."""
         with self._lock:
-            for job_id in [
-                j.job_id
+            for job in [
+                j
                 for j in self._jobs.values()
                 if j.matter_id == matter_id and j.document_name == document_name
             ]:
-                del self._jobs[job_id]
+                job.cancelled = True
+                del self._jobs[job.job_id]
+
+    def forget_matter(self, matter_id: str) -> None:
+        with self._lock:
+            for job in [j for j in self._jobs.values() if j.matter_id == matter_id]:
+                job.cancelled = True
+                del self._jobs[job.job_id]
 
     def run(
         self, job: DocumentJob, services, jurisdiction: str | None, api_key: str | None = None
@@ -96,7 +112,7 @@ class JobTable:
         `api_key` is the uploading user's resolved Claude key: ingestion-time
         translation runs on it, and is skipped (detection only) when the user
         has none, so uploads never spend the server's key."""
-        from policy_advisor.ingestion.ingest_document import add_document
+        from policy_advisor.ingestion.ingest_document import add_document, remove_document
 
         job.status = "processing"
         file_path = (job.temp_dir or Path()) / job.document_name
@@ -113,6 +129,10 @@ class JobTable:
                     api_key=api_key,
                     translate=False,
                 )
+            if job.cancelled:
+                # The user removed the chip while this was still reading.
+                remove_document(job.matter_id, job.document_name)
+                return
             services.invalidate_matter(job.matter_id)
             job.status = "ready"
             log_event(

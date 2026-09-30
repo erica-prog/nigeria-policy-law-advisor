@@ -350,6 +350,14 @@ details.passages summary { cursor: pointer; color: var(--violet); font-weight: 6
 }
 .case:hover { background: var(--paper); }
 .case.is-current { background: var(--violet-soft); border-color: #cfc3f4; }
+.case-row { display: flex; align-items: stretch; gap: 0.35rem; }
+.case-row .case { flex: 1; }
+.case__delete {
+  border: 1px solid var(--line, #e4e0f0); background: transparent; color: var(--red, #b42318);
+  border-radius: 999px; padding: 0 0.7rem; cursor: pointer; font: inherit; font-size: 0.8rem;
+}
+.case__delete:hover { background: #fde8e6; }
+.file-chip__error { color: var(--red, #b42318); font-size: 0.75rem; }
 .case__title { font-weight: 600; overflow-wrap: anywhere; }
 .case__meta { color: var(--muted); font-size: 0.8rem; }
 .case--shared .case__title::before { content: "📚 "; }

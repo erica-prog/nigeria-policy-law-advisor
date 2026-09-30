@@ -1,13 +1,15 @@
 import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from policy_advisor.api.conversations import now_iso
 from policy_advisor.api.deps import (
     CurrentUser,
+    Jobs,
     Matter,
     MatterAccess,
     Services,
+    WritableMatter,
     resolve_matter_access,
 )
 from policy_advisor.api.errors import ApiError
@@ -21,6 +23,7 @@ from policy_advisor.ingestion.matter_store import (
     set_matter_owner,
     update_matter_meta,
 )
+from policy_advisor.ingestion.ingest_document import delete_matter as delete_matter_files
 from policy_advisor.logging_utils import log_event
 
 router = APIRouter(prefix="/api/matters", tags=["matters"])
@@ -80,3 +83,13 @@ def create_matter(body: MatterCreate, user: CurrentUser, services: Services) -> 
 @router.get("/{matter_id}", response_model=MatterOut)
 def get_one_matter(matter: Matter) -> MatterOut:
     return matter_out(matter)
+
+
+@router.delete("/{matter_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_one_matter(matter: WritableMatter, services: Services, jobs: Jobs) -> Response:
+    """Deletes the case, its documents and its chat. The shared library is refused."""
+    jobs.forget_matter(matter.id)
+    delete_matter_files(matter.id)
+    services.invalidate_matter(matter.id)
+    log_event(services.logger, "matter_deleted", matter_id=matter.id, owner=matter.owner)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

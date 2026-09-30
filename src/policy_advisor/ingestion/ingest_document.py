@@ -4,11 +4,13 @@ other matter's vectors, BM25 index, or persisted chunk list. This is the
 on-demand counterpart to build_index.py's full-corpus rebuild, which is only
 for the fixed Phase 1 demo seed."""
 
+import shutil
 from pathlib import Path
 
 from policy_advisor.config import PHASE1_DEMO_MATTER_ID
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES, chunk_uploaded_document
 from policy_advisor.ingestion.chunk_translation import translate_chunks
+from policy_advisor.ingestion import matter_store
 from policy_advisor.ingestion.matter_store import remove_document as remove_document_chunks
 from policy_advisor.ingestion.matter_store import upsert_chunks
 from policy_advisor.logging_utils import get_logger, log_event
@@ -59,14 +61,18 @@ def add_document(
 
     chunks = chunk_uploaded_document(matter_id, file_path, jurisdiction=jurisdiction)
     if not chunks:
-        raise ValueError(f"Ingestion produced zero chunks for {file_path.name} - the file may be empty or unreadable.")
+        raise ValueError(
+            f"Ingestion produced zero chunks for {file_path.name} - the file may be empty or unreadable."
+        )
     chunks = translate_chunks(chunks, api_key=api_key, translate=translate)
 
     vector_store = load_vector_store()
     # Clear any prior chunks for this exact document before re-adding, so a
     # re-upload that produces fewer/renumbered chunks doesn't leave stale
     # vectors behind under the old chunk_ids.
-    vector_store.delete(where={"$and": [{"matter_id": matter_id}, {"source_document": file_path.name}]})
+    vector_store.delete(
+        where={"$and": [{"matter_id": matter_id}, {"source_document": file_path.name}]}
+    )
     vector_store.add_documents(
         documents=[chunk_to_document(chunk) for chunk in chunks],
         ids=[chunk.chunk_id for chunk in chunks],
@@ -95,7 +101,13 @@ def add_document(
         ],
     )
 
-    log_event(logger, "document_ingested", matter_id=matter_id, document=file_path.name, chunk_count=len(chunks))
+    log_event(
+        logger,
+        "document_ingested",
+        matter_id=matter_id,
+        document=file_path.name,
+        chunk_count=len(chunks),
+    )
     return len(chunks)
 
 
@@ -105,6 +117,24 @@ def remove_document(matter_id: str, source_document: str) -> None:
     vector store, or BM25 search would keep surfacing "deleted" text."""
     _reject_shared_demo_matter(matter_id)
     vector_store = load_vector_store()
-    vector_store.delete(where={"$and": [{"matter_id": matter_id}, {"source_document": source_document}]})
+    vector_store.delete(
+        where={"$and": [{"matter_id": matter_id}, {"source_document": source_document}]}
+    )
     remove_document_chunks(matter_id, source_document)
     log_event(logger, "document_removed", matter_id=matter_id, document=source_document)
+
+
+def delete_matter(matter_id: str) -> None:
+    """Removes a case entirely: its vectors, its chunk file and its chat.
+    The shared demo matter is refused, same as a single-document removal."""
+    _reject_shared_demo_matter(matter_id)
+    try:
+        load_vector_store().delete(where={"matter_id": matter_id})
+    except Exception:
+        # A case with no indexed chunks has nothing to delete. Anything else
+        # is logged; the files still go, so the case disappears for the user.
+        logger.warning(
+            "matter_vectors_not_removed", extra={"fields": {"matter_id": matter_id}}, exc_info=True
+        )
+    # Read the directory from the module so tests that relocate the store are honoured.
+    shutil.rmtree(matter_store.MATTERS_DIR / matter_id, ignore_errors=True)

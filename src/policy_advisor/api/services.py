@@ -100,5 +100,8 @@ class AdvisorServices:
             holders.extend(self._rag_chains.values())
             holders.extend(self._case_chains.values())
             for holder in holders:
-                if holder is not None:
-                    holder.invalidate_matter(matter_id)
+                # Chains built before this method existed, and test doubles,
+                # must not turn a successful upload or deletion into a 500.
+                invalidate = getattr(holder, "invalidate_matter", None)
+                if invalidate is not None:
+                    invalidate(matter_id)
