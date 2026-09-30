@@ -24,11 +24,13 @@ TRANSLATE_PROMPT = ChatPromptTemplate.from_messages(
 )
 
 
-def get_translation_llm() -> ChatAnthropic:
+def get_translation_llm(api_key: str | None = None) -> ChatAnthropic:
+    """`api_key` overrides the server key from settings (the web API passes the
+    uploading user's own key); None keeps the previous behaviour."""
     settings = get_settings()
     return ChatAnthropic(
         model=settings.anthropic_model,
-        api_key=settings.anthropic_api_key.get_secret_value(),
+        api_key=api_key or settings.anthropic_api_key.get_secret_value(),
         max_tokens=2048,
         default_request_timeout=45,
         max_retries=2,

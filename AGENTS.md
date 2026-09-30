@@ -69,6 +69,8 @@ Reuse the prototype's retrieval, faithfulness and reasoning logic rather than re
 | Generation, faithfulness, case reasoning | `src/policy_advisor/generation/`                                  |
 | Web search                             | `src/policy_advisor/generation/web_search.py`                       |
 | Streamlit prototype UI and auth        | `src/policy_advisor/app.py`, `src/policy_advisor/auth.py`           |
+| Web MVP: FastAPI backend, browser client | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`       |
+| Architecture and API contracts (web MVP) | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`       |
 | Evaluation (golden set, invariants)    | `eval/`                                                             |
 | Tests                                  | `tests/`                                                            |
 | CI                                     | `.github/workflows/ci.yml`                                          |
