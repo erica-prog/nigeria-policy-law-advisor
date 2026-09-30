@@ -36,10 +36,21 @@ def _reject_shared_demo_matter(matter_id: str) -> None:
         )
 
 
-def add_document(matter_id: str, file_path: Path, jurisdiction: str | None = None) -> int:
+def add_document(
+    matter_id: str,
+    file_path: Path,
+    jurisdiction: str | None = None,
+    *,
+    api_key: str | None = None,
+    translate: bool | None = None,
+) -> int:
     """Ingests one document into one matter. Returns the number of chunks
     written. Re-adding the same filename replaces its previous chunks
-    (upsert by chunk_id) rather than duplicating them."""
+    (upsert by chunk_id) rather than duplicating them.
+
+    `api_key` and `translate` are passed straight to `translate_chunks`: the
+    web API uses them so ingestion-time translation runs on the uploading
+    user's own key, or is skipped when that user has none."""
     _reject_shared_demo_matter(matter_id)
     if file_path.suffix.lower() not in SUPPORTED_SUFFIXES:
         raise UnsupportedDocumentError(
@@ -49,7 +60,7 @@ def add_document(matter_id: str, file_path: Path, jurisdiction: str | None = Non
     chunks = chunk_uploaded_document(matter_id, file_path, jurisdiction=jurisdiction)
     if not chunks:
         raise ValueError(f"Ingestion produced zero chunks for {file_path.name} - the file may be empty or unreadable.")
-    chunks = translate_chunks(chunks)
+    chunks = translate_chunks(chunks, api_key=api_key, translate=translate)
 
     vector_store = load_vector_store()
     # Clear any prior chunks for this exact document before re-adding, so a

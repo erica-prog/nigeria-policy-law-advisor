@@ -13,6 +13,7 @@ from policy_advisor.generation.faithfulness import check_faithfulness
 from policy_advisor.generation.prompt import LANGUAGE_NAMES, PROMPT, format_context
 from policy_advisor.generation.web_search import WebSearchCitation, search_official_sources
 from policy_advisor.logging_utils import get_logger, log_event, timed_request
+from policy_advisor.progress import report_stage
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
 
 NOT_FOUND_MESSAGE = (
@@ -47,14 +48,19 @@ class AnswerResult:
 
 
 class RAGChain:
-    def __init__(self):
+    def __init__(self, api_key=None, retriever=None):
+        """`api_key: str | None` overrides the server key from settings (the web
+        API passes each user's own key); `retriever: HybridRetriever | None`
+        lets several chains share one embedding model / Chroma handle. Both
+        default to the previous behaviour."""
         settings = get_settings()
         self._settings = settings
-        self._retriever = HybridRetriever()
+        self._api_key = api_key or settings.anthropic_api_key.get_secret_value()
+        self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.chain", settings.log_level)
         self._llm = ChatAnthropic(
             model=settings.anthropic_model,
-            api_key=settings.anthropic_api_key.get_secret_value(),
+            api_key=self._api_key,
             max_tokens=1024,
             default_request_timeout=30,
             max_retries=0,  # retried explicitly below, so each attempt is logged
@@ -80,6 +86,7 @@ class RAGChain:
         with timed_request(self._logger, question) as fields:
             fields["matter_id"] = matter_id
             fields["conversation_language"] = conversation_language
+            report_stage("reading_documents")
             retrieved = self._retriever.retrieve(
                 question, top_k=self._settings.retrieval_top_k, matter_id=matter_id, jurisdiction=jurisdiction
             )
@@ -94,7 +101,10 @@ class RAGChain:
                     return AnswerResult(answer=NOT_FOUND_MESSAGE, retrieved=[], faithful=True, source="none")
 
                 fields["outcome"] = "web_fallback_attempted"
-                web_result = search_official_sources(question, response_language=response_language)
+                report_stage("searching_web")
+                web_result = search_official_sources(
+                    question, response_language=response_language, api_key=self._api_key
+                )
                 log_event(self._logger, "web_fallback_used", matter_id=matter_id, found=web_result.found)
                 if not web_result.found:
                     return AnswerResult(
@@ -113,6 +123,7 @@ class RAGChain:
                 response_language=response_language,
             )
 
+            report_stage("writing")
             try:
                 response = self._call_llm(messages)
             except Exception as exc:
@@ -124,6 +135,7 @@ class RAGChain:
                     faithful=True,
                 )
 
+            report_stage("checking_citations")
             faithful, unsupported = check_faithfulness(response.content, retrieved)
             usage = getattr(response, "usage_metadata", None) or {}
             fields["outcome"] = "answered"

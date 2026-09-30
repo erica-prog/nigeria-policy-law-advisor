@@ -24,6 +24,7 @@ from policy_advisor.generation.faithfulness import is_supported_citation
 from policy_advisor.generation.judge_check import judge_check
 from policy_advisor.generation.prompt import LANGUAGE_NAMES
 from policy_advisor.logging_utils import get_logger, log_event
+from policy_advisor.progress import report_stage
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
 
 DISCLAIMER = (
@@ -59,14 +60,18 @@ def _issue_args_as_text(issue_args: IssueArguments) -> str:
 
 
 class CaseReasoningChain:
-    def __init__(self):
+    def __init__(self, api_key=None, retriever=None):
+        """`api_key: str | None` overrides the server key from settings (the web
+        API passes each user's own key); `retriever: HybridRetriever | None`
+        lets several chains share one embedding model / Chroma handle. Both
+        default to the previous behaviour."""
         settings = get_settings()
         self._settings = settings
-        self._retriever = HybridRetriever()
+        self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
         self._llm = ChatAnthropic(
             model=settings.anthropic_model,
-            api_key=settings.anthropic_api_key.get_secret_value(),
+            api_key=api_key or settings.anthropic_api_key.get_secret_value(),
             max_tokens=2048,
             default_request_timeout=45,
             max_retries=0,
@@ -97,12 +102,14 @@ class CaseReasoningChain:
     def _analyze_issue(
         self, case_facts: str, issue: str, matter_id: str, jurisdiction: str | None, response_language: str
     ) -> IssueAnalysis:
+        report_stage("reading_documents")
         retrieved: list[RetrievedChunk] = self._retriever.retrieve(
             issue, top_k=self._settings.retrieval_top_k, matter_id=matter_id, jurisdiction=jurisdiction
         )
         available_locators = {c.metadata["locator"] for c in retrieved}
         context = "\n\n".join(f"[{c.metadata['locator']}]\n{c.text}" for c in retrieved) or "(no authorities retrieved)"
 
+        report_stage("writing")
         issue_args = self._generate_issue_arguments(case_facts, issue, context, response_language)
         unsupported = _unsupported_citations(issue_args, available_locators)
         unverified = False
@@ -121,6 +128,7 @@ class CaseReasoningChain:
                 unverified = True
                 log_event(self._logger, "issue_check_failed_after_retry", issue=issue, unsupported=unsupported)
 
+        report_stage("checking_citations")
         judge_outcome = judge_check(self._llm, _issue_args_as_text(issue_args), retrieved)
         if judge_outcome.judge_flagged:
             unverified = True
@@ -152,6 +160,7 @@ class CaseReasoningChain:
         messages = SYNTHESIS_PROMPT.format_messages(
             case_facts=case_facts, issue_summaries=issue_summaries, response_language=response_language
         )
+        report_stage("writing")
         overall_position = self._llm.invoke(messages).content
 
         # Final synthesis is checked against the union of every issue's own
@@ -163,6 +172,7 @@ class CaseReasoningChain:
             all_chunks.extend(
                 self._retriever.retrieve(issue.issue, top_k=self._settings.retrieval_top_k, matter_id=matter_id)
             )
+        report_stage("checking_citations")
         judge_outcome = judge_check(self._llm, overall_position, all_chunks)
         if judge_outcome.judge_flagged:
             log_event(self._logger, "synthesis_judge_flagged", notes=judge_outcome.judge_notes)
@@ -181,6 +191,7 @@ class CaseReasoningChain:
     ) -> CaseReasoningResult:
         response_language = LANGUAGE_NAMES.get(conversation_language, "English")
         log_event(self._logger, "case_analysis_started", matter_id=matter_id, conversation_language=conversation_language)
+        report_stage("writing")
         issues = self._identify_issues(case_facts, response_language)
         issue_analyses = [
             self._analyze_issue(case_facts, issue, matter_id, jurisdiction, response_language) for issue in issues

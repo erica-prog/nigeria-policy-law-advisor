@@ -5,6 +5,7 @@ BM25 - which has no native metadata filter - can be built from a correctly
 scoped corpus per matter rather than the whole multi-tenant store."""
 
 import json
+import os
 from pathlib import Path
 
 from policy_advisor.config import MATTERS_DIR, PHASE1_DEMO_MATTER_ID
@@ -18,14 +19,22 @@ def matter_meta_path(matter_id: str) -> Path:
     return MATTERS_DIR / matter_id / "meta.json"
 
 
+def _write_meta(path: Path, meta: dict) -> None:
+    # Atomic replace: the web API reads meta.json for the ownership check on
+    # every request while a background chat job may be updating it; a reader
+    # must never see a half-written file.
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(meta), encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def set_matter_owner(matter_id: str, owner: str) -> None:
     """Called once, when a matter is created - a matter has exactly one
     owner for now (no co-counsel sharing in this pass, see CLAUDE-2.md
     cross-cutting concerns). A meta.json sidecar, separate from chunks.json,
     since a freshly-created matter has no chunks yet to attach an owner to."""
-    path = matter_meta_path(matter_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"owner": owner}), encoding="utf-8")
+    _write_meta(matter_meta_path(matter_id), {"owner": owner})
 
 
 def get_matter_meta(matter_id: str) -> dict:
@@ -53,7 +62,7 @@ def update_matter_meta(matter_id: str, **fields: str | None) -> dict:
             meta.pop(key, None)
         else:
             meta[key] = value
-    matter_meta_path(matter_id).write_text(json.dumps(meta), encoding="utf-8")
+    _write_meta(matter_meta_path(matter_id), meta)
     return meta
 
 
@@ -81,7 +90,9 @@ def load_matter_chunks(matter_id: str) -> list[dict]:
 def save_matter_chunks(matter_id: str, chunks: list[dict]) -> None:
     path = matter_chunks_path(matter_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(chunks, indent=2), encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(chunks, indent=2), encoding="utf-8")
+    os.replace(tmp, path)  # same reason as _write_meta: readers never see a partial file
 
 
 def upsert_chunks(matter_id: str, new_chunks: list[dict]) -> list[dict]:

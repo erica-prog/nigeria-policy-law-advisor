@@ -40,9 +40,13 @@ class WebSearchResult:
     found: bool = True
 
 
-def search_official_sources(question: str, response_language: str = "English") -> WebSearchResult:
+def search_official_sources(
+    question: str, response_language: str = "English", api_key: str | None = None
+) -> WebSearchResult:
+    """`api_key` overrides the server key from settings (the web API passes the
+    requesting user's own key); None keeps the previous behaviour."""
     settings = get_settings()
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
+    client = anthropic.Anthropic(api_key=api_key or settings.anthropic_api_key.get_secret_value())
 
     response = client.messages.create(
         model=settings.anthropic_model,
