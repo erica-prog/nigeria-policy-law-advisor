@@ -67,11 +67,18 @@ export function createAvatar(root) {
     root.classList.add("advisor--pop");
   }
 
+  // The frame swap is delayed for the crossfade, so a quick pair of calls
+  // (busy "listening", then the real state as soon as history loads) must
+  // cancel the earlier swap or the stale frame lands under the new caption.
+  let pendingSwap = null;
+  let targetSrc = img.getAttribute("src");
+
   function setState(state, options = {}) {
     if (!(state in FRAME)) state = "idle";
     const nextSrc = frameUrl(FRAME[state]);
     const text = options.caption || CAPTION[state];
     const swap = () => {
+      pendingSwap = null;
       img.src = nextSrc;
       root.classList.remove("advisor--swapping");
     };
@@ -84,12 +91,14 @@ export function createAvatar(root) {
     detail.textContent = options.detail || "";
     root.dataset.state = state;
     if (state !== current) bounce();
-    if (img.getAttribute("src") !== nextSrc) {
+    if (targetSrc !== nextSrc) {
+      targetSrc = nextSrc;
+      if (pendingSwap !== null) window.clearTimeout(pendingSwap);
       if (reducedMotion.matches) {
         swap();
       } else {
         root.classList.add("advisor--swapping");
-        window.setTimeout(swap, 150);
+        pendingSwap = window.setTimeout(swap, 150);
       }
     }
     current = state;
