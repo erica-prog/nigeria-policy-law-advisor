@@ -56,8 +56,12 @@
     <!-- Chat: the character in the middle, the conversation around it -->
     <section class="chat chat--empty" id="view-chat" hidden>
       <div class="stage" id="stage">
-        <div class="bubble" id="bubble" role="status">
-          <p class="bubble__text" id="bubble-text"></p>
+        <div class="bubble" id="bubble">
+          <!-- Visible text updates at once; the live region repeats it at most
+               once every ~2 s (js/bubble.js) so stage narration never floods a
+               screen reader. -->
+          <p class="bubble__text" id="bubble-text" aria-hidden="true"></p>
+          <p class="visually-hidden bubble__live" id="bubble-live" aria-live="polite" aria-atomic="true"></p>
           <div class="bubble__typing" id="bubble-typing" hidden aria-hidden="true">
             <span></span><span></span><span></span>
           </div>
@@ -114,6 +118,11 @@
     </div>
     <button class="btn btn--primary btn--block" id="new-case" type="button">+ Start a new case</button>
     <ul class="case-list" id="case-list"></ul>
+    <section class="key-section" id="key-section" aria-labelledby="key-section-title">
+      <h3 id="key-section-title" class="key-section__title">Claude key</h3>
+      <p class="key-section__status" id="key-status">Checking…</p>
+      <div class="key-section__actions" id="key-actions"></div>
+    </section>
     <div class="drawer__foot">
       <label class="field field--inline">
         <span>The advisor replies in</span>
@@ -136,6 +145,48 @@
       <blockquote class="passage__quote" id="passage-quote"></blockquote>
       <p id="passage-url"></p>
       <p class="muted small" id="passage-note"></p>
+    </form>
+  </dialog>
+
+  <!-- Activate the advisor: bring your own Claude key (docs/17, BYOK) -->
+  <dialog class="activate" id="activate-dialog" aria-labelledby="activate-title" aria-describedby="activate-lead">
+    <form class="activate__inner" novalidate>
+      <div class="activate__head">
+        <h2 id="activate-title">Activate the advisor</h2>
+        <button class="btn btn--ghost btn--tiny" id="activate-cancel" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="muted" id="activate-lead"></p>
+      <ol class="activate__steps">
+        <li>
+          <strong>Create an Anthropic account</strong> at
+          <a class="link" href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">console.anthropic.com</a>.
+        </li>
+        <li>
+          <strong>Add a payment method</strong> under <em>Billing</em>. You pay Anthropic directly for
+          what Claude reads and writes for you, typically a few cents per question. The person running
+          this app never pays for your usage and never sees it.
+        </li>
+        <li>
+          <strong>Create an API key</strong> under <em>API Keys</em> and copy it. It starts with
+          <code>sk-ant-</code>.
+        </li>
+        <li><strong>Paste it below</strong> and press <em>Save and activate</em>.</li>
+      </ol>
+      <label class="field" for="activate-key">
+        <span>Your Claude API key</span>
+      </label>
+      <div class="activate__key">
+        <input id="activate-key" name="api_key" type="password" autocomplete="off" spellcheck="false"
+               placeholder="sk-ant-…" aria-describedby="activate-error activate-privacy" />
+        <button class="btn btn--tiny" id="activate-reveal" type="button" aria-pressed="false"
+                aria-controls="activate-key">Show</button>
+      </div>
+      <p class="form-error" id="activate-error" role="alert" hidden></p>
+      <button class="btn btn--primary btn--block btn--big" id="activate-submit" type="submit">Save and activate</button>
+      <p class="muted small activate__privacy" id="activate-privacy">
+        Your key is stored encrypted on this server, used only for your own questions, and never
+        shown again. You can remove it any time from <strong>Your cases</strong>.
+      </p>
     </form>
   </dialog>
 

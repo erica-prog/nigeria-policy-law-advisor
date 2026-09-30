@@ -57,6 +57,16 @@ export function createAvatar(root) {
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  // Gentle bounce; CSS disables it under prefers-reduced-motion, so the
+  // class is harmless there. Also used on its own when the advisor is
+  // activated (the user's key was accepted) without a frame change.
+  function bounce() {
+    if (reducedMotion.matches) return;
+    root.classList.remove("advisor--pop");
+    void root.offsetWidth; // restart the animation
+    root.classList.add("advisor--pop");
+  }
+
   function setState(state, options = {}) {
     if (!(state in FRAME)) state = "idle";
     const nextSrc = frameUrl(FRAME[state]);
@@ -73,13 +83,7 @@ export function createAvatar(root) {
     caption.textContent = text;
     detail.textContent = options.detail || "";
     root.dataset.state = state;
-    // Gentle bounce on a real state change; CSS disables it under
-    // prefers-reduced-motion, so the class is harmless there.
-    if (state !== current && !reducedMotion.matches) {
-      root.classList.remove("advisor--pop");
-      void root.offsetWidth; // restart the animation
-      root.classList.add("advisor--pop");
-    }
+    if (state !== current) bounce();
     if (img.getAttribute("src") !== nextSrc) {
       if (reducedMotion.matches) {
         swap();
@@ -93,6 +97,7 @@ export function createAvatar(root) {
 
   return {
     setState,
+    bounce,
     get state() {
       return current;
     },

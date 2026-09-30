@@ -1,11 +1,15 @@
-// Chat-first client (revision 2). One screen: the advisor character in the
-// middle with a speech bubble, the conversation around it, and a composer at
-// the bottom with a + button for documents. Cases (matters) are created
-// behind the scenes; the user only ever sees titles. All trust decisions
-// (evidence vs authority vs web, avatar state, research-mode labelling) come
-// from the server and are rendered as received.
+// Chat-first client (revision 2, live bubble + bring-your-own key in
+// revision 3). One screen: the advisor character in the middle with a speech
+// bubble, the conversation around it, and a composer at the bottom with a +
+// button for documents. Cases (matters) are created behind the scenes; the
+// user only ever sees titles. All trust decisions (evidence vs authority vs
+// web, avatar state, research-mode labelling) come from the server and are
+// rendered as received. The advisor thinks with the user's own Claude key;
+// until one is on file (or the server shares its key) the composer is off
+// and the bubble explains how to activate it.
 
 import { api, ApiError } from "./api.js";
+import { createActivateDialog } from "./activate.js";
 import { createAvatar } from "./avatar.js";
 import { createBubble } from "./bubble.js";
 import { createPassageDialog, el } from "./citations.js";
@@ -14,19 +18,32 @@ import { renderErrorMessage, renderReply, renderUserMessage } from "./messages.j
 const $ = (selector) => document.querySelector(selector);
 
 const GREETING = "Hi, I'm your advisor. Tell me about your case, or add your documents with +";
-const MISSING_KEY =
-  "I can't think yet: the server has no Claude API key. Add ANTHROPIC_API_KEY to the .env file " +
-  "next to the app and restart.";
+const GREETING_SHARED =
+  "Hi, I'm your advisor, thinking with this server's shared Claude key for now. Tell me about your " +
+  "case, or add your documents with +";
+const FRESH_CASE = "A fresh case. Tell me what happened, or add documents with +";
+const KEY_REQUIRED = "I need your Claude key before I can start thinking.";
+const ACTIVATED = "Thank you, I'm ready. Tell me about your case, or add your documents with +";
+const STAGE_TEXT = {
+  reading_documents: "Reading your documents…",
+  searching_web: "Checking official websites…",
+  checking_citations: "Checking my citations against the sources…",
+  writing: "Writing it up…",
+};
+const JOB_POLL_MS = 700;
 const CURRENT_CASE_KEY = "pa.currentCase";
 
 const state = {
   user: null,
-  llmConfigured: true,
+  advisorReady: false,
+  keySource: null, // "user" | "shared" | null
+  keyInfo: null, // last GET /api/me/claude-key
   matter: null,
   messages: [],
   documents: [],
   uploads: new Map(), // name -> { status: "uploading" | "failed", error }
   readyNames: new Set(),
+  announcedFailures: new Set(),
   pollTimer: null,
   busy: false,
   pendingIntent: null,
@@ -40,6 +57,7 @@ const composerInput = $("#composer-input");
 const advisor = createAvatar($("#advisor"));
 const bubble = createBubble($("#bubble"));
 const openPassage = createPassageDialog($("#passage-dialog"));
+const activate = createActivateDialog($("#activate-dialog"), { onActivated: onKeyActivated });
 
 function showView(name) {
   for (const [key, node] of Object.entries(views)) node.hidden = key !== name;
@@ -62,19 +80,24 @@ function handleAuthError(error) {
   return false;
 }
 
+function plural(count, noun) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 // ---------- Session ----------
+
+function applyUser(user) {
+  state.user = user;
+  state.advisorReady = Boolean(user && user.advisor_ready);
+  state.keySource = user ? user.key_source || null : null;
+}
 
 async function bootstrap() {
   try {
-    const health = await api.health();
-    state.llmConfigured = Boolean(health.llm_configured);
+    const session = await api.session();
+    applyUser(session.user);
   } catch {
-    state.llmConfigured = false;
-  }
-  try {
-    state.user = await api.me();
-  } catch {
-    state.user = null;
+    applyUser(null);
   }
   renderUserBar();
   if (!state.user) {
@@ -94,7 +117,7 @@ $("#login-form").addEventListener("submit", async (event) => {
   const form = new FormData(event.target);
   setError($("#login-error"), null);
   try {
-    state.user = await api.login(form.get("username"), form.get("password"));
+    applyUser(await api.login(form.get("username"), form.get("password")));
     renderUserBar();
     event.target.reset();
     await enterChat();
@@ -111,7 +134,8 @@ $("#logout-btn").addEventListener("click", async () => {
   try {
     await api.logout();
   } finally {
-    state.user = null;
+    applyUser(null);
+    state.keyInfo = null;
     sessionStorage.removeItem(CURRENT_CASE_KEY);
     resetConversation();
     renderUserBar();
@@ -122,12 +146,107 @@ $("#logout-btn").addEventListener("click", async () => {
 async function enterChat() {
   showView("chat");
   updateComposerAvailability();
+  loadKeyInfo();
   const remembered = sessionStorage.getItem(CURRENT_CASE_KEY);
   if (remembered) {
     const opened = await openCase(remembered, { silent: true });
     if (opened) return;
   }
-  startNewCase();
+  startNewCase({ fresh: false });
+}
+
+// ---------- Claude key (bring your own) ----------
+
+async function loadKeyInfo() {
+  if (!state.user) return;
+  try {
+    state.keyInfo = await api.claudeKey();
+    state.advisorReady = Boolean(state.keyInfo.advisor_ready);
+    state.keySource = state.keyInfo.source || null;
+  } catch (error) {
+    if (handleAuthError(error)) return;
+    state.keyInfo = null;
+  }
+  renderKeySection();
+  updateComposerAvailability();
+}
+
+function openActivate(options) {
+  activate.open(options);
+}
+
+function onKeyActivated(info) {
+  state.keyInfo = info;
+  state.advisorReady = Boolean(info.advisor_ready);
+  state.keySource = info.source || null;
+  renderKeySection();
+  updateComposerAvailability();
+  advisor.setState("idle");
+  advisor.bounce();
+  bubble.say(ACTIVATED, { chips: [{ label: "Add your documents with +", onClick: pickFiles }] });
+  if (!window.matchMedia("(max-width: 700px)").matches) composerInput.focus();
+}
+
+async function removeKey() {
+  const ok = window.confirm(
+    "Remove your Claude key from this server? The advisor will stop thinking for you until you add a key again. Your cases and documents stay.",
+  );
+  if (!ok) return;
+  try {
+    await api.removeClaudeKey();
+  } catch (error) {
+    if (!handleAuthError(error)) renderKeySection(error);
+    return;
+  }
+  await loadKeyInfo();
+  if (!state.advisorReady) {
+    closeDrawer();
+    sayKeyRequired();
+  } else {
+    bubble.say("Your key is removed. I'm using this server's shared key again.", {
+      chips: [{ label: "Use my own key", onClick: () => openActivate() }],
+    });
+  }
+}
+
+function renderKeySection(error) {
+  const status = $("#key-status");
+  const actions = $("#key-actions");
+  const info = state.keyInfo;
+  status.classList.remove("key-section__status--none");
+  if (!info) {
+    status.textContent = "Checking…";
+    actions.replaceChildren();
+    return;
+  }
+  const button = (label, onclick, cls = "btn btn--tiny") => el("button", { type: "button", class: cls, onclick }, label);
+  if (info.configured) {
+    status.textContent = `Key on file, ends in …${info.last4}`;
+    actions.replaceChildren(
+      button("Replace", () => openActivate({ replacing: true })),
+      button("Remove", removeKey, "btn btn--ghost btn--tiny"),
+    );
+  } else if (info.source === "shared") {
+    status.textContent = "No key of your own. Using this server's shared key.";
+    actions.replaceChildren(button("Add my own key", () => openActivate()));
+  } else {
+    status.textContent = "No key. The advisor cannot think for you yet.";
+    status.classList.add("key-section__status--none");
+    actions.replaceChildren(button("Activate", () => openActivate(), "btn btn--primary btn--tiny"));
+  }
+  const existing = $("#key-section .key-section__error");
+  if (existing) existing.remove();
+  if (error) {
+    $("#key-section").append(el("p", { class: "form-error key-section__error", role: "alert", text: error.message }));
+  }
+}
+
+function sayKeyRequired() {
+  advisor.setState("idle", { caption: "Waiting for your key" });
+  bubble.say(KEY_REQUIRED, {
+    tone: "warn",
+    chips: [{ label: "Activate the advisor", onClick: () => openActivate() }],
+  });
 }
 
 // ---------- Conversation lifecycle ----------
@@ -139,6 +258,7 @@ function resetConversation() {
   state.documents = [];
   state.uploads.clear();
   state.readyNames.clear();
+  state.announcedFailures.clear();
   state.pendingIntent = null;
   state.lastQuestion = null;
   transcript.replaceChildren();
@@ -146,22 +266,32 @@ function resetConversation() {
   updateEmptyState();
 }
 
-function startNewCase() {
+function startNewCase({ fresh = true } = {}) {
   resetConversation();
   sessionStorage.removeItem(CURRENT_CASE_KEY);
   advisor.setState("idle");
-  greet();
+  greet({ fresh });
   closeDrawer();
-  if (!window.matchMedia("(max-width: 700px)").matches) composerInput.focus();
+  if (state.advisorReady && !window.matchMedia("(max-width: 700px)").matches) composerInput.focus();
 }
 
-function greet() {
-  if (!state.llmConfigured) {
-    bubble.say(MISSING_KEY, { tone: "error" });
-    advisor.setState("error", { detail: "Model key missing" });
+function greet({ fresh = false } = {}) {
+  if (!state.advisorReady) {
+    sayKeyRequired();
     return;
   }
-  bubble.say(GREETING, { chips: [{ label: "Add your documents with +", onClick: pickFiles }] });
+  const chips = [{ label: "Add your documents with +", onClick: pickFiles }];
+  if (state.keySource === "shared") chips.push({ label: "Use my own key", onClick: () => openActivate() });
+  if (fresh) {
+    bubble.say(FRESH_CASE, { chips });
+  } else {
+    bubble.say(state.keySource === "shared" ? GREETING_SHARED : GREETING, { chips });
+  }
+}
+
+function markRestored(node) {
+  node.classList.add(node.classList.contains("reply") ? "reply--restored" : "msg--restored");
+  return node;
 }
 
 async function openCase(id, { silent = false } = {}) {
@@ -172,18 +302,18 @@ async function openCase(id, { silent = false } = {}) {
     state.matter = matter;
     state.messages = history.messages;
     sessionStorage.setItem(CURRENT_CASE_KEY, matter.id);
-    transcript.classList.add("transcript--restoring"); // restored history appears at once, no entrance animation
+    // Restored history appears at once: the class stays on each node, so
+    // the entrance animation never starts for them.
     for (const message of history.messages) {
       transcript.append(
-        message.role === "user" ? renderUserMessage(message.text) : renderReply(message, openPassage),
+        markRestored(message.role === "user" ? renderUserMessage(message.text) : renderReply(message, openPassage)),
       );
     }
-    window.setTimeout(() => transcript.classList.remove("transcript--restoring"), 50);
     applyDocuments(docs.documents, { announce: false });
     updateEmptyState();
     const lastReply = [...history.messages].reverse().find((m) => m.role === "assistant");
-    if (!state.llmConfigured) {
-      greet();
+    if (!state.advisorReady) {
+      sayKeyRequired();
     } else if (lastReply) {
       advisor.setState(lastReply.avatar_state, avatarDetail(lastReply));
       bubble.say(lastReply.bubble, { chips: chipsFor(lastReply.chips), tone: toneFor(lastReply) });
@@ -222,31 +352,51 @@ function updateEmptyState() {
 }
 
 function scrollToEnd() {
-  transcript.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "end" });
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  transcript.lastElementChild?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "end" });
 }
 
 // ---------- Sending ----------
 
+const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+// Start the job, then poll it; the bubble follows the stage the server
+// reports. Resolves with the reply, rejects with an ApiError-like object.
+async function chatWithProgress(matterId, body) {
+  const job = await api.startChatJob(matterId, body);
+  let lastStage = null;
+  for (;;) {
+    await sleep(JOB_POLL_MS);
+    const status = await api.chatJob(matterId, job.job_id);
+    if (status.stage && status.stage !== lastStage && status.status === "running") {
+      lastStage = status.stage;
+      bubble.think(STAGE_TEXT[status.stage] || "Working on it…", { pop: false });
+    }
+    if (status.status === "done") return status.reply;
+    if (status.status === "failed") {
+      const error = status.error || {};
+      throw new ApiError(0, error.code || "error", error.message || "Something went wrong.");
+    }
+  }
+}
+
 async function send(text, intent = "auto") {
   if (state.busy || !text) return;
+  if (!state.advisorReady) {
+    sayKeyRequired();
+    return;
+  }
   setError($("#composer-error"), null);
   state.busy = true;
   updateComposerAvailability();
   transcript.append(renderUserMessage(text));
   updateEmptyState();
   scrollToEnd();
-  const hasDocs = state.documents.some((d) => d.status === "ready");
-  bubble.think(
-    intent === "analyze" || (!state.messages.length && hasDocs)
-      ? "Analysing your case against your documents. This can take a few minutes."
-      : hasDocs
-        ? "Reading your documents."
-        : "Looking this up.",
-  );
+  bubble.think("Let me think about that…");
   advisor.setState("listening", { busy: true, detail: "Working" });
   try {
     const matter = await ensureMatter();
-    const reply = await api.chat(matter.id, {
+    const reply = await chatWithProgress(matter.id, {
       message: text,
       allow_web: $("#allow-web").checked,
       intent,
@@ -261,9 +411,13 @@ async function send(text, intent = "auto") {
   } catch (error) {
     if (!handleAuthError(error)) {
       transcript.append(renderErrorMessage(error.message));
-      if (error.code === "llm_unavailable") {
-        bubble.say(MISSING_KEY, { tone: "error" });
-        advisor.setState("error", { detail: "Model not configured or unreachable" });
+      if (error.code === "claude_key_required") {
+        state.advisorReady = false;
+        loadKeyInfo();
+        sayKeyRequired();
+      } else if (error.code === "llm_unavailable") {
+        bubble.say("Claude did not answer just now. Please try again in a moment.", { tone: "error" });
+        advisor.setState("error", { detail: "Model not reachable" });
       } else {
         bubble.say("Something went wrong. Please try again.", { tone: "error" });
         advisor.setState("error");
@@ -286,17 +440,17 @@ function toneFor(reply) {
 function avatarDetail(reply) {
   if (reply.analysis) {
     const unverified = reply.analysis.issues.filter((i) => i.unverified).length;
-    if (reply.avatar_state === "unverified") return { detail: `${unverified} issue${unverified === 1 ? "" : "s"} flagged` };
+    if (reply.avatar_state === "unverified") return { detail: `${plural(unverified, "issue")} flagged` };
     if (reply.avatar_state === "verified_source") {
-      return { detail: `${reply.analysis.issues.length} issue${reply.analysis.issues.length === 1 ? "" : "s"} analysed` };
+      return { detail: `${plural(reply.analysis.issues.length, "issue")} analysed` };
     }
     return {};
   }
   const answer = reply.answer || {};
   const n = (reply.citations || []).length;
   if (reply.avatar_state === "unverified") return { detail: `Not retrieved: ${(answer.unsupported_citations || []).join(", ")}` };
-  if (reply.avatar_state === "verified_source") return { detail: `${n} citation${n === 1 ? "" : "s"} resolved` };
-  if (reply.avatar_state === "web_source") return { detail: `${n} web source${n === 1 ? "" : "s"}` };
+  if (reply.avatar_state === "verified_source") return { detail: `${plural(n, "citation")} resolved` };
+  if (reply.avatar_state === "web_source") return { detail: `${plural(n, "web source")}` };
   return {};
 }
 
@@ -336,14 +490,21 @@ function analyseNow() {
 
 // ---------- Composer ----------
 
+const DEFAULT_PLACEHOLDER = composerInput.placeholder;
+
 function updateComposerAvailability() {
-  const canSend = state.llmConfigured && !state.busy;
-  $("#composer-send").disabled = !canSend;
-  composerInput.disabled = !state.llmConfigured;
-  // The + button stays enabled: uploads work without a model key and while thinking.
-  $("#composer-hint").textContent = state.llmConfigured
+  const ready = state.advisorReady;
+  $("#composer-send").disabled = !ready || state.busy;
+  composerInput.disabled = !ready;
+  composerInput.placeholder = ready
+    ? window.matchMedia("(max-width: 480px)").matches
+      ? "Your case or a question"
+      : DEFAULT_PLACEHOLDER
+    : "Activate the advisor to start";
+  // The + button stays enabled: uploads work without a key and while thinking.
+  $("#composer-hint").textContent = ready
     ? "Enter to send, Shift+Enter for a new line."
-    : "Answers are off until the server has a Claude API key. You can still add documents.";
+    : "Add your Claude key to start. You can already add documents.";
 }
 
 function autosize() {
@@ -352,8 +513,6 @@ function autosize() {
 }
 
 composerInput.addEventListener("input", autosize);
-// A one-line placeholder on narrow screens; the aria-label keeps the full wording.
-if (window.matchMedia("(max-width: 480px)").matches) composerInput.placeholder = "Your case or a question";
 composerInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
     event.preventDefault();
@@ -380,12 +539,21 @@ composer.addEventListener("submit", (event) => {
   send(text, intent);
 });
 
+$("#allow-web").addEventListener("change", (event) => {
+  if (state.busy) return; // do not talk over the stage narration
+  if (event.target.checked) {
+    bubble.say("I'll also check official websites, and label anything from them.");
+  } else {
+    bubble.say("I'll stick to your documents.");
+  }
+});
+
 // ---------- Documents ----------
 
 function pickFiles() {
   if (state.matter?.read_only) {
     bubble.say("This shared library is read-only. Start a new case to add your own documents.", {
-      chips: [{ label: "Start a new case", onClick: startNewCase }],
+      chips: [{ label: "Start a new case", onClick: () => startNewCase() }],
     });
     return;
   }
@@ -404,7 +572,7 @@ $("#file-input").addEventListener("change", async (event) => {
     handleAuthError(error) || setError($("#composer-error"), error);
     return;
   }
-  bubble.think(`Adding ${files.length === 1 ? "your document" : `${files.length} documents`}.`);
+  bubble.think(`Got it, I'll read ${files.length === 1 ? files[0].name : plural(files.length, "document")}`);
   advisor.setState("listening", { busy: true, detail: "Receiving documents" });
   await Promise.all(files.map(uploadOne));
   await loadDocuments();
@@ -420,6 +588,10 @@ async function uploadOne(file) {
   } catch (error) {
     if (handleAuthError(error)) return;
     state.uploads.set(name, { status: "failed", error: error.message });
+    if (!state.announcedFailures.has(name)) {
+      state.announcedFailures.add(name);
+      bubble.say(`I couldn't take ${name}: ${error.message}`, { tone: "warn" });
+    }
   }
   renderFileChips();
 }
@@ -434,38 +606,52 @@ async function loadDocuments() {
   }
 }
 
+// One sentence per event: a document read, a document that failed, and, when
+// nothing is left processing, the offer to analyse.
 function applyDocuments(documents, { announce }) {
   const before = new Set(state.readyNames);
   state.documents = documents;
   for (const doc of documents) if (doc.status === "ready") state.readyNames.add(doc.name);
   renderFileChips();
   const busy = documents.some((d) => d.status === "queued" || d.status === "processing");
+  const newlyReady = documents.filter((d) => d.status === "ready" && !before.has(d.name));
+  const newlyFailed = documents.filter((d) => d.status === "failed" && !state.announcedFailures.has(d.name));
+  for (const doc of newlyFailed) state.announcedFailures.add(doc.name);
+
+  if (announce && !state.busy) {
+    if (newlyFailed.length) {
+      advisor.setState("no_results", { detail: "Could not read a document" });
+      const reason = newlyFailed[0].error || "I could not read it. Try a PDF or DOCX with selectable text.";
+      bubble.say(
+        newlyFailed.length === 1
+          ? `I couldn't read ${newlyFailed[0].name}. ${reason}`
+          : `I couldn't read ${plural(newlyFailed.length, "document")}. ${reason}`,
+        { tone: "warn" },
+      );
+    } else if (newlyReady.length) {
+      const read = newlyReady.length === 1 ? `I've read ${newlyReady[0].name}` : `I've read ${plural(newlyReady.length, "document")}`;
+      if (busy) {
+        bubble.think(`${read}. Still reading the rest…`, { pop: false });
+      } else if (state.advisorReady) {
+        advisor.setState("idle");
+        bubble.say(`${read}. Shall I analyse your case now?`, {
+          chips: [{ label: "Analyse my case now", onClick: analyseNow }],
+        });
+      } else {
+        advisor.setState("idle", { caption: "Waiting for your key" });
+        bubble.say(`${read}. ${KEY_REQUIRED}`, {
+          tone: "warn",
+          chips: [{ label: "Activate the advisor", onClick: () => openActivate() }],
+        });
+      }
+    }
+  }
   if (busy) {
     schedulePoll();
     return;
   }
   stopPolling();
-  if (!announce) return;
-  const newlyReady = documents.filter((d) => d.status === "ready" && !before.has(d.name));
-  const failed = documents.filter((d) => d.status === "failed");
-  if (newlyReady.length && state.llmConfigured) {
-    advisor.setState("idle");
-    bubble.say(
-      `${newlyReady.length === 1 ? "Your document is" : `${newlyReady.length} documents are`} ready.` +
-        (failed.length ? ` ${failed.length} could not be read.` : "") +
-        " Shall I analyse your case now?",
-      { chips: [{ label: "Analyse my case now", onClick: analyseNow }] },
-    );
-  } else if (newlyReady.length) {
-    advisor.setState("error", { detail: "Model key missing" });
-    bubble.say(`${newlyReady.length === 1 ? "Your document is" : "Your documents are"} ready. ${MISSING_KEY}`, {
-      tone: "error",
-    });
-  } else if (failed.length) {
-    advisor.setState("no_results");
-    bubble.say("I could not read that document. Try a PDF or DOCX with selectable text.", { tone: "warn" });
-  }
-  loadCases();
+  if (announce && (newlyReady.length || newlyFailed.length)) loadCases();
 }
 
 function schedulePoll() {
@@ -528,6 +714,7 @@ async function removeDocument(name) {
   try {
     await api.removeDocument(state.matter.id, name);
     state.readyNames.delete(name);
+    state.announcedFailures.delete(name);
     await loadDocuments();
   } catch (error) {
     handleAuthError(error) || setError($("#composer-error"), error);
@@ -544,6 +731,7 @@ function openDrawer() {
   scrim.hidden = false;
   $("#drawer-toggle").setAttribute("aria-expanded", "true");
   loadCases();
+  loadKeyInfo();
   $("#new-case").focus();
 }
 
@@ -563,7 +751,7 @@ document.addEventListener("keydown", (event) => {
     $("#drawer-toggle").focus();
   }
 });
-$("#new-case").addEventListener("click", startNewCase);
+$("#new-case").addEventListener("click", () => startNewCase());
 
 async function loadCases() {
   if (!state.user) return;
@@ -586,9 +774,7 @@ async function loadCases() {
               el("span", { class: "case__title", text: m.title || "Untitled case" }),
               el("span", {
                 class: "case__meta",
-                text: `${m.document_count} document${m.document_count === 1 ? "" : "s"}${
-                  m.read_only ? " · shared, read-only" : ""
-                }`,
+                text: `${plural(m.document_count, "document")}${m.read_only ? " · shared, read-only" : ""}`,
               }),
             ],
           ),

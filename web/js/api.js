@@ -46,7 +46,14 @@ async function request(method, path, { json, form } = {}) {
 
 export const api = {
   health: () => request("GET", "/api/health"),
+  // 200 with { user: null } when logged out, so page load never logs a 401.
+  session: () => request("GET", "/api/session"),
   me: () => request("GET", "/api/me"),
+  // Bring-your-own Claude key. The key is sent once, over the same origin,
+  // and never comes back: the server returns only `last4`.
+  claudeKey: () => request("GET", "/api/me/claude-key"),
+  saveClaudeKey: (apiKey) => request("PUT", "/api/me/claude-key", { json: { api_key: apiKey } }),
+  removeClaudeKey: () => request("DELETE", "/api/me/claude-key"),
   login: (username, password) => request("POST", "/api/auth/login", { json: { username, password } }),
   logout: () => request("POST", "/api/auth/logout"),
   matters: () => request("GET", "/api/matters"),
@@ -66,4 +73,9 @@ export const api = {
   analyze: (id, body) => request("POST", `/api/matters/${encodeURIComponent(id)}/analyze`, { json: body }),
   chat: (id, body) => request("POST", `/api/matters/${encodeURIComponent(id)}/chat`, { json: body }),
   chatHistory: (id) => request("GET", `/api/matters/${encodeURIComponent(id)}/chat`),
+  // Background form of chat: start, then poll for the stage and the reply.
+  startChatJob: (id, body) =>
+    request("POST", `/api/matters/${encodeURIComponent(id)}/chat/jobs`, { json: body }),
+  chatJob: (id, jobId) =>
+    request("GET", `/api/matters/${encodeURIComponent(id)}/chat/jobs/${encodeURIComponent(jobId)}`),
 };
