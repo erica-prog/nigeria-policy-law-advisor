@@ -14,10 +14,12 @@ Every non-2xx response has exactly this shape:
 
 Codes: `unauthenticated` (401), `invalid_credentials` (401), `matter_not_found` (404),
 `document_not_found` (404), `not_found` (404), `matter_read_only` (403),
-`matter_exists` (409), `unsupported_document` (415), `upload_too_large` (413),
-`validation_error` (422, adds `details: [{loc, msg}]`), `llm_unavailable` (503),
-`internal_error` (500). `message` is written by the server and never contains exception
-text, file paths or secrets.
+`claude_key_required` (403), `matter_exists` (409), `unsupported_document` (415),
+`upload_too_large` (413), `validation_error` (422, adds `details: [{loc, msg}]`),
+`invalid_api_key` (400), `rate_limited` (429), `anthropic_unreachable` (502),
+`llm_unavailable` (503), `server_not_configured` (503), `internal_error` (500).
+`message` is written by the server and never contains exception text, file paths or
+secrets; in particular no response, log line or error ever contains an API key.
 
 ## Source reference (citation) schema
 
@@ -57,16 +59,49 @@ for that request. Unresolved locators appear in `unsupported_citations` and set
 
 ### Health and identity
 
-- `GET /api/health` -> `{ "status": "ok", "llm_configured": true }`. No auth.
-- `GET /api/me` -> `{ "username": "jdoe", "display_name": "Jane Doe" }`.
+- `GET /api/health` -> `{ "status": "ok", "llm_configured": true, "shared_key_allowed": false }`.
+  No auth. `llm_configured` is the server-level view (is a key in `.env` at all);
+  `shared_key_allowed` mirrors `ALLOW_SHARED_ANTHROPIC_KEY`. Whether a particular user
+  can get answers is on `/api/me`.
+- `GET /api/me` -> `User = { "username": "jdoe", "display_name": "Jane Doe",
+  "advisor_ready": true, "key_source": "user" | "shared" | null }`. `advisor_ready` is
+  true when a key can be resolved for this user (revision 3); `key_source` says whose.
+- `GET /api/session` -> `{ "user": User | null }`. Always `200`, with or without a valid
+  cookie, so the client can bootstrap without a 401 in the browser console. No auth.
 
 ### Auth
 
 - `POST /api/auth/login` `{ "username": "jdoe", "password": "..." }` ->
-  `200 { "username", "display_name" }` and sets the cookie. Wrong or unknown
+  `200 User` and sets the cookie. Wrong or unknown
   credentials -> `401 invalid_credentials` (same response for both).
 - `POST /api/auth/logout` -> `204`, clears the cookie.
 - Sign-up and password reset are not exposed in v1. Use `scripts/add_user.py`.
+
+### Claude key (revision 3, bring your own key)
+
+Each user pays Anthropic for their own questions. The key is stored encrypted at rest
+on the server and is never returned, logged or echoed in an error; only its last four
+characters are ever shown.
+
+- `GET /api/me/claude-key` -> `ClaudeKey = { "configured": false, "last4": null,
+  "source": "user" | "shared" | null, "advisor_ready": false }`. `configured` means this
+  user has a key on file; `source` is whose key the advisor would use right now
+  (`shared` only when the server allows its own key to be shared and the user has none).
+- `PUT /api/me/claude-key` `{ "api_key": "sk-ant-..." }` -> `200 ClaudeKey`. The server
+  checks the format (starts with `sk-ant-`, no whitespace, plausible length), then
+  verifies the key with the cheapest real Anthropic call (`models.list(limit=1)`) before
+  storing it. `400 invalid_api_key` when the format is wrong or Anthropic rejects it,
+  `502 anthropic_unreachable` when Anthropic could not be reached (the key is not
+  stored), `429 rate_limited` after 5 attempts per user per minute,
+  `503 server_not_configured` if `AUTH_COOKIE_KEY` is still the insecure default (keys
+  are encrypted with a key derived from it, so the server refuses to store anything).
+- `DELETE /api/me/claude-key` -> `204`, idempotent.
+
+Ask, analyze and chat use, in this order: the user's own key; the server's `.env` key
+if `ALLOW_SHARED_ANTHROPIC_KEY=true`; otherwise they fail with `403 claude_key_required`
+(a permission problem for this user, not a server outage, hence not 503). Uploads and
+history keep working without a key; ingestion-time translation uses the resolved key
+and is skipped when there is none.
 
 ### Matters
 
@@ -130,7 +165,8 @@ Response `200`:
   answers these have `kind: "web"`.
 - `retrieved`: every passage shown to the model, so the client can list "passages
   consulted". Empty for `web` and `none`.
-- `503 llm_unavailable` when no model key is configured or the model call failed.
+- `403 claude_key_required` when no key can be resolved for this user (see *Claude
+  key*); `503 llm_unavailable` when the model call itself failed.
 
 ### Analyze
 
@@ -215,7 +251,8 @@ Response `200 ChatReply`:
   decides what each does (run analysis, open the file picker, resend with `allow_web`,
   focus the composer). Labels are display text only.
 - Errors as for ask/analyze: `404 matter_not_found` (ownership is checked before any
-  document listing or retrieval), `503 llm_unavailable`, `422 validation_error`.
+  document listing or retrieval), `403 claude_key_required`, `503 llm_unavailable`,
+  `422 validation_error`.
 
 Side effects for owned matters: the user message and the reply are appended to the
 matter's conversation; `updated_at` is set; if the matter has no `title` and this is
@@ -231,6 +268,36 @@ word boundary with `…`. Nothing is stored for the shared read-only library.
 ```
 
 Empty `messages` for the shared library.
+
+### Chat jobs (revision 3, live progress)
+
+`POST .../chat` stays synchronous. The browser client uses the job form instead so the
+speech bubble can narrate what the advisor is doing. Same request body, same routing,
+same side effects.
+
+- `POST /api/matters/{id}/chat/jobs` (body as for chat) -> `202 ChatJob` with
+  `status: "queued"`. The key check (`403 claude_key_required`) happens before the job
+  is created.
+- `GET /api/matters/{id}/chat/jobs/{job_id}` -> `200 ChatJob`. The job must belong to
+  this matter **and** to the logged-in user; anything else is `404 not_found` (a job id
+  is never confirmed to exist for someone else, and the shared library's jobs are still
+  per user). Finished jobs are kept for 15 minutes.
+
+```json
+{ "job_id": "8f0e...", "status": "queued" | "running" | "done" | "failed",
+  "stage": "reading_documents" | "searching_web" | "checking_citations" | "writing" | null,
+  "stages": ["reading_documents", "writing", "checking_citations", "writing"],
+  "reply": ChatReply | null,
+  "error": { "code": "llm_unavailable", "message": "..." } | null }
+```
+
+- `stage` is the current stage while `running`; `stages` is the sequence so far, in
+  order, emitted by the pipeline where the work actually happens (retrieval, the web
+  fallback, the model call, the faithfulness/judge checks). Analysis emits them per
+  issue, so the same stage may repeat.
+- Exactly one of `reply` (`done`) and `error` (`failed`) is set. `error` uses the error
+  codes above; internal failures are `internal_error` with a generic message.
+- Clients poll about every 700 ms.
 
 ## Avatar state
 
@@ -258,3 +325,10 @@ bump; removing or renaming a field requires `/api/v2` and a note here.
 Revision 2 (chat-first client) was additive only: `Matter.title/created_at/updated_at`,
 optional `MatterCreate.id/title`, and the `chat` endpoints. No field was removed or
 renamed.
+
+Revision 3 (bring-your-own key, live progress) is additive as well: `User.advisor_ready`
+and `key_source`, `Health.shared_key_allowed`, `GET /api/session`, the
+`/api/me/claude-key` endpoints, and the `chat/jobs` endpoints. One **behaviour** change
+is deliberate and flagged: ask, analyze and chat now answer `403 claude_key_required`
+instead of `503 llm_unavailable` when the caller has no usable key; `503` remains the
+code for a failed model call.
