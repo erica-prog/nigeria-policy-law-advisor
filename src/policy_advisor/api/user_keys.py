@@ -33,6 +33,9 @@ from filelock import FileLock
 from policy_advisor import config
 from policy_advisor.api.errors import ApiError
 from policy_advisor.config import get_settings
+from policy_advisor.logging_utils import get_logger, log_event
+
+logger = get_logger(__name__)
 
 KeySource = Literal["user", "shared"]
 
@@ -183,6 +186,17 @@ def verify_key_with_anthropic(api_key: str) -> None:
         # key itself is fine.
         return
     except (anthropic.APIConnectionError, anthropic.APIStatusError) as exc:
+        # The browser only gets the generic message, so the operator needs the
+        # real cause here. Neither the class, the status nor the root cause
+        # carries the key.
+        root = exc.__cause__ or exc.__context__
+        log_event(
+            logger,
+            "claude_key_check_failed",
+            error=type(exc).__name__,
+            status=getattr(exc, "status_code", None),
+            cause=f"{type(root).__name__}: {root}"[:300] if root else None,
+        )
         raise ApiError(502, "anthropic_unreachable", UNREACHABLE_MESSAGE) from exc
 
 
