@@ -1,0 +1,316 @@
+"""Chat: one endpoint behind the chat-first client. The server decides
+whether a message is a case description (case analysis), a question about
+the documents (RAG answer), or, when the matter has no documents, general
+legal research from official web sources that is labelled as such and never
+presented as evidence (AGENTS.md rules 4 and 5).
+
+Depends on `Matter`, so ownership is verified before any document listing,
+retrieval or generation (rule 1). The ask/analyze endpoints in advice.py stay
+as they are; this module composes them."""
+
+from fastapi import APIRouter, status
+
+from policy_advisor.api.conversations import (
+    append_messages,
+    derive_title,
+    first_user_message,
+    has_analysis,
+    load_messages,
+    new_message_id,
+    now_iso,
+)
+from policy_advisor.api.deps import ChatJobs, CurrentUser, Jobs, Matter, MatterAccess, Services
+from policy_advisor.api.jobs import JobTable
+from policy_advisor.api.errors import ApiError
+from policy_advisor.api.routers.advice import require_key, run_analyze, run_ask
+from policy_advisor.api.schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    AskRequest,
+    AskResponse,
+    ChatHistory,
+    ChatIntent,
+    ChatJobOut,
+    ChatMode,
+    ChatReply,
+    ChatRequest,
+    Chip,
+    UserMessage,
+)
+from policy_advisor.api.services import AdvisorServices
+from policy_advisor.ingestion.matter_store import (
+    get_matter_meta,
+    list_documents,
+    update_matter_meta,
+)
+from policy_advisor.logging_utils import log_event
+
+router = APIRouter(prefix="/api/matters/{matter_id}", tags=["chat"])
+
+RESEARCH_NOTICE = (
+    "This is general legal research from official web sources and the model, not evidence "
+    "from your documents. Nothing here proves a fact of your case. Add your documents with + "
+    "for an analysis based on them."
+)
+WEB_NOTICE = (
+    "Your documents do not cover this, so the answer comes from official websites. It is "
+    "legal authority at best and cannot replace missing case evidence."
+)
+
+CHIP_ANALYZE = Chip(label="Analyse my case now", action="analyze")
+CHIP_ADD_DOCS = Chip(label="Add your documents with +", action="add_documents")
+CHIP_ASK_WEB = Chip(label="Also search official web sources", action="ask_web")
+CHIP_ASK = Chip(label="Ask a follow-up question", action="ask")
+
+
+def decide_mode(
+    intent: ChatIntent, history: list, has_documents: bool, read_only: bool
+) -> ChatMode:
+    """Analysis when the user asked for it, or for the first message of a
+    conversation that has not been analysed yet. The shared read-only library
+    is not anyone's case, so its first message is treated as a question."""
+    wants_analysis = intent == "analyze" or (
+        intent == "auto"
+        and not read_only
+        and not has_analysis(history)
+        and first_user_message(history) is None
+    )
+    if not wants_analysis:
+        return "question"
+    return "analysis" if has_documents else "research"
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}{'' if count == 1 else 's'}"
+
+
+def bubble_for_answer(
+    answer: AskResponse, mode: ChatMode, allow_web: bool
+) -> tuple[str, list[Chip]]:
+    if mode == "research":
+        if answer.source == "web":
+            return (
+                "There are no documents in this case yet, so this is general legal research "
+                "from official web sources, not evidence from your case. Add your documents "
+                "with + and I will analyse them.",
+                [CHIP_ADD_DOCS],
+            )
+        return (
+            "There are no documents in this case yet, and I did not find anything relevant on "
+            "the official web sources either. Add your documents with + and I will analyse them.",
+            [CHIP_ADD_DOCS],
+        )
+    if answer.source == "web":
+        return (
+            "Your documents do not cover this, so this comes from official websites. It is legal "
+            "authority, not evidence from your case.",
+            [CHIP_ASK],
+        )
+    if answer.source == "none":
+        chips = [CHIP_ASK] if allow_web else [CHIP_ASK_WEB]
+        return ("I could not find that in your documents.", chips)
+    if not answer.faithful:
+        return (
+            "I found an answer, but "
+            f"{_plural(len(answer.unsupported_citations), 'citation')} did not check out. "
+            "Read it with care.",
+            [CHIP_ASK],
+        )
+    return (
+        f"Here is what your documents say, with {_plural(len(answer.citations), 'citation')} "
+        "you can open.",
+        [CHIP_ASK],
+    )
+
+
+def bubble_for_analysis(analysis: AnalyzeResponse) -> tuple[str, list[Chip]]:
+    issues = len(analysis.issues)
+    missing = len(analysis.missing_evidence)
+    unverified = sum(1 for issue in analysis.issues if issue.unverified)
+    if analysis.avatar_state == "no_results":
+        return (
+            "I read your documents but found nothing that supports "
+            f"{'the issue' if issues == 1 else 'these issues'}. The gaps are listed below; "
+            "you may need to add more documents.",
+            [CHIP_ADD_DOCS, CHIP_ASK],
+        )
+    text = f"I have analysed your case: {_plural(issues, 'issue')}"
+    if missing:
+        text += f", {missing} without support in your documents"
+    text += ". The details are below."
+    if unverified:
+        text += f" {_plural(unverified, 'citation')} could not be verified; treat those parts with care."
+    chips = [CHIP_ASK]
+    if missing:
+        chips.insert(0, CHIP_ADD_DOCS)
+    return text, chips
+
+
+@router.get("/chat", response_model=ChatHistory)
+def chat_history(matter: Matter) -> ChatHistory:
+    messages = [] if matter.read_only else load_messages(matter.id)
+    return ChatHistory(
+        title=get_matter_meta(matter.id).get("title"),
+        has_analysis=has_analysis(messages),
+        messages=messages,
+    )
+
+
+@router.post("/chat", response_model=ChatReply)
+def chat(
+    body: ChatRequest, matter: Matter, services: Services, user: CurrentUser, jobs: Jobs
+) -> ChatReply:
+    """Synchronous form: the reply in one response. The client uses the job
+    form below so it can narrate progress; this stays for scripts and tests."""
+    return run_chat(body, matter, services, require_key(user), jobs)
+
+
+@router.post("/chat/jobs", response_model=ChatJobOut, status_code=status.HTTP_202_ACCEPTED)
+def start_chat_job(
+    body: ChatRequest,
+    matter: Matter,
+    services: Services,
+    user: CurrentUser,
+    jobs: Jobs,
+    chat_jobs: ChatJobs,
+) -> ChatJobOut:
+    """Same routing and side effects as POST /chat, run in a worker thread.
+    Ownership and the key check happen here, before the job exists."""
+    api_key = require_key(user)
+    job = chat_jobs.submit(
+        matter.id,
+        user.username,
+        lambda: run_chat(body, matter, services, api_key, jobs),
+        logger=services.logger,
+    )
+    return job.to_out()
+
+
+@router.get("/chat/jobs/{job_id}", response_model=ChatJobOut)
+def chat_job_status(job_id: str, matter: Matter, user: CurrentUser, jobs: ChatJobs) -> ChatJobOut:
+    # `matter` has already passed the ownership check; the job must also be
+    # this user's on this matter, otherwise it does not exist as far as the
+    # caller is concerned.
+    job = jobs.get(job_id, matter.id, user.username)
+    if job is None:
+        raise ApiError(404, "not_found", "Not found.")
+    return job.to_out()
+
+
+def _documents_still_being_read(jobs: JobTable | None, matter_id: str) -> list[str]:
+    """Names of uploads that are queued or processing and so not searchable yet."""
+    if jobs is None:
+        return []
+    return [
+        name
+        for name, job in jobs.latest_for_matter(matter_id).items()
+        if job.status in ("queued", "processing")
+    ]
+
+
+def _still_reading_reply(names: list[str]) -> tuple[AskResponse, str]:
+    shown = ", ".join(names[:3])
+    if len(names) > 3:
+        shown += f" and {len(names) - 3} more"
+    sentence = f"I'm still reading {shown}. Ask me again in a moment and I will answer from it."
+    answer = AskResponse(
+        answer=sentence,
+        source="none",
+        faithful=True,
+        avatar_state="listening",
+    )
+    return answer, f"I'm still reading {shown}."
+
+
+def run_chat(
+    body: ChatRequest,
+    matter: MatterAccess,
+    services: AdvisorServices,
+    api_key: str,
+    jobs: JobTable | None = None,
+) -> ChatReply:
+    persist = not matter.read_only
+    history = load_messages(matter.id) if persist else []
+    documents = list_documents(matter.id)
+    pending = _documents_still_being_read(jobs, matter.id)
+    mode = decide_mode(body.intent, history, bool(documents), matter.read_only)
+
+    user_message = UserMessage(id=new_message_id(), text=body.message, created_at=now_iso())
+    answer: AskResponse | None = None
+    analysis: AnalyzeResponse | None = None
+    notice: str | None = None
+
+    # Nothing is searchable yet, but an upload is in flight. Say so instead of
+    # answering "there are no documents" or spending a model call on a guess.
+    if pending and not documents:
+        answer, bubble = _still_reading_reply(pending)
+        chips: list[Chip] = []
+        mode = "question"
+        avatar_state = answer.avatar_state
+        citations = answer.citations
+    elif mode == "analysis":
+        analysis = run_analyze(
+            AnalyzeRequest(
+                case_facts=body.message, jurisdiction=body.jurisdiction, language=body.language
+            ),
+            matter,
+            services,
+            api_key,
+        )
+        bubble, chips = bubble_for_analysis(analysis)
+        avatar_state = analysis.avatar_state
+        citations = analysis.citations
+    else:
+        # Research mode has no documents to retrieve from, so the web fallback is
+        # forced on; the reply is labelled as research, never as evidence.
+        allow_web = True if mode == "research" else body.allow_web
+        answer = run_ask(
+            AskRequest(
+                question=body.message,
+                allow_web=allow_web,
+                jurisdiction=body.jurisdiction,
+                language=body.language,
+            ),
+            matter,
+            services,
+            api_key,
+        )
+        bubble, chips = bubble_for_answer(answer, mode, allow_web)
+        avatar_state = answer.avatar_state
+        citations = answer.citations
+        if mode == "research":
+            notice = RESEARCH_NOTICE
+        elif answer.source == "web":
+            notice = WEB_NOTICE
+
+    reply = ChatReply(
+        id=new_message_id(),
+        created_at=now_iso(),
+        mode=mode,
+        bubble=bubble,
+        notice=notice,
+        avatar_state=avatar_state,
+        citations=citations,
+        answer=answer,
+        analysis=analysis,
+        chips=chips,
+    )
+
+    if persist:
+        meta = get_matter_meta(matter.id)
+        fields: dict[str, str | None] = {"updated_at": reply.created_at}
+        if not meta.get("title") and first_user_message(history) is None:
+            fields["title"] = derive_title(body.message)
+        update_matter_meta(matter.id, **fields)
+        append_messages(matter.id, user_message, reply)
+
+    log_event(
+        services.logger,
+        "chat_replied",
+        matter_id=matter.id,
+        mode=mode,
+        intent=body.intent,
+        avatar_state=avatar_state,
+        document_count=len(documents),
+    )
+    return reply

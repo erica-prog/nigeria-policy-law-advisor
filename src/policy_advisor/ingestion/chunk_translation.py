@@ -5,6 +5,7 @@ runs once at ingestion, like embedding, never per query."""
 
 from dataclasses import replace
 
+from policy_advisor.config import get_settings
 from policy_advisor.ingestion.chunk import Chunk
 from policy_advisor.ingestion.language_detect import detect_language
 from policy_advisor.ingestion.translate import get_translation_llm, translate_text
@@ -16,15 +17,27 @@ logger = get_logger(__name__)
 _OTHER_LANGUAGE = {"en": "fr", "fr": "en"}
 
 
-def translate_chunks(chunks: list[Chunk]) -> list[Chunk]:
+def translate_chunks(
+    chunks: list[Chunk], api_key: str | None = None, translate: bool | None = None
+) -> list[Chunk]:
     """Detects each chunk's language and translates it into the other of the
     two supported languages (English<->French), regardless of any matter's
     current conversational-language setting - ingestion happens once and is
-    decoupled from a session preference that can change later."""
+    decoupled from a session preference that can change later.
+
+    `api_key` overrides the server key (the web API passes the uploading
+    user's own key). `translate` overrides TRANSLATE_ON_INGEST for this call:
+    the web API passes False when the user has no usable key, so the upload
+    still succeeds (detection only) without spending the server's key."""
     if not chunks:
         return chunks
+    enabled = get_settings().translate_on_ingest if translate is None else translate
+    if not enabled:
+        # Offline/dev mode (TRANSLATE_ON_INGEST=false): keep language detection,
+        # skip the Claude round-trips. Original text is untouched either way.
+        return [replace(chunk, language=detect_language(chunk.text)) for chunk in chunks]
 
-    llm = get_translation_llm()
+    llm = get_translation_llm(api_key=api_key)
     translated_chunks = []
     for chunk in chunks:
         language = detect_language(chunk.text)

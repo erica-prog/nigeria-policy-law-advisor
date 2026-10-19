@@ -1,0 +1,63 @@
+# 00 — Overview
+
+## What this project is
+A **production-grade Retrieval-Augmented Generation (RAG) agent** that acts as
+a law and policy advisor. The end user is a **practicing lawyer**, not a
+developer — they will judge the tool by whether its answers are accurate,
+well-cited, and trustworthy enough to rely on professionally.
+
+The current source corpus (`data/`) is Nigerian civil procedure material:
+
+- `FHC Civil Procedure Rules.pdf` — Federal High Court rules
+- `Lagos-State-Magistrates-Courts-Civil-Procedure-Rules-2009.pdf`
+- `Meta v NDPC Terms & Consent Judgment.pdf` — a judgment/case file
+
+That mix (statutory rules + case law) matters: rules documents are structured
+and numbered (Order, Rule, sub-rule), while judgments are narrative and cite
+other authorities. Your retrieval and chunking strategy has to handle both
+(see [03-data-and-retrieval.md](03-data-and-retrieval.md)).
+
+## What "production-ready" means here
+Not "it runs on my machine." Specifically:
+
+1. **Grounded answers** — every substantive claim traces back to a retrieved
+   passage with a citation the lawyer can verify (section, rule number, page).
+2. **Known failure modes** — when the corpus doesn't contain the answer, the
+   agent says so instead of guessing. Silent hallucination is the single
+   biggest risk in a legal-advice tool.
+3. **Evaluated, not assumed** — retrieval quality and answer faithfulness are
+   measured against a curated test set, not eyeballed.
+4. **Secrets and errors handled like production code** — no API keys in
+   source, no unhandled promise rejections, no bare `except:`/`catch {}`.
+5. **Observable** — you can answer "why did it retrieve this?" and "why did
+   this query cost $X / take Ys?" after the fact, from logs/traces.
+
+## Stack recap
+| Layer | Tool | Role |
+|---|---|---|
+| Reasoning/generation | Claude API | Final answer synthesis, citation discipline |
+| Orchestration | LangChain | Chaining retrieval → context assembly → generation |
+| Embeddings/models | Hugging Face | Vectorizing chunks and queries |
+| Tool/context integration | MCP | Exposes retrieval and document tools to Claude in a standard way |
+| Languages | Python + TypeScript | Python for ingestion/retrieval pipeline, TS likely for an MCP server or API layer |
+| Env/deps | `uv` | Python environment management |
+| Config/secrets | `.env` | Keys, endpoints, tunables — never committed |
+
+## Document map
+- [01-architecture.md](01-architecture.md) — system components and data flow
+- [02-environment-setup.md](02-environment-setup.md) — `uv`, `.env`, TS tooling
+- [03-data-and-retrieval.md](03-data-and-retrieval.md) — chunking, embeddings, retrieval quality
+- [04-mcp-integration.md](04-mcp-integration.md) — MCP concepts and tool design
+- [05-typescript-guide.md](05-typescript-guide.md) — TS concepts as they'll appear in this project
+- [06-production.md](06-production.md) — eval, error handling, observability, secrets
+- [11-web-search-and-usage-limits.md](11-web-search-and-usage-limits.md) — why the web-search fallback and account rate limits behave the way they do, traced against the actual code
+- [12-voice-web-app-architecture.md](12-voice-web-app-architecture.md) — the spoken cartoon-advisor interface: client/server boundary, HTTP surface, auth refactor, latency budget
+- [13-voice-pipeline.md](13-voice-pipeline.md) — speech-to-text and text-to-speech, and the confidentiality and mis-transcription risks voice introduces
+- [14-cartoon-avatar-frontend.md](14-cartoon-avatar-frontend.md) — the avatar as a trust-state indicator, lip-sync, and the browser TypeScript
+
+## Explicitly out of scope (for now)
+- Generating the full codebase
+- Deployment infrastructure choices beyond what's needed to explain the architecture
+
+These docs tell you **how** to build each piece and **why**, not a finished
+implementation. Ask explicitly when you want code.
