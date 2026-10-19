@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <title>Law &amp; Policy Advisor</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/avatar/advisor-idle.png" type="image/png" />
+</head>
+<body>
+  <header class="topbar">
+    <button class="topbar__menu" id="drawer-toggle" type="button" aria-expanded="false"
+            aria-controls="drawer" hidden>
+      <span aria-hidden="true">☰</span> Your cases
+    </button>
+    <a class="brand" href="/">
+      <span class="brand__mark" aria-hidden="true">⚖</span>
+      <span class="brand__text">Law &amp; Policy Advisor</span>
+    </a>
+    <div class="topbar__right" id="topbar-user" hidden>
+      <span class="topbar__name" id="user-name"></span>
+      <button class="btn btn--ghost btn--tiny" id="logout-btn" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- Login: one friendly card with the character -->
+    <section class="view view--center" id="view-login" hidden>
+      <form class="card login" id="login-form" autocomplete="on">
+        <div class="login__character" aria-hidden="true">
+          <div class="advisor__frame advisor__frame--static">
+            <img alt="" src="/avatar/advisor-idle.png" decoding="async" />
+          </div>
+        </div>
+        <h1 class="login__title">Hi, I'm your advisor</h1>
+        <p class="muted login__lead">Log in and tell me about your case.</p>
+        <label class="field">
+          <span>Username</span>
+          <input name="username" type="text" required autocomplete="username" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input name="password" type="password" required autocomplete="current-password" />
+        </label>
+        <p class="form-error" id="login-error" role="alert" hidden></p>
+        <button class="btn btn--primary btn--block btn--big" type="submit">Let's go</button>
+        <p class="muted small login__foot">
+          No account yet? Ask whoever runs this app to create one for you (they run
+          <code>scripts/add_user.py</code>). There is no sign-up or password reset in this version.
+          Research aid only, not a substitute for legal advice.
+        </p>
+      </form>
+    </section>
+
+    <!-- Chat: the character in the middle, the conversation around it -->
+    <section class="chat chat--empty" id="view-chat" hidden>
+      <div class="stage" id="stage">
+        <div class="bubble" id="bubble">
+          <!-- Visible text updates at once; the live region repeats it at most
+               once every ~2 s (js/bubble.js) so stage narration never floods a
+               screen reader. -->
+          <p class="bubble__text" id="bubble-text" aria-hidden="true"></p>
+          <p class="visually-hidden bubble__live" id="bubble-live" aria-live="polite" aria-atomic="true"></p>
+          <div class="bubble__typing" id="bubble-typing" hidden aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="bubble__chips" id="bubble-chips" hidden></div>
+        </div>
+        <div class="advisor advisor--idle" id="advisor">
+          <div class="advisor__frame">
+            <img id="advisor-img" alt="" aria-hidden="true" src="/avatar/advisor-idle.png" decoding="async" />
+          </div>
+          <p class="advisor__caption" id="advisor-caption" aria-live="polite">Ready</p>
+          <p class="advisor__detail" id="advisor-detail"></p>
+        </div>
+        <button class="btn btn--ghost btn--tiny stage__hide" id="toggle-avatar" type="button"
+                aria-pressed="false">Hide character</button>
+      </div>
+
+      <section class="transcript" id="transcript" aria-label="Conversation"></section>
+    </section>
+  </main>
+
+  <!-- Composer, fixed at the bottom like a chat app -->
+  <form class="composer" id="composer" hidden>
+    <div class="composer__inner">
+      <div class="composer__files" id="file-chips" hidden aria-label="Attached documents"></div>
+      <div class="composer__row">
+        <button class="composer__add" id="add-files" type="button"
+                aria-label="Add documents (PDF or DOCX)" title="Add documents (PDF or DOCX)">+</button>
+        <input type="file" id="file-input" accept=".pdf,.docx" multiple hidden />
+        <textarea id="composer-input" rows="1" maxlength="20000"
+                  placeholder="Describe your case or ask a question"
+                  aria-label="Describe your case or ask a question"></textarea>
+        <button class="composer__send" id="composer-send" type="submit" aria-label="Send" title="Send">
+          <span aria-hidden="true">➤</span>
+        </button>
+      </div>
+      <div class="composer__foot">
+        <label class="switch">
+          <input type="checkbox" id="allow-web" />
+          <span class="switch__track" aria-hidden="true"></span>
+          <span>Also search official web sources</span>
+        </label>
+        <span class="muted small" id="composer-hint">Enter to send, Shift+Enter for a new line.</span>
+      </div>
+      <p class="form-error composer__error" id="composer-error" role="alert" hidden></p>
+    </div>
+  </form>
+
+  <!-- "Your cases": the only place past conversations are visible -->
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="drawer" hidden aria-label="Your cases">
+    <div class="drawer__head">
+      <h2>Your cases</h2>
+      <button class="btn btn--ghost btn--tiny" id="drawer-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <button class="btn btn--primary btn--block" id="new-case" type="button">+ Start a new case</button>
+    <ul class="case-list" id="case-list"></ul>
+    <section class="key-section" id="key-section" aria-labelledby="key-section-title">
+      <h3 id="key-section-title" class="key-section__title">Claude key</h3>
+      <p class="key-section__status" id="key-status">Checking…</p>
+      <div class="key-section__actions" id="key-actions"></div>
+    </section>
+    <div class="drawer__foot">
+      <label class="field field--inline">
+        <span>The advisor replies in</span>
+        <select id="language">
+          <option value="en">English</option>
+          <option value="fr">French</option>
+        </select>
+      </label>
+    </div>
+  </aside>
+
+  <dialog class="passage" id="passage-dialog">
+    <form method="dialog" class="passage__inner">
+      <div class="passage__head">
+        <span class="badge" id="passage-kind"></span>
+        <button class="btn btn--ghost btn--tiny" type="submit" aria-label="Close">Close</button>
+      </div>
+      <h2 class="passage__title" id="passage-doc"></h2>
+      <p class="muted" id="passage-locator"></p>
+      <blockquote class="passage__quote" id="passage-quote"></blockquote>
+      <p id="passage-url"></p>
+      <p class="muted small" id="passage-note"></p>
+    </form>
+  </dialog>
+
+  <!-- Activate the advisor: bring your own Claude key (docs/17, BYOK) -->
+  <dialog class="activate" id="activate-dialog" aria-labelledby="activate-title" aria-describedby="activate-lead">
+    <form class="activate__inner" novalidate>
+      <div class="activate__head">
+        <h2 id="activate-title">Activate the advisor</h2>
+        <button class="btn btn--ghost btn--tiny" id="activate-cancel" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="muted" id="activate-lead"></p>
+      <ol class="activate__steps">
+        <li>
+          <strong>Create an Anthropic account</strong> at
+          <a class="link" href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">console.anthropic.com</a>.
+        </li>
+        <li>
+          <strong>Add a payment method</strong> under <em>Billing</em>. You pay Anthropic directly for
+          what Claude reads and writes for you, typically a few cents per question. The person running
+          this app never pays for your usage and never sees it.
+        </li>
+        <li>
+          <strong>Create an API key</strong> under <em>API Keys</em> and copy it. It starts with
+          <code>sk-ant-</code>.
+        </li>
+        <li><strong>Paste it below</strong> and press <em>Save and activate</em>.</li>
+      </ol>
+      <label class="field" for="activate-key">
+        <span>Your Claude API key</span>
+      </label>
+      <div class="activate__key">
+        <input id="activate-key" name="api_key" type="password" autocomplete="off" spellcheck="false"
+               placeholder="sk-ant-…" aria-describedby="activate-error activate-privacy" />
+        <button class="btn btn--tiny" id="activate-reveal" type="button" aria-pressed="false"
+                aria-controls="activate-key">Show</button>
+      </div>
+      <p class="form-error" id="activate-error" role="alert" hidden></p>
+      <button class="btn btn--primary btn--block btn--big" id="activate-submit" type="submit">Save and activate</button>
+      <p class="muted small activate__privacy" id="activate-privacy">
+        Your key is stored encrypted on this server, used only for your own questions, and never
+        shown again. You can remove it any time from <strong>Your cases</strong>.
+      </p>
+    </form>
+  </dialog>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

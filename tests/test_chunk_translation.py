@@ -71,3 +71,25 @@ def test_empty_input_returns_empty_without_loading_an_llm():
     with patch(f"{MODULE}.get_translation_llm") as get_llm_mock:
         assert translate_chunks([]) == []
     get_llm_mock.assert_not_called()
+
+
+def test_translate_on_ingest_false_detects_language_but_never_calls_the_model(monkeypatch):
+    from policy_advisor.config import get_settings
+
+    monkeypatch.setenv("TRANSLATE_ON_INGEST", "false")
+    get_settings.cache_clear()
+    original = _chunk("The defendant shall file a defence within five days.")
+    try:
+        with (
+            patch(f"{MODULE}.get_translation_llm") as llm_factory,
+            patch(f"{MODULE}.translate_text") as translate_mock,
+        ):
+            [result] = translate_chunks([original])
+    finally:
+        get_settings.cache_clear()
+
+    llm_factory.assert_not_called()
+    translate_mock.assert_not_called()
+    assert result.text == original.text
+    assert result.language == "en"
+    assert result.translated_text is None
