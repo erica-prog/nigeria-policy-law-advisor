@@ -1,6 +1,8 @@
 FROM python:3.12-slim AS builder
 WORKDIR /app
-RUN pip install --no-cache-dir uv
+# Pin the lockfile writer. An unpinned uv rejects this lock when FastAPI's
+# required opentelemetry-api package is missing from uv.lock.
+RUN pip install --no-cache-dir "uv==0.13.2"
 COPY pyproject.toml uv.lock ./
 COPY src ./src
 RUN uv sync --frozen --no-dev
