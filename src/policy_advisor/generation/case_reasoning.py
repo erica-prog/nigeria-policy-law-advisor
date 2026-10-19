@@ -36,6 +36,7 @@ from policy_advisor.generation.relevance_check import judge_relevance
 from policy_advisor.generation.web_search import search_official_sources
 from policy_advisor.llm_retry import OutputTruncated, call_with_retry, invoke_structured
 from policy_advisor.logging_utils import get_logger, log_event
+from policy_advisor.progress import report_stage
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
 
 # Issue identification, the judge, and the relevance check fit in the shared
@@ -86,10 +87,14 @@ def _issue_args_as_text(issue_args: IssueArguments) -> str:
 
 
 class CaseReasoningChain:
-    def __init__(self):
+    def __init__(self, api_key=None, retriever=None):
+        """`api_key: str | None` overrides the server key from settings (the web
+        API passes each user's own key); `retriever: HybridRetriever | None`
+        lets several chains share one embedding model / Chroma handle. Both
+        default to the previous behaviour."""
         settings = get_settings()
         self._settings = settings
-        self._retriever = HybridRetriever()
+        self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
 
         def _client(max_tokens: int, timeout: float) -> ChatAnthropic:
@@ -110,6 +115,10 @@ class CaseReasoningChain:
         constructing a second one - a new HybridRetriever reloads the embedding
         model and rebuilds the per-matter BM25 cache from scratch."""
         return self._retriever
+
+    def invalidate_matter(self, matter_id: str) -> None:
+        """Drop the cached index for this matter after a document is added or removed."""
+        self._retriever.invalidate_matter(matter_id)
 
     def _identify_issues(self, case_facts: str, response_language: str) -> list[str]:
         structured = self._llm.with_structured_output(IssueList)
@@ -191,6 +200,7 @@ class CaseReasoningChain:
         response_language: str,
         allow_web_fallback: bool = False,
     ) -> IssueAnalysis:
+        report_stage("reading_documents")
         retrieved: list[RetrievedChunk] = self._retriever.retrieve(
             issue, top_k=self._settings.retrieval_top_k, matter_id=matter_id, jurisdiction=jurisdiction
         )
@@ -213,6 +223,7 @@ class CaseReasoningChain:
         available_locators = {c.metadata["locator"] for c in retrieved}
         context = "\n\n".join(f"[{c.metadata['locator']}]\n{c.text}" for c in retrieved) or "(no authorities retrieved)"
 
+        report_stage("writing")
         issue_args = self._generate_issue_arguments(case_facts, issue, context, response_language)
         unsupported = _unsupported_citations(issue_args, available_locators)
         unverified = False
@@ -231,6 +242,7 @@ class CaseReasoningChain:
                 unverified = True
                 log_event(self._logger, "issue_check_failed_after_retry", issue=issue, unsupported=unsupported)
 
+        report_stage("checking_citations")
         judge_outcome = judge_check(self._llm, _issue_args_as_text(issue_args), retrieved)
         if judge_outcome.judge_flagged:
             unverified = True
@@ -301,6 +313,7 @@ class CaseReasoningChain:
                     jurisdiction=jurisdiction,
                 )
             )
+        report_stage("checking_citations")
         judge_outcome = judge_check(self._llm, overall_position, all_chunks)
         if judge_outcome.judge_flagged:
             log_event(self._logger, "synthesis_judge_flagged", notes=judge_outcome.judge_notes)
@@ -320,6 +333,7 @@ class CaseReasoningChain:
     ) -> CaseReasoningResult:
         response_language = LANGUAGE_NAMES.get(conversation_language, "English")
         log_event(self._logger, "case_analysis_started", matter_id=matter_id, conversation_language=conversation_language)
+        report_stage("writing")
         issues = self._identify_issues(case_facts, response_language)
         issue_analyses = [
             self._analyze_issue(

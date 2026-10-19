@@ -106,6 +106,16 @@ def _insert_chunks(
         )
 
 
+def _write_meta(path: Path, meta: dict) -> None:
+    # Atomic replace: the web API reads meta.json for the ownership check on
+    # every request while a background chat job may be updating it; a reader
+    # must never see a half-written file.
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(meta), encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def set_matter_owner(matter_id: str, owner: str) -> None:
     """Called once, when a matter is created - a matter has exactly one owner
     for now (no co-counsel sharing in this pass, see CLAUDE-2.md cross-cutting
