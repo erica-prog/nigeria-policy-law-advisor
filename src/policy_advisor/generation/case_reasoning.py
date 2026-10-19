@@ -14,7 +14,16 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
 from policy_advisor.config import get_settings
-from policy_advisor.generation.case_reasoning_models import CaseReasoningResult, IssueAnalysis, IssueArguments
+from policy_advisor.generation.case_reasoning_models import (
+    CONFIDENCE_FROM_WEB,
+    CONFIDENCE_LIMITED,
+    CONFIDENCE_NO_AUTHORITY,
+    CONFIDENCE_STRONG,
+    CONFIDENCE_UNVERIFIED,
+    CaseReasoningResult,
+    IssueAnalysis,
+    IssueArguments,
+)
 from policy_advisor.generation.case_reasoning_prompt import (
     ARGUMENT_GENERATION_PROMPT,
     ISSUE_IDENTIFICATION_PROMPT,
@@ -23,9 +32,27 @@ from policy_advisor.generation.case_reasoning_prompt import (
 from policy_advisor.generation.faithfulness import is_supported_citation
 from policy_advisor.generation.judge_check import judge_check
 from policy_advisor.generation.prompt import LANGUAGE_NAMES
+from policy_advisor.generation.relevance_check import judge_relevance
+from policy_advisor.generation.web_search import search_official_sources
+from policy_advisor.llm_retry import OutputTruncated, call_with_retry, invoke_structured
 from policy_advisor.logging_utils import get_logger, log_event
 from policy_advisor.progress import report_stage
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
+
+# Issue identification, the judge, and the relevance check fit in the shared
+# client's budget. IssueArguments does not. The assessment is the last field,
+# and a generation that spends 2048 tokens on the arguments omits it. That
+# ValidationError is what case-reasoning-invariants crashed on, three identical
+# retries in a row. This ceiling only has to be large enough for a short
+# answer; a response that still hits it is asked once more, more briefly.
+ARGUMENT_MAX_TOKENS = 8192
+ARGUMENT_TIMEOUT_SECONDS = 120
+
+_TRUNCATED_ARGUMENTS_CORRECTION = (
+    "Your previous answer was cut off before it finished, so it had no assessment. "
+    "Answer again and much more briefly: at most one argument for each side, one "
+    "sentence each, and you must include the assessment."
+)
 
 DISCLAIMER = (
     "This is a research aid, not a prediction of any court's actual decision and not a substitute for "
@@ -69,13 +96,25 @@ class CaseReasoningChain:
         self._settings = settings
         self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
-        self._llm = ChatAnthropic(
-            model=settings.anthropic_model,
-            api_key=api_key or settings.anthropic_api_key.get_secret_value(),
-            max_tokens=2048,
-            default_request_timeout=45,
-            max_retries=0,
-        )
+
+        def _client(max_tokens: int, timeout: float) -> ChatAnthropic:
+            return ChatAnthropic(
+                model=settings.anthropic_model,
+                api_key=settings.anthropic_api_key.get_secret_value(),
+                max_tokens=max_tokens,
+                default_request_timeout=timeout,
+                max_retries=0,
+            )
+
+        self._llm = _client(2048, 45)
+        self._argument_llm = _client(ARGUMENT_MAX_TOKENS, ARGUMENT_TIMEOUT_SECONDS)
+
+    @property
+    def retriever(self) -> HybridRetriever:
+        """Exposed so the advisory layer can reuse this retriever rather than
+        constructing a second one - a new HybridRetriever reloads the embedding
+        model and rebuilds the per-matter BM25 cache from scratch."""
+        return self._retriever
 
     def invalidate_matter(self, matter_id: str) -> None:
         """Drop the cached index for this matter after a document is added or removed."""
@@ -86,7 +125,7 @@ class CaseReasoningChain:
         messages = ISSUE_IDENTIFICATION_PROMPT.format_messages(
             case_facts=case_facts, response_language=response_language
         )
-        result: IssueList = structured.invoke(messages)
+        result: IssueList = call_with_retry(lambda: structured.invoke(messages))
         return result.issues
 
     def _generate_issue_arguments(
@@ -100,16 +139,87 @@ class CaseReasoningChain:
             # of the prior structured-output call, which doesn't round-trip
             # cleanly through tool-calling-based structured output).
             messages.append(HumanMessage(content=correction))
-        structured = self._llm.with_structured_output(IssueArguments)
-        return structured.invoke(messages)
+        structured = self._argument_llm.with_structured_output(IssueArguments, include_raw=True)
+
+        def _invoke(msgs):
+            return call_with_retry(lambda: invoke_structured(structured, msgs))
+
+        try:
+            return _invoke(messages)
+        except OutputTruncated:
+            log_event(self._logger, "issue_arguments_truncated_retrying", issue=issue)
+            return _invoke([*messages, HumanMessage(content=_TRUNCATED_ARGUMENTS_CORRECTION)])
+
+    def _issue_from_web(self, issue: str, response_language: str) -> IssueAnalysis:
+        """This matter has no authority on the issue, so consult the allowlisted
+        official sources instead.
+
+        The result deliberately produces no `arguments` and no
+        `supporting_authorities`. Everything in those fields has survived the
+        citation check against passages the lawyer chose to put in the matter;
+        web material has not been checked that way and must not arrive wearing
+        the same clothes. It is also never handed to `judge_check` - the judge
+        decides whether text stays within its authorities, so passing web text
+        as an authority would have it certify the very thing that was never
+        vetted.
+        """
+        web_result = search_official_sources(issue, response_language=response_language)
+        log_event(self._logger, "issue_web_fallback_used", issue=issue, found=web_result.found)
+
+        if not web_result.found:
+            return IssueAnalysis(
+                issue=issue,
+                arguments=[],
+                assessment=(
+                    "No authority in this matter addresses this issue, and the official sources "
+                    "available to search had nothing relevant either."
+                ),
+                confidence=CONFIDENCE_NO_AUTHORITY,
+            )
+
+        return IssueAnalysis(
+            issue=issue,
+            arguments=[],
+            # Written here rather than generated, so a model can't soften it.
+            assessment=(
+                "No authority in this matter addresses this issue. The summary below came from an "
+                "official source on the web and has not been checked against this matter's "
+                "documents - verify it directly before relying on it."
+            ),
+            confidence=CONFIDENCE_FROM_WEB,
+            web_summary=web_result.answer,
+            web_sources=web_result.citations,
+        )
 
     def _analyze_issue(
-        self, case_facts: str, issue: str, matter_id: str, jurisdiction: str | None, response_language: str
+        self,
+        case_facts: str,
+        issue: str,
+        matter_id: str,
+        jurisdiction: str | None,
+        response_language: str,
+        allow_web_fallback: bool = False,
     ) -> IssueAnalysis:
         report_stage("reading_documents")
         retrieved: list[RetrievedChunk] = self._retriever.retrieve(
             issue, top_k=self._settings.retrieval_top_k, matter_id=matter_id, jurisdiction=jurisdiction
         )
+
+        if retrieved and self._retriever.needs_relevance_adjudication(retrieved):
+            verdict = judge_relevance(self._llm, issue, retrieved)
+            log_event(
+                self._logger,
+                "issue_relevance_adjudicated",
+                issue=issue,
+                relevant=verdict.relevant,
+                reason=verdict.reason,
+            )
+            if not verdict.relevant:
+                retrieved = []
+
+        if not retrieved and allow_web_fallback:
+            return self._issue_from_web(issue, response_language)
+
         available_locators = {c.metadata["locator"] for c in retrieved}
         context = "\n\n".join(f"[{c.metadata['locator']}]\n{c.text}" for c in retrieved) or "(no authorities retrieved)"
 
@@ -139,13 +249,13 @@ class CaseReasoningChain:
             log_event(self._logger, "issue_judge_flagged", issue=issue, notes=judge_outcome.judge_notes)
 
         if not retrieved:
-            confidence = "no authority found in corpus"
+            confidence = CONFIDENCE_NO_AUTHORITY
         elif unverified:
-            confidence = "unverified - flagged by faithfulness check"
+            confidence = CONFIDENCE_UNVERIFIED
         elif any(arg.supporting_authorities for arg in issue_args.arguments):
-            confidence = "strongly supported"
+            confidence = CONFIDENCE_STRONG
         else:
-            confidence = "plausible, limited authority"
+            confidence = CONFIDENCE_LIMITED
 
         return IssueAnalysis(
             issue=issue_args.issue,
@@ -153,28 +263,55 @@ class CaseReasoningChain:
             assessment=issue_args.assessment,
             confidence=confidence,
             unverified=unverified,
+            retrieved_locators=sorted(available_locators),
         )
 
     def _synthesize(
-        self, case_facts: str, issues: list[IssueAnalysis], matter_id: str, response_language: str
+        self,
+        case_facts: str,
+        issues: list[IssueAnalysis],
+        matter_id: str,
+        response_language: str,
+        jurisdiction: str | None = None,
     ) -> str:
+        # Web-backed issues are labelled rather than summarised into the prompt.
+        # Including the web text would let the overall position absorb it as if
+        # it were authority, and the judge pass below - which checks the
+        # synthesis against the *corpus* chunks - would then flag the whole
+        # summary for material it was handed on purpose.
         issue_summaries = "\n\n".join(
-            f"Issue: {i.issue}\nConfidence: {i.confidence}\nAssessment: {i.assessment}" for i in issues
+            f"Issue: {i.issue}\nConfidence: {i.confidence}\nAssessment: {i.assessment}"
+            + (
+                "\nAuthority source: an official website, NOT this matter's documents. Describe this "
+                "issue as unresolved on the available authority; do not treat it as established."
+                if i.from_web
+                else ""
+            )
+            for i in issues
         )
         messages = SYNTHESIS_PROMPT.format_messages(
             case_facts=case_facts, issue_summaries=issue_summaries, response_language=response_language
         )
-        report_stage("writing")
-        overall_position = self._llm.invoke(messages).content
+        overall_position = call_with_retry(lambda: self._llm.invoke(messages)).content
 
         # Final synthesis is checked against the union of every issue's own
-        # retrieved authorities, not a fresh retrieval pass - it must only
-        # restate what the per-issue steps already grounded, not introduce
-        # anything new.
+        # retrieved authorities - it must only restate what the per-issue steps
+        # already grounded, not introduce anything new. The jurisdiction filter
+        # has to match what those steps actually used: without it this widens
+        # to other jurisdictions' rules and the judge ends up assessing the
+        # synthesis against authorities the analysis never had, flagging
+        # citations that were properly supported at the time.
         all_chunks: list[RetrievedChunk] = []
         for issue in issues:
+            if issue.from_web:
+                continue
             all_chunks.extend(
-                self._retriever.retrieve(issue.issue, top_k=self._settings.retrieval_top_k, matter_id=matter_id)
+                self._retriever.retrieve(
+                    issue.issue,
+                    top_k=self._settings.retrieval_top_k,
+                    matter_id=matter_id,
+                    jurisdiction=jurisdiction,
+                )
             )
         report_stage("checking_citations")
         judge_outcome = judge_check(self._llm, overall_position, all_chunks)
@@ -192,25 +329,41 @@ class CaseReasoningChain:
         matter_id: str,
         jurisdiction: str | None = None,
         conversation_language: str = "en",
+        allow_web_fallback: bool = False,
     ) -> CaseReasoningResult:
         response_language = LANGUAGE_NAMES.get(conversation_language, "English")
         log_event(self._logger, "case_analysis_started", matter_id=matter_id, conversation_language=conversation_language)
         report_stage("writing")
         issues = self._identify_issues(case_facts, response_language)
         issue_analyses = [
-            self._analyze_issue(case_facts, issue, matter_id, jurisdiction, response_language) for issue in issues
+            self._analyze_issue(
+                case_facts, issue, matter_id, jurisdiction, response_language, allow_web_fallback
+            )
+            for issue in issues
         ]
-        overall_position = self._synthesize(case_facts, issue_analyses, matter_id, response_language)
+        overall_position = self._synthesize(
+            case_facts, issue_analyses, matter_id, response_language, jurisdiction
+        )
+        web_backed = sum(1 for i in issue_analyses if i.from_web)
         log_event(
             self._logger,
             "case_analysis_completed",
             matter_id=matter_id,
             issue_count=len(issue_analyses),
             unverified_count=sum(1 for i in issue_analyses if i.unverified),
+            web_backed_issue_count=web_backed,
         )
+        disclaimer = DISCLAIMER
+        if web_backed:
+            disclaimer += (
+                f" {web_backed} of these issues had no authority in this matter and were answered from "
+                "an official website instead; those are labelled and have not been checked against "
+                "your documents."
+            )
         return CaseReasoningResult(
             case_facts=case_facts,
             issues=issue_analyses,
             overall_position=overall_position,
-            disclaimer=DISCLAIMER,
+            disclaimer=disclaimer,
+            jurisdiction=jurisdiction,
         )

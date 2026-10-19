@@ -13,15 +13,28 @@ import tempfile
 import time
 from pathlib import Path
 
+import psycopg
 import streamlit as st
 
 from policy_advisor.auth import require_login
+from policy_advisor.chat_history import (
+    MAX_EXCHANGES,
+    ChatExchange,
+    exchange_from_result,
+    recent_exchanges,
+    save_exchange,
+)
 from policy_advisor.config import PHASE1_DEMO_MATTER_ID
+from policy_advisor.generation.advisory import AdvisoryChain
+from policy_advisor.generation.advisory_models import AdvisoryResult
 from policy_advisor.generation.case_reasoning import CaseReasoningChain
 from policy_advisor.generation.chain import RAGChain
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES
 from policy_advisor.ingestion.ingest_document import UnsupportedDocumentError, add_document, remove_document
 from policy_advisor.ingestion.matter_store import list_documents, list_matters_for_user, set_matter_owner
+from policy_advisor.logging_utils import get_logger, log_event
+
+logger = get_logger("policy_advisor.app")
 
 st.set_page_config(page_title="Law & Policy Advisor (Demo)", page_icon="⚖️")
 st.title("Law & Policy Advisor")
@@ -44,6 +57,13 @@ def get_chain() -> RAGChain:
 @st.cache_resource
 def get_case_chain() -> CaseReasoningChain:
     return CaseReasoningChain()
+
+
+@st.cache_resource
+def get_advisory_chain() -> AdvisoryChain:
+    # Shares the case chain, and through it the retriever, rather than loading
+    # a second embedding model and BM25 cache into the same process.
+    return AdvisoryChain(case_chain=get_case_chain())
 
 
 with st.sidebar:
@@ -115,24 +135,70 @@ st.caption(f"Conversing in **{conversation_language_label}** - this is the langu
 allow_web_fallback = st.checkbox(
     "Allow searching official sources if my documents don't have this",
     value=False,
-    help="Only used when nothing relevant is found in this matter's own documents. Restricted to a "
-    "small allowlist of official domains, and always shown separately from your documents' answers - "
-    "never checked the same way as a citation from something you uploaded.",
+    help="Used in every mode, and only when nothing relevant is found in this matter's own "
+    "documents. Restricted to a small allowlist of official domains, and always shown separately "
+    "from your documents' answers - never checked the same way as a citation from something you "
+    "uploaded.",
 )
 
-mode = st.radio("Mode", ["Ask a question", "Analyze a case"], horizontal=True)
+mode = st.radio("Mode", ["Ask a question", "Analyze a case", "Advise on a case"], horizontal=True)
 
 if mode == "Ask a question":
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    def render_answer(exchange: ChatExchange, passages: list[str] | None = None) -> None:
+        """One renderer for live and reloaded answers, so an answer from history
+        carries exactly the trust signals it had when it was first given."""
+        if exchange.source == "web":
+            # Visually distinct from a normal answer bubble, on purpose - this
+            # never went through the corpus faithfulness check, so it must
+            # never look as trustworthy as one that did.
+            with st.container(border=True):
+                st.caption("⚠️ From an official source on the web - not verified against this matter's documents.")
+                st.markdown(exchange.answer)
+                for citation in exchange.web_citations:
+                    st.markdown(f"- [{citation['title']}]({citation['url']})")
+        else:
+            st.markdown(exchange.answer)
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        if not exchange.faithful and exchange.source == "corpus":
+            st.warning(
+                "Citation check failed - this answer referenced locators not found in the "
+                f"retrieved passages: {', '.join(exchange.unsupported_citations)}. Treat with caution."
+            )
+
+        if exchange.sources:
+            with st.expander(f"Sources ({len(exchange.sources)})"):
+                for i, source in enumerate(exchange.sources):
+                    st.markdown(
+                        f"**{source['locator']}** — {source['doc_type']}, {source['jurisdiction']}, "
+                        f"{source['source_document']} (p. {source['page']})"
+                    )
+                    if passages is not None:
+                        st.text(passages[i])
+                if passages is None:
+                    st.caption("History keeps which passages were cited, not their text - open the document to reread them.")
+
+    st.caption(
+        f"Your last {MAX_EXCHANGES} questions in this matter are kept so you can see them again; "
+        "older ones are deleted. They are never sent back to the advisor."
+    )
+
+    try:
+        history = recent_exchanges(username, matter_id)
+    except psycopg.Error as exc:
+        # Logged, not shown: a connection error names the database host, which
+        # is infrastructure detail with no place on a lawyer's screen.
+        log_event(logger, "chat_history_load_failed", matter_id=matter_id, error=str(exc))
+        history = []
+        st.warning("Couldn't load your recent questions just now. You can still ask new ones.")
+
+    for exchange in history:
+        with st.chat_message("user"):
+            st.markdown(exchange.question)
+        with st.chat_message("assistant"):
+            render_answer(exchange)
 
     question = st.chat_input("Ask a question about the documents in this matter...")
     if question:
-        st.session_state.messages.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.markdown(question)
 
@@ -148,67 +214,127 @@ if mode == "Ask a question":
             )
             latency_s = time.monotonic() - start
 
-            if result.source == "web":
-                # Visually distinct from a normal answer bubble, on purpose -
-                # this never went through the corpus faithfulness check, so
-                # it must never look as trustworthy as one that did.
-                with st.container(border=True):
-                    st.caption("⚠️ From an official source on the web - not verified against this matter's documents.")
-                    st.markdown(result.answer)
-                    if result.web_citations:
-                        for citation in result.web_citations:
-                            st.markdown(f"- [{citation.title}]({citation.url})")
-            else:
-                st.markdown(result.answer)
-
-            if not result.faithful and result.source == "corpus":
-                st.warning(
-                    "Citation check failed - this answer referenced locators not found in the "
-                    f"retrieved passages: {', '.join(result.unsupported_citations)}. Treat with caution."
-                )
-
-            if result.retrieved:
-                with st.expander(f"Sources ({len(result.retrieved)})"):
-                    for chunk in result.retrieved:
-                        meta = chunk.metadata
-                        st.markdown(
-                            f"**{meta['locator']}** — {meta['doc_type']}, {meta['jurisdiction']}, "
-                            f"{meta['source_document']} (p. {meta['page']})"
-                        )
-                        st.text(chunk.text)
+            exchange = exchange_from_result(question, result)
+            render_answer(exchange, passages=[chunk.text for chunk in result.retrieved])
 
             input_tokens = result.usage.get("input_tokens", 0)
             output_tokens = result.usage.get("output_tokens", 0)
             st.caption(f"Latency: {latency_s:.2f}s · Tokens: {input_tokens} in / {output_tokens} out")
 
-        st.session_state.messages.append({"role": "assistant", "content": result.answer})
+        try:
+            save_exchange(username, matter_id, exchange)
+        except psycopg.Error as exc:
+            # The answer is already on screen; losing its history entry must
+            # not take it away.
+            log_event(logger, "chat_history_save_failed", matter_id=matter_id, error=str(exc))
+            st.caption("This answer couldn't be saved to your recent questions.")
 
 else:
-    st.info(
-        "Identifies the legal issues in the facts below and assesses how strongly each side's "
-        "position is supported by the documents in this matter - this is not a prediction of any "
-        "court's actual decision. Each case can take a few minutes: this runs many checked reasoning "
-        "steps per issue rather than one pass, by design."
-    )
-    case_facts = st.text_area("Case facts", height=180, placeholder="Describe the facts of the case...")
-    if st.button("Analyze case") and case_facts.strip():
-        with st.spinner("Analyzing - this checks its own citations at every step, so it takes a few minutes..."):
-            case_chain = get_case_chain()
-            result = case_chain.analyze(
-                case_facts, matter_id=matter_id, jurisdiction=jurisdiction, conversation_language=conversation_language
-            )
-
+    def render_case_analysis(result) -> None:
         for issue in result.issues:
             st.subheader(issue.issue)
             badge = "⚠️ unverified" if issue.unverified else issue.confidence
             st.caption(f"Confidence: {badge}")
-            for argument in issue.arguments:
-                cites = ", ".join(a.locator for a in argument.supporting_authorities) or "no authority cited"
-                st.markdown(f"**{argument.side}:** {argument.summary}")
-                st.caption(f"Cites: {cites}")
+
+            if issue.from_web:
+                # Same treatment as a web-sourced answer in the chat mode: this
+                # never went through the corpus faithfulness check, so it must
+                # not sit in the page looking like an issue that did.
+                with st.container(border=True):
+                    st.caption("⚠️ No authority in this matter covers this issue - answered from an official website.")
+                    st.markdown(issue.web_summary or "")
+                    for citation in issue.web_sources:
+                        st.markdown(f"- [{citation.title}]({citation.url})")
+            else:
+                for argument in issue.arguments:
+                    cites = ", ".join(a.locator for a in argument.supporting_authorities) or "no authority cited"
+                    st.markdown(f"**{argument.side}:** {argument.summary}")
+                    st.caption(f"Cites: {cites}")
+
             st.markdown(f"_Assessment:_ {issue.assessment}")
             st.divider()
 
         st.subheader("Overall position")
         st.markdown(result.overall_position)
         st.warning(result.disclaimer)
+
+    advisory_mode = mode == "Advise on a case"
+
+    if advisory_mode:
+        st.info(
+            "Gives a direct recommendation and a view on which way the authorities point, on top of "
+            "the issue-by-issue analysis. It has not been shown how any comparable case was actually "
+            "decided - this matter holds authorities, not outcomes - so the direction is a reading of "
+            "those authorities to test, not a forecast. Takes longer than plain analysis: it runs the "
+            "full analysis first, then reasons over it."
+        )
+    else:
+        st.info(
+            "Identifies the legal issues in the facts below and assesses how strongly each side's "
+            "position is supported by the documents in this matter - this is not a prediction of any "
+            "court's actual decision. Each case can take a few minutes: this runs many checked reasoning "
+            "steps per issue rather than one pass, by design."
+        )
+
+    case_facts = st.text_area("Case facts", height=180, placeholder="Describe the facts of the case...")
+    button_label = "Advise on case" if advisory_mode else "Analyze case"
+
+    if st.button(button_label) and case_facts.strip():
+        spinner_text = "Analyzing - this checks its own citations at every step, so it takes a few minutes..."
+        advice: AdvisoryResult | None = None
+        with st.spinner(spinner_text):
+            if advisory_mode:
+                advice = get_advisory_chain().advise(
+                    case_facts,
+                    matter_id=matter_id,
+                    jurisdiction=jurisdiction,
+                    conversation_language=conversation_language,
+                    allow_web_fallback=allow_web_fallback,
+                )
+                analysis = advice.case_analysis
+            else:
+                analysis = get_case_chain().analyze(
+                    case_facts,
+                    matter_id=matter_id,
+                    jurisdiction=jurisdiction,
+                    conversation_language=conversation_language,
+                    allow_web_fallback=allow_web_fallback,
+                )
+
+        if advice is not None:
+            st.subheader("Recommended position")
+            st.markdown(advice.recommended_position)
+
+            st.subheader(f"Which way the authorities point: {advice.outcome_direction}")
+            st.markdown(advice.likely_outcome)
+            # The basis is shown next to the band, never the band alone - the
+            # word "moderate" on its own is exactly the kind of unearned
+            # reassurance this pipeline exists to avoid.
+            st.caption(f"Confidence: **{advice.outcome_confidence}** - {advice.confidence_basis}")
+
+            if advice.unsupported_citations:
+                st.error(
+                    "This advice cited authorities that no issue analysis established: "
+                    f"{', '.join(advice.unsupported_citations)}. Treat those as unverified."
+                )
+            if advice.judge_flagged:
+                st.warning(f"Faithfulness check flagged this advice: {advice.judge_notes}")
+
+            st.markdown(f"**What it turns on:** {advice.turns_on}")
+
+            if advice.next_steps:
+                st.subheader("Next steps")
+                for step in advice.next_steps:
+                    st.markdown(f"- **{step.action}** — {step.rationale}")
+
+            if advice.key_authorities:
+                st.subheader("Authorities to rely on")
+                for authority in advice.key_authorities:
+                    st.markdown(f"- **{authority.locator}** — {authority.why}")
+
+            st.warning(advice.disclaimer)
+            st.divider()
+            with st.expander("The issue-by-issue analysis this rests on"):
+                render_case_analysis(analysis)
+        else:
+            render_case_analysis(analysis)
