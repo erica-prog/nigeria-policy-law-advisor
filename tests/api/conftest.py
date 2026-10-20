@@ -14,7 +14,9 @@ from fastapi.testclient import TestClient
 from policy_advisor import config
 from policy_advisor.api.main import create_app
 from policy_advisor.config import get_settings
+from policy_advisor.db import connect, database_url
 from policy_advisor.ingestion import matter_store
+from tests.conftest import _refuse_unsafe
 
 USERS = {"alice": "alice-pass-123", "bob": "bob-pass-456"}
 
@@ -65,6 +67,13 @@ def _build_harness(
     # never leak into the "no model key" fixture.
     monkeypatch.setitem(config.Settings.model_config, "env_file", str(tmp_path / "absent.env"))
     get_settings.cache_clear()
+    # Ownership and documents live in Postgres now. Each test gets an empty
+    # database, the same way the file store used to get an empty temp directory.
+    _refuse_unsafe(database_url())
+    with connect() as conn:
+        conn.execute(
+            "TRUNCATE chat_exchanges, chunks, matters, index_meta RESTART IDENTITY CASCADE"
+        )
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")
     monkeypatch.setattr(matter_store, "MATTERS_DIR", tmp_path / "matters")
     _write_credentials(tmp_path / "auth")
