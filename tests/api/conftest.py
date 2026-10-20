@@ -1,5 +1,5 @@
 """Fixtures for the web API tests. Everything runs against temporary
-directories (credentials, matter metadata, Chroma index) so no test can touch
+directories (credentials and matter metadata) so no test can touch
 data/ or a real document. The language model is never called: tests either
 inject fake chains or run with the key unset."""
 
@@ -15,7 +15,6 @@ from policy_advisor import config
 from policy_advisor.api.main import create_app
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion import matter_store
-from policy_advisor.retrieval import vector_store
 
 USERS = {"alice": "alice-pass-123", "bob": "bob-pass-456"}
 
@@ -68,7 +67,6 @@ def _build_harness(
     get_settings.cache_clear()
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")
     monkeypatch.setattr(matter_store, "MATTERS_DIR", tmp_path / "matters")
-    monkeypatch.setattr(vector_store, "INDEX_DIR", tmp_path / "index")
     _write_credentials(tmp_path / "auth")
     app = create_app(serve_static=False)
     client = TestClient(app, raise_server_exceptions=False)
