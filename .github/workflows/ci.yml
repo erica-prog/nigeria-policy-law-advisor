@@ -44,9 +44,10 @@ jobs:
       - name: Type check (advisory only - pre-existing errors not yet fixed)
         run: uv run mypy src
         continue-on-error: true
+      # The three *_real_call tests call Anthropic when this secret is set.
+      # A workspace-scoped key is rejected there. Unit tests stay mocked;
+      # eval-gate is the job that spends a real key.
       - name: Unit tests
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run pytest
 
   eval-gate:
