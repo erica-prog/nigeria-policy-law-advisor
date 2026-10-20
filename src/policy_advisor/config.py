@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Empty means "not configured": the web API starts, reports it on /api/health
     # and refuses ask/analyze with a clear error instead of crashing at import.
     anthropic_api_key: SecretStr = SecretStr("")
+    # Required only when ANTHROPIC_API_KEY is an organization key that is not
+    # scoped to one workspace. Never attached to a user's own key.
+    anthropic_workspace_id: str = ""
     anthropic_model: str = "claude-sonnet-4-6"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     # Supabase Postgres: matters, chunks with their embeddings, and chat
@@ -95,6 +98,24 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def workspace_headers(settings: Settings, api_key: str | None) -> dict[str, str]:
+    """Header Anthropic requires for an unscoped organization key.
+
+    `api_key` is the override passed by the caller, before it is replaced with
+    the server key. None means this call uses the server key. A different key
+    belongs to the user, so the server's workspace id must not go with it.
+    """
+    workspace = settings.anthropic_workspace_id
+    if not isinstance(workspace, str) or not workspace.strip():
+        return {}
+    server = settings.anthropic_api_key.get_secret_value()
+    if not isinstance(server, str):
+        return {}
+    if api_key is not None and api_key != server:
+        return {}
+    return {"anthropic-workspace-id": workspace.strip()}
 
 
 def mask_secret(value: str, keep: int = 4) -> str:

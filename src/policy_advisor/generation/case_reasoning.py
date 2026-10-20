@@ -13,7 +13,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
-from policy_advisor.config import get_settings
+from policy_advisor.config import get_settings, workspace_headers
 from policy_advisor.generation.case_reasoning_models import (
     CONFIDENCE_FROM_WEB,
     CONFIDENCE_LIMITED,
@@ -97,6 +97,7 @@ class CaseReasoningChain:
         self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
         key = api_key or settings.anthropic_api_key.get_secret_value()
+        headers = workspace_headers(settings, api_key) or None
 
         def _client(max_tokens: int, timeout: float) -> ChatAnthropic:
             return ChatAnthropic(
@@ -105,6 +106,7 @@ class CaseReasoningChain:
                 max_tokens=max_tokens,
                 default_request_timeout=timeout,
                 max_retries=0,
+                default_headers=headers,
             )
 
         self._llm = _client(2048, 45)

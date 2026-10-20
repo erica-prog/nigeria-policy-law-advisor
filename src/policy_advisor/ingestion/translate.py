@@ -6,7 +6,7 @@ always retained alongside the translation; nothing here ever replaces it."""
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from policy_advisor.config import get_settings
+from policy_advisor.config import get_settings, workspace_headers
 from policy_advisor.llm_retry import call_with_retry
 
 LANGUAGE_NAMES = {"en": "English", "fr": "French"}
@@ -35,6 +35,7 @@ def get_translation_llm(api_key: str | None = None) -> ChatAnthropic:
         max_tokens=2048,
         default_request_timeout=45,
         max_retries=0,  # retried explicitly in translate_text, so each attempt is visible
+        default_headers=workspace_headers(settings, api_key) or None,
     )
 
 

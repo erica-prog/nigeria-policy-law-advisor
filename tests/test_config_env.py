@@ -1,7 +1,7 @@
 """Settings precedence: an exported-but-empty variable must not shadow the
 value written in .env (docs/17 "Claude key not detected?")."""
 
-from policy_advisor.config import Settings
+from policy_advisor.config import Settings, workspace_headers
 
 
 def _write_env(tmp_path, key: str):
@@ -36,3 +36,18 @@ def test_missing_key_everywhere_reports_not_configured(tmp_path, monkeypatch):
     settings = Settings(_env_file=env_file)
 
     assert settings.llm_configured() is False
+
+
+def test_server_key_sends_the_workspace_header_and_a_user_key_does_not():
+    settings = Settings(
+        anthropic_api_key="server-key",
+        anthropic_workspace_id="wrkspc_test",
+        _env_file=None,
+    )
+
+    header = {"anthropic-workspace-id": "wrkspc_test"}
+    assert workspace_headers(settings, None) == header
+    assert workspace_headers(settings, "server-key") == header
+    assert workspace_headers(settings, "user-key") == {}
+    blank = Settings(anthropic_api_key="server-key", anthropic_workspace_id="  ", _env_file=None)
+    assert workspace_headers(blank, None) == {}
