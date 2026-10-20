@@ -96,13 +96,22 @@ class CaseReasoningChain:
         self._settings = settings
         self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
-        self._llm = ChatAnthropic(
-            model=settings.anthropic_model,
-            api_key=api_key or settings.anthropic_api_key.get_secret_value(),
-            max_tokens=2048,
-            default_request_timeout=45,
-            max_retries=0,
-        )
+        key = api_key or settings.anthropic_api_key.get_secret_value()
+
+        def _client(max_tokens: int, timeout: float) -> ChatAnthropic:
+            return ChatAnthropic(
+                model=settings.anthropic_model,
+                api_key=key,
+                max_tokens=max_tokens,
+                default_request_timeout=timeout,
+                max_retries=0,
+            )
+
+        self._llm = _client(2048, 45)
+        # Issue arguments need a larger budget than the shared client. The
+        # assessment is the last field, and a 2048-token reply can finish the
+        # arguments without ever emitting it.
+        self._argument_llm = _client(ARGUMENT_MAX_TOKENS, ARGUMENT_TIMEOUT_SECONDS)
 
     def invalidate_matter(self, matter_id: str) -> None:
         """Drop the cached index for this matter after a document is added or removed."""

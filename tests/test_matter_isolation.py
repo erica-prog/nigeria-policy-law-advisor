@@ -19,7 +19,8 @@ from policy_advisor.retrieval.hybrid_retriever import HybridRetriever
 def _no_translation(monkeypatch):
     """Isolation doesn't depend on translation, which needs a live Claude call per chunk."""
     monkeypatch.setattr(
-        "policy_advisor.ingestion.ingest_document.translate_chunks", lambda chunks: chunks
+        "policy_advisor.ingestion.ingest_document.translate_chunks",
+        lambda chunks, **_kwargs: chunks,
     )
 
 
