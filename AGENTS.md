@@ -1,6 +1,5 @@
 # AGENTS.md
 
-<<<<<<< Current (Your changes)
 Project memory for the **Law/Policy Advisor RAG Agent**. Read this before
 responding to any request about this project.
 
@@ -41,7 +40,6 @@ enough for real production use, not a demo.
 ## Out of scope (unless I ask)
 - Generating the full codebase
 - Deployment infra choices beyond what's needed to explain the architecture
-=======
 Instructions for every agent (human or AI) working in this repository. Read this file,
 `docs/product-brief.md`, and any existing architecture and API contracts before making
 changes. Custom Cursor subagents for this project live in `.cursor/agents/`.
@@ -156,4 +154,5 @@ The six role agents in `.cursor/agents/` are:
 
 Each agent reads this file and `docs/product-brief.md` first, then the architecture and
 contract documents relevant to its task, and ends with the handoff report above.
->>>>>>> Incoming (Background Agent changes)
+
+=======

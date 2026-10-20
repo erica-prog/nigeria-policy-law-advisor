@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from policy_advisor.generation.case_reasoning_models import StepCheckOutcome
 from policy_advisor.generation.case_reasoning_prompt import JUDGE_PROMPT
+from policy_advisor.llm_retry import call_with_retry
 
 
 class JudgeVerdict(BaseModel):
@@ -21,6 +22,6 @@ def judge_check(llm: ChatAnthropic, text: str, retrieved_chunks) -> StepCheckOut
     authorities_text = "\n\n".join(f"[{c.metadata['locator']}]\n{c.text}" for c in retrieved_chunks)
     judge_llm = llm.with_structured_output(JudgeVerdict)
     messages = JUDGE_PROMPT.format_messages(authorities=authorities_text or "(none provided)", text=text)
-    result: JudgeVerdict = judge_llm.invoke(messages)
+    result: JudgeVerdict = call_with_retry(lambda: judge_llm.invoke(messages))
     flagged = result.verdict.strip().upper() == "FLAGGED"
     return StepCheckOutcome(faithful=not flagged, judge_flagged=flagged, judge_notes=result.notes)

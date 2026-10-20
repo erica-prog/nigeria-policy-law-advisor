@@ -14,5 +14,8 @@ data/index/
 # lawyer accounts/credentials
 data/auth/
 
+# optional pg_dump copies of the database (docs/16) - client data; never commit
+data/backups/
+
 # OS
 .DS_Store
