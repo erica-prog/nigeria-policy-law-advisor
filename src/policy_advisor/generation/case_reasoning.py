@@ -96,25 +96,13 @@ class CaseReasoningChain:
         self._settings = settings
         self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
-
-        def _client(max_tokens: int, timeout: float) -> ChatAnthropic:
-            return ChatAnthropic(
-                model=settings.anthropic_model,
-                api_key=settings.anthropic_api_key.get_secret_value(),
-                max_tokens=max_tokens,
-                default_request_timeout=timeout,
-                max_retries=0,
-            )
-
-        self._llm = _client(2048, 45)
-        self._argument_llm = _client(ARGUMENT_MAX_TOKENS, ARGUMENT_TIMEOUT_SECONDS)
-
-    @property
-    def retriever(self) -> HybridRetriever:
-        """Exposed so the advisory layer can reuse this retriever rather than
-        constructing a second one - a new HybridRetriever reloads the embedding
-        model and rebuilds the per-matter BM25 cache from scratch."""
-        return self._retriever
+        self._llm = ChatAnthropic(
+            model=settings.anthropic_model,
+            api_key=api_key or settings.anthropic_api_key.get_secret_value(),
+            max_tokens=2048,
+            default_request_timeout=45,
+            max_retries=0,
+        )
 
     def invalidate_matter(self, matter_id: str) -> None:
         """Drop the cached index for this matter after a document is added or removed."""
@@ -292,7 +280,8 @@ class CaseReasoningChain:
         messages = SYNTHESIS_PROMPT.format_messages(
             case_facts=case_facts, issue_summaries=issue_summaries, response_language=response_language
         )
-        overall_position = call_with_retry(lambda: self._llm.invoke(messages)).content
+        report_stage("writing")
+        overall_position = self._llm.invoke(messages).content
 
         # Final synthesis is checked against the union of every issue's own
         # retrieved authorities - it must only restate what the per-issue steps

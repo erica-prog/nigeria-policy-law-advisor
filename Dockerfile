@@ -18,9 +18,10 @@ RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY src ./src
-# Operational scripts run inside the container (docs/16), such as the one-off
-# migration of matters from the old Chroma-era layout.
-COPY scripts ./scripts
+# Static browser client and avatar frames served by the FastAPI app
+# (docs/17-web-app-mvp.md). Harmless for the Streamlit entrypoint.
+COPY web ./web
+COPY assets ./assets
 COPY pyproject.toml ./
 ENV PATH="/app/.venv/bin:$PATH"
 

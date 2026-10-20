@@ -1,0 +1,11 @@
+HTTP/1.1 200 OK
+date: Mon, 19 Oct 2026 23:02:48 GMT
+server: uvicorn
+content-length: 90
+content-type: application/json
+set-cookie: pa_session=eyJ1IjoidmVyaWZ5In0.atahmQ.6eQi8YDr-nj3cHDLa_vF-B43CrU; HttpOnly; Max-Age=604800; Path=/; SameSite=lax
+x-content-type-options: nosniff
+referrer-policy: same-origin
+content-security-policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+cache-control: no-store
+
