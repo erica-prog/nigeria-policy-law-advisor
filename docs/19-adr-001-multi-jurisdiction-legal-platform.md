@@ -1,6 +1,7 @@
 # ADR-001: Evolve the Nigerian single-matter RAG prototype into a USA + Nigeria legal AI platform
 
-**Status:** Proposed (revision 2, re-based on `main` at `580d393`)
+**Status:** Accepted 2026-10-24 (revision 2, re-based on `main` at `580d393`; accepted by the
+product owner with the instruction to deliver the platform in full, phase by phase)
 **Date:** 2026-10-24
 **Deciders:** product owner / lead architect (you). A practising lawyer should
 sign off the jurisdiction taxonomy and the source allow-list, since both are
@@ -380,8 +381,8 @@ looks like; use the SDK rather than copying that approach.
 
 Phase 0 — make `main` true again (days)
 1. [x] Merge `fix-uv-lock-dangling` (lock, ingestion and matter-store `NameError`s, ownership into the `matters` table, no live key in unit tests). Merged as pull request 11 on 2026-10-24. CI on that push: lint-and-test and Docker green; the two eval jobs failed only for the missing `ANTHROPIC_WORKSPACE_ID` secret, since added. Confirm green on the next pull request.
-2. [ ] Land this branch's `AGENTS.md`; rewrite `docs/product-brief.md` and the six Cursor agents to the web client and cookie auth; update `docs/architecture/web-mvp.md` storage section; complete the document map in `docs/00-overview.md`.
-3. [ ] Make `mypy` blocking (18 errors remain after the fix branch); decide whether `ruff format` becomes a CI step (51 files would change).
+2. [ ] `AGENTS.md` landed (pull request 12) and the six agents now live in `.claude/agents` rewritten for the web client. Still open: rewrite `docs/product-brief.md`; update `docs/architecture/web-mvp.md` storage section; complete the document map in `docs/00-overview.md`.
+3. [ ] Make `mypy` blocking (17 errors remain); decide whether `ruff format` becomes a CI step (51 files would change).
 4. [ ] Stop deleting uploads: add object storage for originals (migration `0002` adds `documents` with a storage key); keep the ingestion job otherwise unchanged.
 
 Phase 1 — data contract and storage (weeks)
