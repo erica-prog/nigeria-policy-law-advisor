@@ -88,4 +88,20 @@ in CI on the pull request. New tests are named after their criterion.
 | P0-B retained originals | `e2ad389` | `storage.py` blob store, migration `0002_documents`, download route, deletion with document and matter; tests for owner-only download, hash, failed upload leaves nothing (AC-2) |
 | P1-B corpus tiers | `648a2b1` | migration `0003`: matters.tier, chunk trust_kind, locator_scheme, provenance and structured jurisdiction; idempotent backfill tested on legacy rows; demo library is the first authority collection (AC-6) |
 | P1-C part 1: full-text search | `79f8588` | migration `0004`: tsvector + GIN, locator index, HNSW on the authority tier; size-based keyword backend; both backends agree on top results (AC-7) |
-| P1-C part 2: state into Postgres | see git log | migration `0005`: conversations, users, user_keys tables and matter title/updated_at columns; import script for credentials.yaml and user_keys.json; nothing but originals left on disk (AC-8) |
+| P1-C part 2: state into Postgres | `380e2f3` | migration `0005`: conversations, users, user_keys tables and matter title/updated_at columns; import script for credentials.yaml and user_keys.json; nothing but originals left on disk (AC-8) |
+| P1-C part 3: document queue | `6cf2d0a` | migration `0006`: `document_jobs`; SKIP LOCKED claiming; cancel-after-ingest honoured; stale jobs re-queued then failed; inline or separate worker (`python -m policy_advisor.worker`); a queued job survives a restart in the tests (AC-9) |
+| P1-D reranker, per-tier gate, scope ladder | `519c957` | `retrieval/rerank.py` cross-encoder on one scale; `RETRIEVAL_GATE_OVERRIDES` per tier; `retrieve_widening` matter → library; answer source `library` labelled as authority end to end; golden-set case `g_widen_01` (AC-10) |
+
+### AC-10 measurement (2026-10-24, local, retrieval only, demo corpus rebuilt on Postgres 17 + pgvector)
+
+| Setting | recall@8 | precision@8 | MRR@8 | `g_widen_01` |
+|---|---|---|---|---|
+| reranker off | 1.000 | 0.125 | 0.734 | scope `library`, recall 1.0, MRR 1.0 |
+| reranker on (`cross-encoder/ms-marco-MiniLM-L-6-v2`, top 24) | 1.000 | 0.125 | 0.875 | scope `library`, recall 1.0, MRR 1.0 |
+
+Recall is unchanged and MRR improves, so reranking stays on by default. The CI eval
+gate downloads the cross-encoder on first use (about 90 MB). Precision@8 is a property
+of the golden set (one expected chunk per question, eight returned), not a regression.
+
+Phase 0 and Phase 1 are complete on branch `platform/phase-0-1`; Phase 2 (sources,
+agent loop, playbooks) gets its own plan.
