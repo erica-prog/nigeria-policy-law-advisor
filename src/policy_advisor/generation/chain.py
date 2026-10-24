@@ -43,6 +43,8 @@ class AnswerResult:
     # official-sources fallback instead - never checked the same way, so the
     # UI must render it as a visually distinct, lower-trust block, not a
     # normal chat bubble (api/avatar.py maps it to the avatar's trust state).
+    # "library": the matter had nothing, the shared authority library did; the
+    # passages are authority and the client must say so.
     source: str = "corpus"
     web_citations: list[WebSearchCitation] = field(default_factory=list)
 
@@ -82,14 +84,22 @@ class RAGChain:
         jurisdiction: str | None = None,
         conversation_language: str = "en",
         allow_web_fallback: bool = False,
+        library_matters: list[str] | None = None,
     ) -> AnswerResult:
+        """`library_matters`: authority collections to widen to when the matter
+        has nothing relevant (the scope ladder: matter, library, then web)."""
         with timed_request(self._logger, question) as fields:
             fields["matter_id"] = matter_id
             fields["conversation_language"] = conversation_language
             report_stage("reading_documents")
-            retrieved = self._retriever.retrieve(
-                question, top_k=self._settings.retrieval_top_k, matter_id=matter_id, jurisdiction=jurisdiction
+            retrieved, scope = self._retriever.retrieve_widening(
+                question,
+                top_k=self._settings.retrieval_top_k,
+                matter_id=matter_id,
+                jurisdiction=jurisdiction,
+                library_matters=library_matters,
             )
+            fields["scope"] = scope
             fields["retrieved_chunk_ids"] = [c.metadata["chunk_id"] for c in retrieved]
             fields["retrieved_scores"] = [round(c.fused_score, 4) for c in retrieved]
 
@@ -116,17 +126,24 @@ class RAGChain:
             if not retrieved:
                 if not allow_web_fallback:
                     fields["outcome"] = "no_relevant_chunks"
-                    return AnswerResult(answer=NOT_FOUND_MESSAGE, retrieved=[], faithful=True, source="none")
+                    return AnswerResult(
+                        answer=NOT_FOUND_MESSAGE, retrieved=[], faithful=True, source="none"
+                    )
 
                 fields["outcome"] = "web_fallback_attempted"
                 report_stage("searching_web")
                 web_result = search_official_sources(
                     question, response_language=response_language, api_key=self._api_key
                 )
-                log_event(self._logger, "web_fallback_used", matter_id=matter_id, found=web_result.found)
+                log_event(
+                    self._logger, "web_fallback_used", matter_id=matter_id, found=web_result.found
+                )
                 if not web_result.found:
                     return AnswerResult(
-                        answer=NOT_FOUND_EVEN_ON_WEB_MESSAGE, retrieved=[], faithful=True, source="none"
+                        answer=NOT_FOUND_EVEN_ON_WEB_MESSAGE,
+                        retrieved=[],
+                        faithful=True,
+                        source="none",
                     )
                 return AnswerResult(
                     answer=web_result.answer,
@@ -166,4 +183,5 @@ class RAGChain:
                 faithful=faithful,
                 unsupported_citations=unsupported,
                 usage=dict(usage),
+                source="library" if scope == "library" else "corpus",
             )

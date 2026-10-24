@@ -43,6 +43,9 @@ def _refuse_unsafe(url: str) -> None:
 
 _refuse_unsafe(TEST_DATABASE_URL)
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+# No cross-encoder in unit tests: deterministic ordering, no model download.
+# Tests that exercise reranking inject their own scorer.
+os.environ["RERANK_ENABLED"] = "false"
 
 
 @pytest.fixture

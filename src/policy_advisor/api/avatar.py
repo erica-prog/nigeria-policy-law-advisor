@@ -13,6 +13,8 @@ def avatar_state_for_answer(source: str, faithful: bool) -> AvatarState:
         return "no_results"
     if source == "web":
         return "web_source"
+    # "library" answers are grounded and citation-checked like "corpus" ones;
+    # the bubble and the citation kinds say they are authority, not evidence.
     if not faithful:
         return "unverified"
     return "verified_source"

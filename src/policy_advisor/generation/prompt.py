@@ -46,8 +46,11 @@ def format_context(retrieved_chunks, response_language: str = "en") -> str:
     blocks = []
     for chunk in retrieved_chunks:
         meta = chunk.metadata
+        trust = meta.get("trust_kind") or (
+            "authority" if meta.get("doc_type") in ("statute", "judgment") else "evidence"
+        )
         header = (
-            f"[{meta['locator']}] ({meta['doc_type']}, {meta['jurisdiction']}, "
+            f"[{meta['locator']}] ({meta['doc_type']}, {trust}, {meta['jurisdiction']}, "
             f"{meta['source_document']} p.{meta['page']})"
         )
         body = chunk.text
@@ -57,8 +60,16 @@ def format_context(retrieved_chunks, response_language: str = "en") -> str:
         # conversation is happening in the other language, never a
         # replacement for it (CLAUDE-2.md: never discard/displace the
         # original).
-        if translated and meta.get("translated_language") == response_language and meta.get("language") != response_language:
-            caveat = " - flagged as possibly inaccurate by the translation-fidelity check, verify against the original above" if meta.get("translation_flagged") else ""
+        if (
+            translated
+            and meta.get("translated_language") == response_language
+            and meta.get("language") != response_language
+        ):
+            caveat = (
+                " - flagged as possibly inaccurate by the translation-fidelity check, verify against the original above"
+                if meta.get("translation_flagged")
+                else ""
+            )
             language_name = LANGUAGE_NAMES.get(response_language, response_language)
             body += f"\n\n({language_name} translation, for reading convenience only{caveat}):\n{translated}"
         blocks.append(f"{header}\n{body}")

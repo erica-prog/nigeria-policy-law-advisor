@@ -29,7 +29,7 @@ SourceKind = Literal["evidence", "authority", "web"]
 # The four corpus trust labels (ADR-001). `kind` above stays for the client;
 # `firm` renders as authority there until the client learns the fourth label.
 TrustKind = Literal["evidence", "firm", "authority", "web"]
-AnswerSource = Literal["corpus", "web", "none"]
+AnswerSource = Literal["corpus", "library", "web", "none"]
 DocumentStatus = Literal["queued", "processing", "ready", "failed"]
 
 

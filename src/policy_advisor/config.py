@@ -90,6 +90,16 @@ class Settings(BaseSettings):
     # document behind a web result they never asked for.
     retrieval_certain_distance: float = 0.21
     retrieval_max_distance: float = 0.50
+    # Per-tier overrides of the two thresholds, as JSON in the environment:
+    #   RETRIEVAL_GATE_OVERRIDES='{"authority": {"certain": 0.21, "max": 0.50}}'
+    # A tier without an entry uses the two values above. Calibrate per tier with
+    # eval/calibrate_relevance_floor.py against a golden set for that tier.
+    retrieval_gate_overrides: dict[str, dict[str, float]] = {}
+    # Cross-encoder that rescores the top fused candidates on one relevance
+    # scale (retrieval/rerank.py). Empty disables reranking.
+    rerank_enabled: bool = True
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_top_n: int = 24
     auth_cookie_key: SecretStr = SecretStr("dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-.env")
     # Web API (docs/architecture/web-mvp.md)
     session_cookie_secure: bool = False

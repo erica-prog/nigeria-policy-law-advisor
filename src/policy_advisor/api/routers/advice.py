@@ -38,7 +38,7 @@ from policy_advisor.api.schemas import (
 )
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.api.user_keys import resolve_anthropic_key
-from policy_advisor.config import get_settings
+from policy_advisor.config import PHASE1_DEMO_MATTER_ID, get_settings
 from policy_advisor.generation.chain import LLM_UNAVAILABLE_MESSAGE
 from policy_advisor.logging_utils import log_event
 from policy_advisor.progress import report_stage
@@ -77,6 +77,8 @@ def run_ask(
         jurisdiction=body.jurisdiction,
         conversation_language=body.language,
         allow_web_fallback=body.allow_web,
+        # The scope ladder: the matter, then the shared library, then (if allowed) the web.
+        library_matters=[PHASE1_DEMO_MATTER_ID] if matter.id != PHASE1_DEMO_MATTER_ID else [],
     )
     if result.answer == LLM_UNAVAILABLE_MESSAGE:
         raise ApiError(
@@ -89,6 +91,8 @@ def run_ask(
         source = "web"
     elif result.source == "none":
         source = "none"
+    elif result.source == "library":
+        source = "library"
     if source == "web":
         citations = [web_reference(c, f"w{i + 1}") for i, c in enumerate(result.web_citations)]
         retrieved: list[SourceReference] = []

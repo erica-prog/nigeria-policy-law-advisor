@@ -171,7 +171,8 @@ Response `200`:
 ```json
 {
   "answer": "... [Source: Order 5 Rule 3] ...",
-  "source": "corpus",
+  "source": "corpus",   // "corpus" (the matter), "library" (the matter had nothing; the shared
+                        // reference library did - citations are authority), "web", or "none"
   "faithful": true,
   "unsupported_citations": [],
   "citations": [SourceReference],

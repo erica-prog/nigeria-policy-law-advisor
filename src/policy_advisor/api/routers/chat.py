@@ -106,6 +106,13 @@ def bubble_for_answer(
             "authority, not evidence from your case.",
             [CHIP_ASK],
         )
+    if answer.source == "library":
+        return (
+            "Your documents do not cover this, so this comes from the reference library. It is "
+            f"legal authority, not evidence from your case: {_plural(len(answer.citations), 'citation')} "
+            "you can open.",
+            [CHIP_ASK],
+        )
     if answer.source == "none":
         chips = [CHIP_ASK] if allow_web else [CHIP_ASK_WEB]
         return ("I could not find that in your documents.", chips)

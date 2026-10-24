@@ -310,3 +310,58 @@ def test_authority_tier_has_an_hnsw_index_and_search_still_names_it(fresh_db):
     )
     hits = vector_store.search("lib", EAST, k=2, tier="authority")
     assert [meta["chunk_id"] for meta, _, _ in hits] == ["r1", "r2"]
+
+
+# ---- scope widening and reranking (docs/22 slice P1-D, AC-10) ----
+
+
+def test_widening_answers_from_the_library_only_when_the_matter_has_nothing(fresh_db, query_points):
+    matter_store.set_matter_tier("lib", "authority")
+    matter_store.replace_document_chunks(
+        "lib", "rules.pdf", [_record("Order 1 Rule 2", "came into force")], np.vstack([EAST])
+    )
+    retriever = _ungated()
+
+    chunks, scope = retriever.retrieve_widening(
+        "when in force", top_k=5, matter_id="empty-case", library_matters=["lib"]
+    )
+    assert scope == "library"
+    assert [c.metadata["matter_id"] for c in chunks] == ["lib"]
+    assert chunks[0].metadata["tier"] == "authority"
+
+    matter_store.replace_document_chunks(
+        "case", "memo.docx", [_record("Section 1", "our own note")], np.vstack([EAST])
+    )
+    chunks, scope = retriever.retrieve_widening(
+        "note", top_k=5, matter_id="case", library_matters=["lib"]
+    )
+    assert scope == "matter" and [c.metadata["matter_id"] for c in chunks] == ["case"]
+
+    assert retriever.retrieve_widening(
+        "anything", top_k=5, matter_id="empty-case", library_matters=[]
+    ) == ([], None)
+
+
+def test_injected_scorer_reorders_fused_candidates_and_puts_exact_matches_first(
+    fresh_db, query_points
+):
+    matter_store.replace_document_chunks(
+        "m",
+        "doc.pdf",
+        [
+            _record("Order 5 Rule 3", "the rule"),
+            _record("c1", "alpha"),
+            _record("c2", "alpha beta gamma"),
+        ],
+        np.vstack([NORTH, EAST, EAST]),
+    )
+    longest_wins = lambda query, passages: [float(len(p)) for p in passages]  # noqa: E731
+    retriever = HybridRetriever(max_distance=2.0, certain_distance=2.0, scorer=longest_wins)
+
+    results = retriever.retrieve("Order 5 Rule 3 alpha", top_k=3, matter_id="m")
+
+    assert (
+        results[0].metadata["chunk_id"] == "Order 5 Rule 3"
+    )  # exact locator match, never rescored
+    assert [c.metadata["chunk_id"] for c in results[1:]] == ["c2", "c1"]
+    assert results[1].rerank_score == float(len("alpha beta gamma"))

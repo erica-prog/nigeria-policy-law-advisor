@@ -221,3 +221,44 @@ def test_citations_carry_trust_kind_and_tier(api_with_llm):
     assert by_locator["Order 5 Rule 3"]["kind"] == "authority"
     assert by_locator["Section 2"]["trust_kind"] == "evidence"
     assert by_locator["Section 2"]["kind"] == "evidence"
+
+
+def test_library_answers_are_labelled_authority_not_evidence(api_with_llm):
+    # docs/22 AC-10: when the matter has nothing and the shared library answers,
+    # the client learns it from `source`, the bubble and the citation kinds.
+    from policy_advisor.generation.chain import AnswerResult
+    from tests.api.helpers import FakeRagChain, chunk
+
+    rule = chunk(
+        "Order 1 Rule 2",
+        "These Rules came into force on 30 April 2009.",
+        doc_type="statute",
+        document="FHC Civil Procedure Rules.pdf",
+    )
+    rule.metadata.update(
+        {"matter_id": "phase1-demo", "tier": "authority", "trust_kind": "authority"}
+    )
+    fake = FakeRagChain(
+        AnswerResult(
+            answer="They came into force on 30 April 2009 [Source: Order 1 Rule 2].",
+            retrieved=[rule],
+            faithful=True,
+            source="library",
+        )
+    )
+    api_with_llm.services._rag_chain = fake
+    alice = api_with_llm.login("alice")
+    alice.post("/api/matters", json={"id": "alice-v-acme"})
+
+    body = alice.post("/api/matters/alice-v-acme/ask", json={"question": "when in force?"}).json()
+    assert body["source"] == "library" and body["avatar_state"] == "verified_source"
+    assert (
+        body["citations"][0]["kind"] == "authority"
+        and body["citations"][0]["trust_kind"] == "authority"
+    )
+    assert fake.calls[-1]["library_matters"] == ["phase1-demo"]
+
+    reply = alice.post(
+        "/api/matters/alice-v-acme/chat", json={"message": "when in force?", "intent": "ask"}
+    ).json()
+    assert "reference library" in reply["bubble"] and "not evidence" in reply["bubble"]

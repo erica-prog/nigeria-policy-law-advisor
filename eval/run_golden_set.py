@@ -14,7 +14,13 @@ from pathlib import Path
 
 GOLDEN_SET_PATH = Path(__file__).parent / "golden_set.json"
 
-REFUSAL_PHRASES = ("couldn't find", "cannot answer", "can't answer", "no information", "not contain")
+REFUSAL_PHRASES = (
+    "couldn't find",
+    "cannot answer",
+    "can't answer",
+    "no information",
+    "not contain",
+)
 
 
 def _chunk_key(item: dict) -> str:
@@ -44,8 +50,15 @@ def _evaluate_retrieval(question: dict, retrieved_metadatas: list[dict]) -> dict
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--top-k", type=int, default=8)
-    parser.add_argument("--fail-below", type=float, default=None, help="exit nonzero if mean recall@k drops below this")
-    parser.add_argument("--skip-generation", action="store_true", help="retrieval-only, skips Claude calls")
+    parser.add_argument(
+        "--fail-below",
+        type=float,
+        default=None,
+        help="exit nonzero if mean recall@k drops below this",
+    )
+    parser.add_argument(
+        "--skip-generation", action="store_true", help="retrieval-only, skips Claude calls"
+    )
     args = parser.parse_args()
 
     from policy_advisor.retrieval.hybrid_retriever import HybridRetriever
@@ -64,19 +77,34 @@ def main() -> None:
     refusal_results = []
 
     for question in questions:
-        retrieved = retriever.retrieve(
+        # `widen_to`: the question's matter has nothing; the answer must come from
+        # these library collections via the scope ladder (docs/22 AC-10).
+        retrieved, scope = retriever.retrieve_widening(
             question["question"],
             top_k=args.top_k,
             matter_id=question["matter_id"],
             jurisdiction=question["jurisdiction"],
+            library_matters=question.get("widen_to"),
         )
         retrieved_metadatas = [c.metadata for c in retrieved]
         metrics = _evaluate_retrieval(question, retrieved_metadatas)
 
-        outcome = {"id": question["id"], "question": question["question"], **metrics}
+        outcome = {
+            "id": question["id"],
+            "question": question["question"],
+            "scope": scope,
+            **metrics,
+        }
+        if question.get("expect_scope") and scope != question["expect_scope"]:
+            outcome["scope_error"] = f"expected {question['expect_scope']}, got {scope}"
 
         if chain is not None:
-            result = chain.answer(question["question"], matter_id=question["matter_id"], jurisdiction=question["jurisdiction"])
+            result = chain.answer(
+                question["question"],
+                matter_id=question["matter_id"],
+                jurisdiction=question["jurisdiction"],
+                library_matters=question.get("widen_to"),
+            )
             outcome["faithful"] = result.faithful
             if not question["expect_refusal"]:
                 faithfulness_results.append(result.faithful)
@@ -94,7 +122,9 @@ def main() -> None:
     mean_mrr = sum(m["mrr"] for m in scored) / len(scored) if scored else None
 
     print("\n--- summary ---")
-    print(f"questions: {len(questions)} (scored: {len(scored)}, refusal-expected: {len(questions) - len(scored)})")
+    print(
+        f"questions: {len(questions)} (scored: {len(scored)}, refusal-expected: {len(questions) - len(scored)})"
+    )
     print(f"recall@{args.top_k}: {mean_recall}")
     print(f"precision@{args.top_k}: {mean_precision}")
     print(f"MRR@{args.top_k}: {mean_mrr}")
@@ -103,8 +133,13 @@ def main() -> None:
     if refusal_results:
         print(f"correct refusal rate: {sum(refusal_results) / len(refusal_results)}")
 
+    scope_errors = [m for m in retrieval_metrics if m.get("scope_error")]
+    if scope_errors:
+        raise SystemExit(f"scope widening failed for: {', '.join(m['id'] for m in scope_errors)}")
     if args.fail_below is not None and mean_recall is not None and mean_recall < args.fail_below:
-        raise SystemExit(f"recall@{args.top_k} {mean_recall:.3f} is below threshold {args.fail_below}")
+        raise SystemExit(
+            f"recall@{args.top_k} {mean_recall:.3f} is below threshold {args.fail_below}"
+        )
 
 
 if __name__ == "__main__":

@@ -178,3 +178,15 @@ def test_raw_distance_survives_normalization():
 
     assert sorted(c.vector_distance for c in results) == [0.10, 0.30]
     assert max(c.fused_score for c in results) == pytest.approx(0.5)
+
+
+def test_gate_thresholds_can_be_overridden_per_tier(monkeypatch):
+    # docs/22 AC-10: a library tier can carry its own calibration. 0.30 clears
+    # the matter gate (MAX) but not a tighter authority override.
+    retriever = _retriever([_hit("c1", "Order 1 Rule 1", 0.30)])
+    retriever._gate_overrides = {"authority": {"certain": 0.10, "max": 0.25}}
+    assert retriever.gate_for("matter") == (CERTAIN, MAX)
+    assert retriever.gate_for("authority") == (0.10, 0.25)
+    assert len(retriever.retrieve("q", top_k=8, matter_id="m")) == 1
+    retriever._indexes["m"].tier = "authority"
+    assert retriever.retrieve("q", top_k=8, matter_id="m") == []

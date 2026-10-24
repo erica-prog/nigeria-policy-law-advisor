@@ -25,6 +25,7 @@ from policy_advisor.ingestion.matter_store import load_matter_snapshot, matter_s
 from policy_advisor.jurisdictions import storage_values
 from policy_advisor.retrieval import vector_store
 from policy_advisor.retrieval.bm25_index import BM25Index, build_bm25_index
+from policy_advisor.retrieval.rerank import Scorer, default_scorer, rerank
 
 _LOCATOR_RE = re.compile(r"order\s+(\d+)\D{1,5}?rule\s+(\d+)", re.IGNORECASE)
 
@@ -42,6 +43,9 @@ class RetrievedChunk:
     # relevance. This is the only field with an absolute, cross-query meaning,
     # and it's what the relevance gate below tests.
     vector_distance: float | None = None
+    # Cross-encoder relevance (retrieval/rerank.py): one scale across queries,
+    # tiers and matters, unlike the per-query normalised scores above.
+    rerank_score: float | None = None
 
 
 def _normalize(scores: list[float]) -> list[float]:
@@ -89,8 +93,15 @@ class HybridRetriever:
         max_distance: float | None = None,
         certain_distance: float | None = None,
         keyword_index_max_chunks: int | None = None,
+        scorer: Scorer | None = None,
+        rerank_top_n: int | None = None,
     ):
         settings = get_settings()
+        # Per-tier gate thresholds: the two constructor values are the base;
+        # RETRIEVAL_GATE_OVERRIDES refines them for a tier.
+        self._gate_overrides = settings.retrieval_gate_overrides
+        self._scorer = scorer if scorer is not None else default_scorer()
+        self._rerank_top_n = settings.rerank_top_n if rerank_top_n is None else rerank_top_n
         self._vector_weight = vector_weight
         self._bm25_weight = bm25_weight
         self._keyword_index_max_chunks = (
@@ -246,7 +257,7 @@ class HybridRetriever:
 
         candidates = [c for c in candidates if c.metadata["chunk_id"] not in exact_chunk_ids]
 
-        if not exact_matches and not self._clears_relevance_floor(candidates):
+        if not exact_matches and not self._clears_relevance_floor(candidates, index.tier):
             # Nothing in this matter is actually about the question. Returning
             # the least-bad eight chunks here is what made "no relevant
             # results" unrepresentable, and with it the web fallback in
@@ -254,9 +265,46 @@ class HybridRetriever:
             return []
 
         candidates.sort(key=lambda c: c.fused_score, reverse=True)
+        if self._scorer is not None:
+            candidates = rerank(query, candidates, self._scorer, self._rerank_top_n)
         return (exact_matches + candidates)[:top_k]
 
-    def _clears_relevance_floor(self, candidates: list[RetrievedChunk]) -> bool:
+    def retrieve_widening(
+        self,
+        query: str,
+        top_k: int,
+        matter_id: str,
+        jurisdiction: str | None = None,
+        library_matters: list[str] | None = None,
+    ) -> tuple[list[RetrievedChunk], str | None]:
+        """The scope ladder (ADR-001 decision 4): the matter first; when its
+        gate says nothing there is about the question, each library collection
+        in turn. Returns the chunks and the scope they came from ("matter",
+        "library", or None when nothing anywhere clears the gate). Chunks keep
+        their own `matter_id` and `tier` metadata, so the caller can label
+        library passages as authority."""
+        chunks = self.retrieve(query, top_k, matter_id, jurisdiction)
+        if chunks:
+            return chunks, "matter"
+        for library in library_matters or []:
+            if library == matter_id:
+                continue
+            chunks = self.retrieve(query, top_k, library, jurisdiction)
+            if chunks:
+                return chunks, "library"
+        return [], None
+
+    def gate_for(self, tier: str | None) -> tuple[float, float]:
+        """(certain, max) distance thresholds for a tier."""
+        override = self._gate_overrides.get(tier or "", {})
+        return (
+            float(override.get("certain", self._certain_distance)),
+            float(override.get("max", self._max_distance)),
+        )
+
+    def _clears_relevance_floor(
+        self, candidates: list[RetrievedChunk], tier: str | None = None
+    ) -> bool:
         """Whether this matter plausibly holds anything relevant to the query.
 
         Deliberately a query-level gate rather than a per-candidate filter: it
@@ -275,8 +323,9 @@ class HybridRetriever:
         """
         if self._max_distance is None:
             return True
+        _, max_distance = self.gate_for(tier)
         distances = [c.vector_distance for c in candidates if c.vector_distance is not None]
-        return bool(distances) and min(distances) <= self._max_distance
+        return bool(distances) and min(distances) <= max_distance
 
     def needs_relevance_adjudication(self, chunks: list[RetrievedChunk]) -> bool:
         """Whether these results are too borderline to trust on distance alone.
@@ -288,7 +337,9 @@ class HybridRetriever:
         generation/relevance_check.py. Exact locator matches carry no distance
         and are never adjudicated: the lawyer named the rule.
         """
-        if self._certain_distance >= self._max_distance:
+        tier = chunks[0].metadata.get("tier") if chunks else None
+        certain, max_distance = self.gate_for(tier)
+        if certain >= max_distance:
             return False
         distances = [c.vector_distance for c in chunks if c.vector_distance is not None]
-        return bool(distances) and min(distances) > self._certain_distance
+        return bool(distances) and min(distances) > certain
