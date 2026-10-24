@@ -14,10 +14,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
+# Node 20 LTS for the connector servers (docs/23 D4): the binary and its
+# bundled npm copied from the official image, no package scripts run.
+COPY --from=node:20-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:20-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
 RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY src ./src
+# MCP connector servers the API starts as child processes (docs/26).
+COPY connectors ./connectors
 # Static browser client and avatar frames served by the FastAPI app
 # (docs/17-web-app-mvp.md).
 COPY web ./web

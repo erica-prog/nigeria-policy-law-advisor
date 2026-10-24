@@ -117,6 +117,16 @@ class Settings(BaseSettings):
     # Claude key. Only when this is true may a user without a key fall back to
     # the server's ANTHROPIC_API_KEY.
     allow_shared_anthropic_key: bool = False
+    # External sources as MCP tools (docs/26). Local connector servers live
+    # under CONNECTORS_DIR and run with NODE_COMMAND; every tool call has a
+    # timeout and a run has a call budget (docs/23 D5). Connector credentials
+    # (REGULATIONS_GOV_API_KEY, COURTLISTENER_API_TOKEN, GOVINFO_API_KEY) are
+    # read from the environment by the name the registry row gives.
+    connectors_dir: Path = PROJECT_ROOT / "connectors"
+    node_command: str = "node"
+    connector_timeout_seconds: float = 45.0
+    connector_result_max_chars: int = 12_000
+    agent_max_tool_calls: int = 12
 
     def llm_configured(self) -> bool:
         return bool(self.anthropic_api_key.get_secret_value().strip())

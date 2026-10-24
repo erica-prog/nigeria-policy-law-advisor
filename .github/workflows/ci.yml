@@ -49,6 +49,18 @@ jobs:
       - name: Unit tests
         run: uv run pytest
 
+  connectors:
+    # The vendored plugin server's own tests (connectors/legal-ai-skills/UPSTREAM.md).
+    # The Python side (tests/test_connectors.py) runs in lint-and-test, where
+    # the runner's Node lets it start this server under the real MCP client.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node --test connectors/legal-ai-skills/legal-research-server.test.mjs
+
   eval-gate:
     runs-on: ubuntu-latest
     needs: lint-and-test

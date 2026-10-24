@@ -9,7 +9,6 @@
       "tier": "authority",
       "trust_kind": "web",
       "connector": "web_search",
-      "tool_prefix": null,
       "licence": {
         "terms_url": null,
         "may_store_text": false,
@@ -29,7 +28,8 @@
       },
       "allowed": true,
       "allowed_by": "phase-1-default",
-      "notes": "The allow-list web_search.py carried as a constant before the registry existed. In use since Phase 1; a lawyer has not yet reviewed it."
+      "notes": "The allow-list web_search.py carried as a constant before the registry existed. In use since Phase 1; a lawyer has not yet reviewed it.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-ecfr",
@@ -38,7 +38,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "legal-research",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://www.ecfr.gov/reader-aids/using-ecfr/developer-resources",
         "may_store_text": true,
@@ -50,12 +49,17 @@
         "last_checked": null
       },
       "config": {
-        "server": "connectors/legal-ai-skills/legal-research-server.mjs",
-        "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c"
+        "server": "legal-ai-skills/legal-research-server.mjs",
+        "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c",
+        "tools": [
+          "search_us_ecfr",
+          "get_us_ecfr_text"
+        ]
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Reached through the plugin's legal-research server, vendored in slice P2-C. Locators: us_cfr."
+      "notes": "Reached through the plugin's legal-research server, vendored in slice P2-C. Locators: us_cfr.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-federal-register",
@@ -64,7 +68,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "legal-research",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://www.federalregister.gov/developers/documentation/api/v1",
         "may_store_text": true,
@@ -76,12 +79,17 @@
         "last_checked": null
       },
       "config": {
-        "server": "connectors/legal-ai-skills/legal-research-server.mjs",
-        "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c"
+        "server": "legal-ai-skills/legal-research-server.mjs",
+        "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c",
+        "tools": [
+          "search_us_federal_register",
+          "get_us_federal_register_document"
+        ]
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Vendored in slice P2-C."
+      "notes": "Vendored in slice P2-C.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-regulations-gov",
@@ -90,7 +98,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "legal-research",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://open.gsa.gov/api/regulationsgov/",
         "may_store_text": false,
@@ -102,12 +109,17 @@
         "last_checked": null
       },
       "config": {
-        "server": "connectors/legal-ai-skills/legal-research-server.mjs",
-        "credential_env": "REGULATIONS_GOV_API_KEY"
+        "server": "legal-ai-skills/legal-research-server.mjs",
+        "credential_env": "REGULATIONS_GOV_API_KEY",
+        "tools": [
+          "search_us_rulemaking",
+          "get_us_rulemaking_record"
+        ]
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Needs REGULATIONS_GOV_API_KEY on the server (docs/23 D7). Public comments are third-party text: snippets only."
+      "notes": "Needs REGULATIONS_GOV_API_KEY on the server (docs/23 D7). Public comments are third-party text: snippets only.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-courtlistener",
@@ -116,7 +128,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "courtlistener",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://www.courtlistener.com/terms/",
         "may_store_text": false,
@@ -130,13 +141,17 @@
       "config": {
         "url": "https://mcp.courtlistener.com/",
         "credential_env": "COURTLISTENER_API_TOKEN",
+        "auth_header": "Authorization",
+        "auth_prefix": "Token ",
         "denied_tool_patterns": [
-          "*alert*"
+          "*alert*",
+          "*subscribe*"
         ]
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Hosted MCP server. may_store_text stays false until the terms are read during P2-C (docs/23 R5). Alert and subscription tools are denied for every playbook."
+      "notes": "Hosted MCP server. may_store_text stays false until the terms are read during a live smoke test (docs/23 R5); the Authorization header scheme is CourtListener's REST one and is verified by that same test. Alert and subscription tools are denied for every playbook.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-govinfo",
@@ -145,7 +160,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "govinfo",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://www.govinfo.gov/about/policies",
         "may_store_text": true,
@@ -158,11 +172,13 @@
       },
       "config": {
         "url": "https://api.govinfo.gov/mcp",
-        "credential_env": "GOVINFO_API_KEY"
+        "credential_env": "GOVINFO_API_KEY",
+        "auth_header": "x-api-key"
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Hosted MCP server; needs GOVINFO_API_KEY on the server."
+      "notes": "Hosted MCP server; needs GOVINFO_API_KEY on the server.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-uscis-policy-manual",
@@ -171,7 +187,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "library",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://www.uscis.gov/website-policies",
         "may_store_text": true,
@@ -187,7 +202,8 @@
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Static text committed under data/us/ in slice P2-B and seeded into the us-library authority collection. Locators: uscis_pm."
+      "notes": "Static text committed under data/us/ in slice P2-B and seeded into the us-library authority collection. Locators: uscis_pm.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-reports-loc",
@@ -196,7 +212,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "library",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://www.loc.gov/legal/",
         "may_store_text": true,
@@ -213,7 +228,8 @@
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Static text committed under data/us/ by scripts/fetch_us_corpus.py and seeded into us-library. Locators: us_reporter, one chunk per reporter page."
+      "notes": "Static text committed under data/us/ by scripts/fetch_us_corpus.py and seeded into us-library. Locators: us_reporter, one chunk per reporter page.",
+      "tool_prefix": null
     },
     {
       "source_id": "ng-nigerialii",
@@ -222,7 +238,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "ng-sources",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://nigerialii.org/",
         "may_store_text": false,
@@ -239,7 +254,8 @@
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Served by the TypeScript connector built in slice P2-D. Terms and robots to be read before the connector goes live (docs/23 R1)."
+      "notes": "Served by the TypeScript connector built in slice P2-D. Terms and robots to be read before the connector goes live (docs/23 R1).",
+      "tool_prefix": null
     },
     {
       "source_id": "ng-nass",
@@ -248,7 +264,6 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "ng-sources",
-      "tool_prefix": null,
       "licence": {
         "terms_url": "https://nass.gov.ng/",
         "may_store_text": false,
@@ -265,7 +280,8 @@
       },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Served by the TypeScript connector built in slice P2-D. Already reachable through web search via web-official-ng."
+      "notes": "Served by the TypeScript connector built in slice P2-D. Already reachable through web search via web-official-ng.",
+      "tool_prefix": null
     }
   ]
 }

@@ -69,6 +69,7 @@ Not "it runs on my machine." Specifically:
 - [23-plan-platform-phase-2.md](23-plan-platform-phase-2.md) — plan for ADR-001 Phase 2: source registry, US and Nigeria connectors, US parsers and golden set, the agent loop with a tool policy, playbooks and routing evals
 - [24-source-registry.md](24-source-registry.md) — the `sources` table: licence terms, lawyer sign-off, the web-search allow-list as a row, and the `manage_sources` command
 - [25-us-library-corpus.md](25-us-library-corpus.md) — the `us-library` collection: public-domain US texts with provenance, the CFR, Policy Manual and reporter parsers, and the US golden set
+- [26-connectors-and-tool-policy.md](26-connectors-and-tool-policy.md) — external sources as MCP tools: the vendored US research server, hosted CourtListener and GovInfo, the one client, and the tool policy every call passes
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase
