@@ -175,7 +175,7 @@ def list_matters() -> list[str]:
 
 def list_matters_for_user(username: str) -> list[str]:
     """Every matter this user owns, plus the shared Phase 1 demo matter
-    (visible to everyone, read-only - see app.py) - never the full multi-tenant
+    (visible to everyone, read-only - see api/deps.py) - never the full multi-tenant
     list `list_matters()` returns."""
     with connect() as conn:
         owned = {

@@ -43,7 +43,7 @@ class AnswerResult:
     # documents (the default path). "web": came from the restricted
     # official-sources fallback instead - never checked the same way, so the
     # UI must render it as a visually distinct, lower-trust block, not a
-    # normal chat bubble (see app.py).
+    # normal chat bubble (api/avatar.py maps it to the avatar's trust state).
     source: str = "corpus"
     web_citations: list[WebSearchCitation] = field(default_factory=list)
 

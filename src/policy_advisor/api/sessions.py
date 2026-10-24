@@ -1,5 +1,5 @@
 """Signed session cookie. The cookie carries only the username, signed with
-AUTH_COOKIE_KEY (the same secret the Streamlit login uses) and time-limited to
+AUTH_COOKIE_KEY and time-limited to
 seven days like the prototype. HttpOnly + SameSite=Lax: JavaScript cannot read
 it and cross-site POSTs do not carry it."""
 

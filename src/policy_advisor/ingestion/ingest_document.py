@@ -32,7 +32,7 @@ def _reject_shared_demo_matter(matter_id: str) -> None:
     # The shared reference matter is visible to every lawyer (CLAUDE-2.md
     # cross-cutting concerns) - it must stay read-only at the function
     # level, not just have its UI controls hidden, or any caller bypassing
-    # app.py could still mutate a matter every other user relies on.
+    # the API's read-only check could still mutate a matter every other user relies on.
     if matter_id == PHASE1_DEMO_MATTER_ID:
         raise SharedMatterReadOnlyError(
             f"'{PHASE1_DEMO_MATTER_ID}' is a shared reference matter and is read-only."

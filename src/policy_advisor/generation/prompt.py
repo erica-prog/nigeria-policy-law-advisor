@@ -5,7 +5,7 @@ statutory text with judgments interpreting it."""
 from langchain_core.prompts import ChatPromptTemplate
 
 # CLAUDE-2.md capability 3: the lawyer's chosen conversational language, never
-# inferred silently - the UI asks for it explicitly (app.py) and it flows
+# inferred silently - the client sends it explicitly (`language` on the request) and it flows
 # through here. Independent of which language a context passage happens to
 # be written in, and independent of document-translation at ingestion - this
 # only controls the language Claude responds in.

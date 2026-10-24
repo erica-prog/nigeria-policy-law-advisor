@@ -1,7 +1,6 @@
 """Process-wide handles on the prototype pipeline. The retriever loads an
 embedding model and opens Chroma, so it is built lazily on first use and
-shared for the life of the process (the Streamlit app does the same with
-st.cache_resource). Chains hold a Claude client, and since revision 3 each
+shared for the life of the process. Chains hold a Claude client, and since revision 3 each
 web user thinks with their own key, so chains are cached per key
 fingerprint and all share the one retriever.
 

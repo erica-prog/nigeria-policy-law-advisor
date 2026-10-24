@@ -1,5 +1,9 @@
 # 10 — Adding Self-Service Signup to the Streamlit UI
 
+> **Superseded (2026-10-24).** The Streamlit app was removed; the browser client in
+> `web/`, served by FastAPI, is the only surface. See [17-web-app-mvp.md](17-web-app-mvp.md).
+> Kept for the reasoning it records.
+
 ## This reverses a documented decision — read this first
 [auth.py](../src/policy_advisor/auth.py)'s own docstring states accounts
 are "admin-provisioned only... no self-service sign-up, by deliberate

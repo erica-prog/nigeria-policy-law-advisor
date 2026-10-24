@@ -17,7 +17,7 @@ image:
 | Retrieval/orchestration API | Python (or TS) | LangChain + MCP client, calls Claude | Long-running service |
 | MCP server | TypeScript | Exposes search/metadata tools | Long-running service |
 | Vector store | (Chroma/Qdrant/etc., if self-hosted) | Stores embeddings | Long-running service |
-| UI | Streamlit or TS web | Demo/product frontend | Long-running service |
+| UI | Browser client (`web/`, served by FastAPI) | Product frontend | Long-running service |
 
 Separating these into distinct images is itself the data-engineering point:
 the **batch ingestion job** has a fundamentally different lifecycle (runs,

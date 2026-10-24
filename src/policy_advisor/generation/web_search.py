@@ -3,7 +3,7 @@ contain the answer (CLAUDE-2.md cross-cutting concern). Deliberately not
 blended into the corpus-citation faithfulness pipeline in faithfulness.py -
 a web result has no provenance the lawyer vetted, so it's surfaced as a
 distinct, separately-labeled source (see chain.py's `source` field and
-app.py's rendering), not merged in to look equally trustworthy.
+api/avatar.py's trust state), not merged in to look equally trustworthy.
 
 Uses Anthropic's native web_search_20250305 server tool (not a third-party
 search API) so the existing ANTHROPIC_API_KEY covers it, and so the

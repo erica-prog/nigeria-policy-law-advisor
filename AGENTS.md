@@ -85,8 +85,7 @@ Every agent ends its work with a handoff report containing:
 ## Where things are today
 
 The repository holds a working Python retrieval-and-reasoning pipeline, a FastAPI web
-API with a browser client, and the original Streamlit prototype (still the default
-container command). Reuse the retrieval, faithfulness and reasoning logic rather than
+API with a browser client. The Streamlit prototype was removed on 2026-10-24. Reuse the retrieval, faithfulness and reasoning logic rather than
 rewriting it.
 
 | Area                                     | Location                                                        |
@@ -99,8 +98,7 @@ rewriting it.
 | Web search (allow-listed official sites) | `src/policy_advisor/generation/web_search.py`                   |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
-| Streamlit prototype and auth             | `src/policy_advisor/app.py`, `src/policy_advisor/auth.py`       |
-| User management, database tools          | `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
+| Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
 | Evaluation (golden set, rubric)          | `eval/`                                                         |
 | Tests                                    | `tests/`                                                        |
 | CI                                       | `.github/workflows/ci.yml`                                      |
