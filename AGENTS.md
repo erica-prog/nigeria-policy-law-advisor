@@ -3,7 +3,8 @@
 Instructions for every agent (human or AI) working in this repository. Read this file,
 `CLAUDE.md`, `docs/00-overview.md` and the architecture and API contracts under
 `docs/architecture/` and `docs/contracts/` before making changes. Where this file and
-`CLAUDE.md` overlap, this file wins; `CLAUDE-2.md` holds the Phase 2 capability notes.
+`CLAUDE.md` overlap, this file wins. `CLAUDE.md` imports this file for Claude Code; the
+Phase 2 capability record is `docs/21-phase-2-capabilities-record.md`.
 
 ## Shared brief
 
@@ -103,14 +104,15 @@ rewriting it.
 | Tests                                    | `tests/`                                                        |
 | CI                                       | `.github/workflows/ci.yml`                                      |
 | Design documents                         | `docs/` (numbered; start at `docs/00-overview.md`)              |
-| Cursor role agents (brief still says React Native) | `.cursor/agents/`                                     |
-| Verification skills                      | `.cursor/skills/` and `.agents/skills/` (API smoke checks)      |
+| Role subagents                           | `.claude/agents/` (canonical; `.cursor/agents` is a symlink)    |
+| Verification skills (API smoke checks)   | `.claude/skills/` (canonical; `.cursor/skills` and `.agents/skills` are symlinks) |
+| Path-scoped rules for Claude Code        | `.claude/rules/`                                                |
 
 Known gaps an agent should not be surprised by (details in `docs/18-architecture-review.md`):
 `main` at `580d393` does not install (`uv.lock` fails to parse) and `ingest_document.py`
 and `matter_store.py` raise `NameError` on upload and retrieval; branch
-`fix-uv-lock-dangling` repairs all three; it is merged into branch `2026-10-19-pozq` but not yet into `main`. `docs/product-brief.md` and
-`.cursor/agents/` still describe a React Native app; `docs/architecture/web-mvp.md` still
+`fix-uv-lock-dangling` repairs all three; it is merged into branch `2026-10-19-pozq` but not yet into `main`. `docs/product-brief.md` still
+describes a React Native app; `docs/architecture/web-mvp.md` still
 says storage is Chroma. Check `git log`, open PRs and `docs/` before assuming the state
 of a module.
 
@@ -132,4 +134,6 @@ interface; if a contract is missing, ask for it first.
   gate green and should extend the golden set when they add a document type or
   jurisdiction.
 - Follow the numbered `docs/NN-title.md` convention for new design documents.
+- `.claude/` is the canonical home of subagents, skills and rules; the Cursor and Codex
+  folders are symlinks to it. Edit the canonical copy only.
 - Small, focused commits with descriptive messages. One logical change per commit.

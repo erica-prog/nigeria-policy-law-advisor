@@ -57,6 +57,7 @@ Not "it runs on my machine." Specifically:
 - [18-architecture-review.md](18-architecture-review.md) — code and structure review against the USA + Nigeria, Harvey-style target: what exists, what to keep, ranked gaps
 - [19-adr-001-multi-jurisdiction-legal-platform.md](19-adr-001-multi-jurisdiction-legal-platform.md) — ADR: three corpus tiers, jurisdiction taxonomy, Postgres + pgvector + workers, MCP connectors, agent loop, bulk analysis, grounded drafting
 - [20-plan-claude-layout-and-streamlit-removal.md](20-plan-claude-layout-and-streamlit-removal.md) — plan: `.claude/` project layout, CLAUDE.md revision, Streamlit removal; acceptance criteria, slices, risks, pending decisions
+- [21-phase-2-capabilities-record.md](21-phase-2-capabilities-record.md) — the Phase 2 memory (formerly `CLAUDE-2.md`): bring-your-own-document, case reasoning, multi-language; checklist marked done or open
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase

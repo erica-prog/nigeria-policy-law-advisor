@@ -1,4 +1,16 @@
-# CLAUDE-2.md
+# 21 — Phase 2 capabilities record (formerly `CLAUDE-2.md`)
+
+**Status:** historical record, moved out of the project memory on 2026-10-24 (plan in
+`docs/20-plan-claude-layout-and-streamlit-removal.md`, decision D1). The three resolved
+decisions below are restated in `CLAUDE.md`; everything else here is kept as the
+reasoning behind the Phase 2 code. Checklist items are marked **done** with the file that
+implements them, or **open** with where the work now lives (usually ADR-001,
+`docs/19-adr-001-multi-jurisdiction-legal-platform.md`). The planned docs 09 to 12 were
+never written under those names; those numbers were used for other topics.
+
+Original text follows, unchanged except for the checklist marks.
+
+---
 
 Phase 2 project memory: **Advanced RAG Policy Advisor**. Extends the Phase 1 system
 (fixed 3-document Nigerian civil procedure corpus, described in `CLAUDE.md`
@@ -236,79 +248,104 @@ thread through all three rather than landing at the end.
   reasoning.
 
 ### Phase A - generalized document ingestion (`docs/09-document-ingestion.md`)
-- [ ] Design the chunk/index metadata schema extension: `matter_id`
+- [x] Design the chunk/index metadata schema extension: `matter_id`
       (mandatory - every chunk belongs to exactly one matter),
       `document_type` (inferred, not hand-mapped), `language` (original),
       plus a slot for translated text per target language (capability 3).
-- [ ] Build document-type classification (structural heuristics first, e.g.
+      **done: `ingestion/chunk.py` (`Chunk`), `migrations/0001_init.sql`**
+- [x] Build document-type classification (structural heuristics first, e.g.
       Order/Rule numbering vs. paragraph numbering vs. contract clauses;
       fall back to a cheap classification pass).
-- [ ] Replace Phase 1's fixed `CORPUS` list with an upload path: accept a
+      **done: `ingestion/document_type.py`**
+- [x] Replace Phase 1's fixed `CORPUS` list with an upload path: accept a
       file, run ingestion on-demand, write to the matter-scoped index.
-- [ ] Add incremental upsert to the vector store and BM25 index (no full
+      **done: `api/routers/documents.py`, `ingestion/ingest_document.py`**
+- [x] Add incremental upsert to the vector store and BM25 index (no full
       rebuild per upload) and a matching deletion path - both scoped to a
       single matter so one upload/deletion never touches another matter's
       index.
-- [ ] Add async handling for large uploads (job + status, not a blocking
+      **done: `ingest_document.add_document/remove_document`, `matter_store.replace_document_chunks`**
+- [x] Add async handling for large uploads (job + status, not a blocking
       request) and validation for malformed/unsupported files.
-- [ ] Implement the matter-scope filter in `HybridRetriever` (generalizes
+      **done in-process: `api/jobs.py`; a real queue is ADR-001 action 7**
+- [x] Implement the matter-scope filter in `HybridRetriever` (generalizes
       Phase 1's jurisdiction filter) - a query must default to its own
       matter's documents only, never the full multi-tenant store.
+      **done: `retrieval/hybrid_retriever.py`, `retrieval/vector_store.search`**
 - [ ] Re-run an expanded golden set against multi-document, multi-matter
       retrieval before calling this phase done, including a test that a
       query in matter A never returns a chunk scoped to matter B.
+      **open: isolation test exists (`tests/test_matter_isolation.py`); the golden set is still one matter (ADR-001 action 18)**
 
 ### Phase B - case outcome / best-judgment reasoning (`docs/10-case-outcome-reasoning.md`)
-- [ ] Write the reframed system prompt: argument-strength analysis, not
+- [x] Write the reframed system prompt: argument-strength analysis, not
       outcome prediction - explicit, not implied.
-- [ ] Design the structured output schema (issues -> arguments per side ->
+      **done: `generation/case_reasoning_prompt.py`**
+- [x] Design the structured output schema (issues -> arguments per side ->
       supporting authorities -> per-issue assessment -> overall position).
+      **done: `generation/case_reasoning_models.py`**
 - [ ] Extend retrieval to a case-law collection for analogous precedent
       (builds on Phase A's generalized ingestion).
-- [ ] Extend `faithfulness.py` for the resolved tiered approach: the
+      **open: the `authority` tier in ADR-001**
+- [x] Extend `faithfulness.py` for the resolved tiered approach: the
       deterministic check on every step's output, scoped to that step's own
       retrieved/cited authority set (not the chain's pooled retrieval).
-- [ ] Add the Claude-as-judge check at step boundaries and on the final
+      **done: `generation/case_reasoning.py` (per-step `is_supported_citation`)**
+- [x] Add the Claude-as-judge check at step boundaries and on the final
       synthesis (not on every step - cost/latency only justified at the
       seams where one step's output becomes the next step's premise).
-- [ ] Implement the failure-action contract: one corrective retry per failed
+      **done: `generation/judge_check.py`**
+- [x] Implement the failure-action contract: one corrective retry per failed
       step, then a low-confidence flag surfaced in the structured output if
       still unresolved - a check with no defined action on failure is an
       audit log, not protection.
-- [ ] Add calibration/hedging language requirements to the prompt and spot-
+      **done: `case_reasoning.py` (one retry, then `unverified`)**
+- [x] Add calibration/hedging language requirements to the prompt and spot-
       check that confidence is differentiated, not uniform.
-- [ ] Add the mandatory per-response disclaimer (not a one-time UI footer).
-- [ ] Build the human-reviewed evaluation rubric (issue identification,
+      **done: confidence is computed, not generated (`case_reasoning.py`, `advisory_models.assess_outcome_confidence`)**
+- [x] Add the mandatory per-response disclaimer (not a one-time UI footer).
+      **done: `DISCLAIMER` in `case_reasoning.py`, `ADVISORY_DISCLAIMER`**
+- [x] Build the human-reviewed evaluation rubric (issue identification,
       strongest-authority selection, confidence calibration) - this phase
       isn't done when retrieval metrics look good, unlike Phase 1.
+      **done: `eval/case_reasoning_rubric.md`; structural gate `eval/run_case_reasoning_invariants.py`**
 
 ### Phase C - multi-language support (`docs/11-multi-language-support.md`)
-- [ ] Add a language-ID pass to ingestion; store language as chunk metadata.
-- [ ] Build the document-translation step in the ingestion pipeline: runs
+- [x] Add a language-ID pass to ingestion; store language as chunk metadata.
+      **done: `ingestion/language_detect.py`**
+- [x] Build the document-translation step in the ingestion pipeline: runs
       once at build time (versioned, like embedding), writes the translation
       into chunk metadata alongside the retained original - never replacing
       it.
-- [ ] Build the translation-fidelity check at ingestion time (length-ratio
+      **done: `ingestion/chunk_translation.py`, `ingestion/translate.py`**
+- [x] Build the translation-fidelity check at ingestion time (length-ratio
       heuristic first, Claude-as-judge for flagged chunks) - this gates what
       enters the long-term corpus, separate from the per-step citation check
       that runs later at query time.
+      **done: `ingestion/translation_fidelity.py`**
 - [ ] Evaluate a multilingual embedding model candidate (e.g. BGE-M3) against
       Phase 1's golden set in English before adding a second language, to
       catch any English-retrieval regression from the swap; decide which
       language's text gets embedded by default (the lawyer's working
       language) versus retained only for citation verification (the
       original).
-- [ ] Add the conversational-language preference prompt/setting, stored per
+      **open: harness exists (`eval/evaluate_embedding_candidate.py`); model still `bge-small-en-v1.5` (ADR-001 "to revisit")**
+- [x] Add the conversational-language preference prompt/setting, stored per
       session/matter, surfaced visibly in the UI.
-- [ ] Validate end-to-end on English + one second language before treating
+      **done: `language` on chat/ask/analyze requests, `LANGUAGE_NAMES` in `generation/prompt.py`**
+- [x] Validate end-to-end on English + one second language before treating
       "main languages" generally as in scope - include a test that a
       translated citation's fidelity check actually catches an injected
       mistranslation, not just that the pipeline runs.
+      **done for the fidelity check: `tests/test_translation_fidelity.py`, `tests/test_chunk_translation.py`**
 
 ### Cross-cutting, threaded through A/B/C (`docs/12-multi-tenancy-and-risk.md`)
-- [ ] Add access control so a query can only retrieve its own matter's
+- [x] Add access control so a query can only retrieve its own matter's
       documents (becomes a real security requirement once uploads exist).
+      **done: `api/deps.py` (`get_matter` before any handler)**
 - [ ] Re-check rate-limiting/cost-ceiling guidance against the more
       expensive call patterns in B and C (longer prompts, chained calls).
-- [ ] Extend structured logging with matter/document scope per query, and
+      **open: ADR-001 action 17 (cost ledger)**
+- [x] Extend structured logging with matter/document scope per query, and
       per-reasoning-step citations for capability 2.
+      **done: `logging_utils.py`, `log_event` calls in `case_reasoning.py`**
