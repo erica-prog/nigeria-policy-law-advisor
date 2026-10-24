@@ -90,6 +90,8 @@ def delete_one_matter(matter: WritableMatter, services: Services, jobs: Jobs) ->
     """Deletes the case, its documents and its chat. The shared library is refused."""
     jobs.forget_matter(matter.id)
     delete_matter_files(matter.id)
+    # Retained originals go with the matter (the documents rows cascade).
+    services.blob_store.delete_prefix(f"{matter.id}/")
     services.invalidate_matter(matter.id)
     log_event(services.logger, "matter_deleted", matter_id=matter.id, owner=matter.owner)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

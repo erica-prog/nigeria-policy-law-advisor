@@ -13,6 +13,12 @@ from time import time
 from policy_advisor.api.schemas import DocumentOut, DocumentStatus
 from policy_advisor.ingestion.ingest_document import UnsupportedDocumentError
 from policy_advisor.logging_utils import log_event
+from policy_advisor.storage import document_key
+
+CONTENT_TYPES = {
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
 
 GENERIC_FAILURE = "Processing failed. The server log has the details."
 EMPTY_FAILURE = "No readable text was found in this file."
@@ -106,13 +112,19 @@ class JobTable:
                 del self._jobs[job.job_id]
 
     def run(
-        self, job: DocumentJob, services, jurisdiction: str | None, api_key: str | None = None
+        self,
+        job: DocumentJob,
+        services,
+        jurisdiction: str | None,
+        api_key: str | None = None,
+        uploaded_by: str | None = None,
     ) -> None:
         """Executes one ingestion job. Called from FastAPI BackgroundTasks.
         `api_key` is the uploading user's resolved Claude key: ingestion-time
         translation runs on it, and is skipped (detection only) when the user
         has none, so uploads never spend the server's key."""
         from policy_advisor.ingestion.ingest_document import add_document, remove_document
+        from policy_advisor.ingestion.matter_store import record_document
 
         job.status = "processing"
         file_path = (job.temp_dir or Path()) / job.document_name
@@ -133,6 +145,21 @@ class JobTable:
                 # The user removed the chip while this was still reading.
                 remove_document(job.matter_id, job.document_name)
                 return
+            # Keep the original (ADR-001 action 4): the bytes go to the blob
+            # store and their hash and size to the documents table, so the
+            # file can be re-processed or opened later. Only once the text is
+            # indexed, so a failed upload leaves nothing behind.
+            key = document_key(job.matter_id, job.document_name)
+            info = services.blob_store.put(key, file_path)
+            record_document(
+                job.matter_id,
+                job.document_name,
+                storage_key=key,
+                sha256=info.sha256,
+                size=info.size,
+                content_type=CONTENT_TYPES.get(Path(job.document_name).suffix.lower()),
+                uploaded_by=uploaded_by,
+            )
             services.invalidate_matter(job.matter_id)
             job.status = "ready"
             log_event(

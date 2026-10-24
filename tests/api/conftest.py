@@ -62,6 +62,7 @@ def _build_harness(
     monkeypatch.setenv("ALLOW_SHARED_ANTHROPIC_KEY", "true" if shared_key else "false")
     monkeypatch.setenv("TRANSLATE_ON_INGEST", "false")
     monkeypatch.setenv("AUTH_COOKIE_KEY", "unit-test-cookie-key")
+    monkeypatch.setenv("ORIGINALS_DIR", str(tmp_path / "originals"))
     # Settings ignore empty environment values (env_ignore_empty), so point the
     # .env lookup at a file that does not exist; a developer's real .env must
     # never leak into the "no model key" fixture.
@@ -72,7 +73,7 @@ def _build_harness(
     _refuse_unsafe(database_url())
     with connect() as conn:
         conn.execute(
-            "TRUNCATE chat_exchanges, chunks, matters, index_meta RESTART IDENTITY CASCADE"
+            "TRUNCATE chat_exchanges, chunks, documents, matters, index_meta RESTART IDENTITY CASCADE"
         )
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")
     monkeypatch.setattr(matter_store, "MATTERS_DIR", tmp_path / "matters")

@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 
 import psycopg
 
-APP_TABLES = ("matters", "chunks", "chat_exchanges", "index_meta", "schema_migrations")
+APP_TABLES = ("matters", "chunks", "chat_exchanges", "index_meta", "documents", "schema_migrations")
 API_ROLES = ("anon", "authenticated")
 SEARCH_PATH = "public, extensions"
 

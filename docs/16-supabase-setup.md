@@ -11,6 +11,7 @@ Postgres database, using the pgvector extension for vector search.
 | `matters` | Each matter and its owner |
 | `chunks` | Each piece of each document: its text, metadata and 384-number embedding, in one row |
 | `chat_exchanges` | Each lawyer's last five question-and-answer exchanges per matter |
+| `documents` | One row per retained original: blob-store key, sha256, size, content type, uploader |
 | `index_meta` | Which embedding model produced the stored vectors |
 | `schema_migrations` | Which schema changes have been applied |
 

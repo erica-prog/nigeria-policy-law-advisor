@@ -39,6 +39,10 @@ Open <http://127.0.0.1:8000/>. The OpenAPI document is at `/docs`.
   `TRANSLATE_ON_INGEST=false` still switches translation off for everyone.
 - Docker: `docker compose up api` (port 8000), or `docker run` the image: its default
   command is the same uvicorn server.
+- Uploaded originals are kept under `ORIGINALS_DIR` (`data/originals`, inside the mounted
+  `data/` volume) and recorded in the `documents` table; the owner can download one at
+  `GET /api/matters/{id}/documents/{name}/original`. They are removed with the document
+  or the matter.
 
 ## Bring your own Claude key (revision 3)
 

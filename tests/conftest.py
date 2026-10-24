@@ -54,5 +54,7 @@ def fresh_db():
     # actually use - the last line of defence if settings were read early.
     _refuse_unsafe(database_url())
     with connect() as conn:
-        conn.execute("TRUNCATE chat_exchanges, chunks, matters, index_meta RESTART IDENTITY CASCADE")
+        conn.execute(
+            "TRUNCATE chat_exchanges, chunks, documents, matters, index_meta RESTART IDENTITY CASCADE"
+        )
     return database_url()

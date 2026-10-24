@@ -13,6 +13,7 @@ INDEX_DIR = DATA_DIR / "index"
 # by scripts/migrate_to_postgres.py now.
 MATTERS_DIR = INDEX_DIR / "matters"
 AUTH_DIR = DATA_DIR / "auth"
+ORIGINALS_DIR = DATA_DIR / "originals"
 PHASE1_DEMO_MATTER_ID = "phase1-demo"
 
 
@@ -41,6 +42,9 @@ class Settings(BaseSettings):
     # add-on. Optional here so tools that never touch the database still
     # import; db.py raises a clear error if it's missing when needed.
     database_url: SecretStr | None = None
+    # Where uploaded originals are kept (storage.py). A mounted volume in the
+    # container; an S3-compatible store is the planned alternative.
+    originals_dir: Path = ORIGINALS_DIR
     log_level: str = "info"
     retrieval_top_k: int = 8
     # Two-band relevance gate, calibrated against eval/golden_set.json by

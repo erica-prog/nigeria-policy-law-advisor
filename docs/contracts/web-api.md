@@ -148,7 +148,12 @@ shows an id; it shows `title`.
   "Jurisdictions" above; unknown values -> `422 unknown_jurisdiction`) ->
   `202 Document` with status `queued`. Shared matter -> `403 matter_read_only`.
 - `GET /api/matters/{id}/documents/{name}` -> `Document` (poll for status).
-- `DELETE /api/matters/{id}/documents/{name}` -> `204`.
+- `DELETE /api/matters/{id}/documents/{name}` -> `204`. Removes the chunks, the retained
+  original and its record.
+- `GET /api/matters/{id}/documents/{name}/original` -> the uploaded bytes as received
+  (`Content-Type` from the upload, `Content-Disposition` attachment, `X-Content-SHA256`).
+  Owner only, as for every matter route; the shared library and a document whose
+  processing has not reached `ready` -> `404 document_not_found`.
 
 ### Ask
 

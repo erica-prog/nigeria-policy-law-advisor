@@ -65,12 +65,16 @@ def record_from_row(row: dict) -> dict:
 
 
 def _ensure_matter(conn: DictConnection, matter_id: str) -> None:
-    conn.execute("INSERT INTO matters (matter_id) VALUES (%s) ON CONFLICT (matter_id) DO NOTHING", (matter_id,))
+    conn.execute(
+        "INSERT INTO matters (matter_id) VALUES (%s) ON CONFLICT (matter_id) DO NOTHING",
+        (matter_id,),
+    )
 
 
 def _bump_version(conn: DictConnection, matter_id: str) -> None:
     conn.execute(
-        "UPDATE matters SET content_version = content_version + 1 WHERE matter_id = %s", (matter_id,)
+        "UPDATE matters SET content_version = content_version + 1 WHERE matter_id = %s",
+        (matter_id,),
     )
 
 
@@ -78,7 +82,9 @@ def _insert_chunks(
     conn: DictConnection, matter_id: str, records: list[dict], embeddings: np.ndarray
 ) -> None:
     if len(records) != len(embeddings):
-        raise ValueError(f"{len(records)} chunks but {len(embeddings)} embeddings - they must pair up one to one.")
+        raise ValueError(
+            f"{len(records)} chunks but {len(embeddings)} embeddings - they must pair up one to one."
+        )
     placeholders = ", ".join("%s" for _ in _INSERT_COLUMNS)
     with conn.cursor() as cur:
         # psycopg pipelines executemany, so hundreds of rows cost roughly one
@@ -164,13 +170,18 @@ def set_matter_owner(matter_id: str, owner: str) -> None:
 
 def get_matter_owner(matter_id: str) -> str | None:
     with connect() as conn:
-        row = conn.execute("SELECT owner FROM matters WHERE matter_id = %s", (matter_id,)).fetchone()
+        row = conn.execute(
+            "SELECT owner FROM matters WHERE matter_id = %s", (matter_id,)
+        ).fetchone()
     return row["owner"] if row else None
 
 
 def list_matters() -> list[str]:
     with connect() as conn:
-        return [row["matter_id"] for row in conn.execute("SELECT matter_id FROM matters ORDER BY matter_id")]
+        return [
+            row["matter_id"]
+            for row in conn.execute("SELECT matter_id FROM matters ORDER BY matter_id")
+        ]
 
 
 def list_matters_for_user(username: str) -> list[str]:
@@ -191,7 +202,9 @@ def matter_version(matter_id: str) -> int:
     not exist yet, which is indistinguishable from an empty one - correctly, as
     both have nothing to retrieve."""
     with connect() as conn:
-        row = conn.execute("SELECT content_version FROM matters WHERE matter_id = %s", (matter_id,)).fetchone()
+        row = conn.execute(
+            "SELECT content_version FROM matters WHERE matter_id = %s", (matter_id,)
+        ).fetchone()
     return row["content_version"] if row else 0
 
 
@@ -214,7 +227,9 @@ def load_matter_snapshot(matter_id: str) -> tuple[int, list[dict]]:
         ).fetchall()
     if not rows:
         return 0, []
-    return rows[0]["content_version"], [record_from_row(row) for row in rows if row["chunk_id"] is not None]
+    return rows[0]["content_version"], [
+        record_from_row(row) for row in rows if row["chunk_id"] is not None
+    ]
 
 
 def load_matter_chunks(matter_id: str) -> list[dict]:
@@ -252,7 +267,8 @@ def replace_document_chunks(
         record_embedding_model(conn, get_settings().embedding_model)
         _ensure_matter(conn, matter_id)
         conn.execute(
-            "DELETE FROM chunks WHERE matter_id = %s AND source_document = %s", (matter_id, source_document)
+            "DELETE FROM chunks WHERE matter_id = %s AND source_document = %s",
+            (matter_id, source_document),
         )
         _insert_chunks(conn, matter_id, records, embeddings)
         _bump_version(conn, matter_id)
@@ -272,10 +288,49 @@ def remove_document(matter_id: str, source_document: str) -> int:
     """Delete one document's chunks. Returns how many were removed."""
     with connect() as conn, transaction(conn):
         removed = conn.execute(
-            "DELETE FROM chunks WHERE matter_id = %s AND source_document = %s", (matter_id, source_document)
+            "DELETE FROM chunks WHERE matter_id = %s AND source_document = %s",
+            (matter_id, source_document),
         ).rowcount
         _bump_version(conn, matter_id)
     return removed
+
+
+def record_document(
+    matter_id: str,
+    name: str,
+    *,
+    storage_key: str,
+    sha256: str,
+    size: int,
+    content_type: str | None,
+    uploaded_by: str | None,
+) -> None:
+    """Record (or replace) the retained original for one document."""
+    with connect() as conn, transaction(conn):
+        _ensure_matter(conn, matter_id)
+        conn.execute(
+            "INSERT INTO documents (matter_id, name, storage_key, sha256, bytes, content_type, uploaded_by) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (matter_id, name) DO UPDATE SET storage_key = excluded.storage_key, "
+            "sha256 = excluded.sha256, bytes = excluded.bytes, content_type = excluded.content_type, "
+            "uploaded_by = excluded.uploaded_by, uploaded_at = now()",
+            (matter_id, name, storage_key, sha256, size, content_type, uploaded_by),
+        )
+
+
+def get_document_record(matter_id: str, name: str) -> dict | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT matter_id, name, storage_key, sha256, bytes, content_type, uploaded_by, uploaded_at "
+            "FROM documents WHERE matter_id = %s AND name = %s",
+            (matter_id, name),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def delete_document_record(matter_id: str, name: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM documents WHERE matter_id = %s AND name = %s", (matter_id, name))
 
 
 def list_documents(matter_id: str) -> list[str]:

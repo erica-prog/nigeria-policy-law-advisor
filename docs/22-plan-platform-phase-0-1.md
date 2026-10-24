@@ -80,4 +80,9 @@ in CI on the pull request. New tests are named after their criterion.
 
 ## 7. Implementation record
 
-Appended per slice as it lands.
+| Slice | Commit | Result |
+|---|---|---|
+| P0-A mypy blocking | `80f61f2` | `policy_advisor/llm.py` factory; mypy 0 errors; CI step blocking; full suite 246 passed (AC-1) |
+| P1-A taxonomy and locator schemes | `0e92df3` | package data + loader; aliases `federal`/`lagos`; scheme-aware support; API accepts ids; prompt country-neutral; `jurisdictions/ng/` guides; suite 274 passed (AC-4, AC-5) |
+| P0-C docs consistency | see git log | product brief rewritten for the web client; architecture storage section; overview map complete (AC-3) |
+| P0-B retained originals | see git log | `storage.py` blob store, migration `0002_documents`, download route, deletion with document and matter; tests for owner-only download, hash, failed upload leaves nothing (AC-2) |
