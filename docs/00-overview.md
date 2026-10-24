@@ -54,6 +54,8 @@ Not "it runs on my machine." Specifically:
 - [12-voice-web-app-architecture.md](12-voice-web-app-architecture.md) — the spoken cartoon-advisor interface: client/server boundary, HTTP surface, auth refactor, latency budget
 - [13-voice-pipeline.md](13-voice-pipeline.md) — speech-to-text and text-to-speech, and the confidentiality and mis-transcription risks voice introduces
 - [14-cartoon-avatar-frontend.md](14-cartoon-avatar-frontend.md) — the avatar as a trust-state indicator, lip-sync, and the browser TypeScript
+- [18-architecture-review.md](18-architecture-review.md) — code and structure review against the USA + Nigeria, Harvey-style target: what exists, what to keep, ranked gaps
+- [19-adr-001-multi-jurisdiction-legal-platform.md](19-adr-001-multi-jurisdiction-legal-platform.md) — ADR: three corpus tiers, jurisdiction taxonomy, Postgres + pgvector + workers, MCP connectors, agent loop, bulk analysis, grounded drafting
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase
