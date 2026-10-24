@@ -16,6 +16,7 @@ Postgres database, using the pgvector extension for vector search.
 | `conversations` | One row per chat message per matter, in order |
 | `users` | Lawyer accounts: display name, bcrypt password hash |
 | `user_keys` | Each lawyer's Claude key as a Fernet token under a key derived from `AUTH_COOKIE_KEY` |
+| `document_jobs` | The upload-processing queue: status, attempts, which worker holds it |
 | `index_meta` | Which embedding model produced the stored vectors |
 | `schema_migrations` | Which schema changes have been applied |
 

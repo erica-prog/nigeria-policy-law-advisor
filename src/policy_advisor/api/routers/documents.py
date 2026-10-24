@@ -1,4 +1,5 @@
 import re
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Annotated
@@ -9,8 +10,8 @@ from fastapi.responses import FileResponse
 from policy_advisor.api.conversations import now_iso
 from policy_advisor.api.deps import CurrentUser, Jobs, Matter, Services, WritableMatter
 from policy_advisor.api.errors import ApiError
+from policy_advisor.api.jobs import CONTENT_TYPES
 from policy_advisor.api.schemas import DocumentList, DocumentOut
-from policy_advisor.api.user_keys import resolve_anthropic_key
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES
 from policy_advisor.ingestion.ingest_document import remove_document
@@ -18,6 +19,7 @@ from policy_advisor.ingestion.matter_store import (
     delete_document_record,
     get_document_record,
     list_documents,
+    record_document,
     update_matter_meta,
 )
 from policy_advisor.jurisdictions import UnknownJurisdiction, load_taxonomy, normalize_jurisdiction
@@ -102,14 +104,25 @@ async def upload_document(
         temp_dir.rmdir()
         raise ApiError(415, "unsupported_document", "The uploaded file is empty.")
 
-    job = jobs.create(matter.id, name, temp_dir)
+    # The bytes go to the blob store now, so a worker in another process (or
+    # this one after a restart) can read them; the record carries their hash.
+    key = document_key(matter.id, name)
+    info = services.blob_store.put(key, temp_dir / name)
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    record_document(
+        matter.id,
+        name,
+        storage_key=key,
+        sha256=info.sha256,
+        size=info.size,
+        content_type=CONTENT_TYPES.get(Path(name).suffix.lower()),
+        uploaded_by=user.username,
+    )
+    job = jobs.create(matter.id, name, key, jurisdiction=jurisdiction, uploaded_by=user.username)
     update_matter_meta(matter.id, updated_at=now_iso())
     log_event(services.logger, "document_upload_queued", matter_id=matter.id, document=name)
-    # Translation during ingestion runs on the uploader's own key (or is
-    # skipped when they have none); the server key is never spent here.
-    background.add_task(
-        jobs.run, job, services, jurisdiction, resolve_anthropic_key(user.username), user.username
-    )
+    if get_settings().inline_workers:
+        background.add_task(jobs.run_pending, services)
     return job.to_document()
 
 

@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # Where uploaded originals are kept (storage.py). A mounted volume in the
     # container; an S3-compatible store is the planned alternative.
     originals_dir: Path = ORIGINALS_DIR
+    # Document jobs (api/jobs.py) are rows in document_jobs. True: the API
+    # process runs the worker inline after each upload. False: run
+    # `python -m policy_advisor.worker` alongside the API.
+    inline_workers: bool = True
+    worker_poll_seconds: float = 2.0
     log_level: str = "info"
     retrieval_top_k: int = 8
     # Keyword search backend per matter: up to this many chunks the retriever

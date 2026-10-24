@@ -7,3 +7,13 @@ services:
     ports: ["8000:8000"]
     volumes:
       - ./data:/app/data
+
+  # Optional separate document worker. Set INLINE_WORKERS=false in .env when
+  # using it, so the api service only enqueues: docker compose up api worker
+  worker:
+    build: .
+    env_file: .env
+    command: ["python", "-m", "policy_advisor.worker"]
+    volumes:
+      - ./data:/app/data
+    profiles: ["worker"]

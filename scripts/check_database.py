@@ -34,6 +34,7 @@ APP_TABLES = (
     "conversations",
     "users",
     "user_keys",
+    "document_jobs",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")

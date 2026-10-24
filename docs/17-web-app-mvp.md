@@ -44,6 +44,11 @@ Open <http://127.0.0.1:8000/>. The OpenAPI document is at `/docs`.
   `data/` volume) and recorded in the `documents` table; the owner can download one at
   `GET /api/matters/{id}/documents/{name}/original`. They are removed with the document
   or the matter.
+- Document processing is a queue in the `document_jobs` table. By default the API
+  process ingests each upload itself (`INLINE_WORKERS=true`). With `INLINE_WORKERS=false`
+  run `uv run python -m policy_advisor.worker` (or `docker compose --profile worker up`)
+  alongside the API; several workers can run, and a job queued before a restart is
+  processed after it.
 
 ## Bring your own Claude key (revision 3)
 

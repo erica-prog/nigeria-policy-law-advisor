@@ -64,7 +64,7 @@ def _build_harness(
     _refuse_unsafe(database_url())
     with connect() as conn:
         conn.execute(
-            "TRUNCATE chat_exchanges, chunks, documents, conversations, user_keys, users, matters, "
+            "TRUNCATE chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
             "index_meta RESTART IDENTITY CASCADE"
         )
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")

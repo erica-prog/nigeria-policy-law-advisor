@@ -393,10 +393,11 @@ def test_each_users_chain_is_built_with_their_own_key_never_anothers(api_byok):
     )
 
 
-def test_upload_translation_runs_on_the_uploaders_key_or_is_skipped(api_byok, monkeypatch):
+def test_uploads_never_carry_a_claude_key_into_ingestion(api_byok, monkeypatch):
     """Web uploads index the original text and never translate, so a document
-    becomes reviewable without a Claude call per chunk. The uploader's key is
-    still the one recorded for the job; the server key is never used."""
+    becomes reviewable without a Claude call per chunk. Ingestion runs from the
+    document queue, possibly in another process, so it never receives a key at
+    all: not the uploader's (which is never persisted) and not the server's."""
     seen: list[dict] = []
 
     def fake_add_document(matter_id, file_path, jurisdiction=None, *, api_key=None, translate=None):
@@ -422,7 +423,7 @@ def test_upload_translation_runs_on_the_uploaders_key_or_is_skipped(api_byok, mo
 
     assert _put(alice, ALICE_KEY)[0].status_code == 200
     upload("after-key.docx")
-    assert seen[-1] == {"api_key": ALICE_KEY, "translate": False}
+    assert seen[-1] == {"api_key": None, "translate": False}
 
 
 @pytest.mark.parametrize(
