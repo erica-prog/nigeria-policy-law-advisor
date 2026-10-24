@@ -25,21 +25,20 @@ uv run uvicorn policy_advisor.api.main:app --reload
 
 Open <http://127.0.0.1:8000/>. The OpenAPI document is at `/docs`.
 
-- Existing accounts from the Streamlit prototype work unchanged: both read
-  `data/auth/credentials.yaml` (bcrypt hashes written by `scripts/add_user.py` or the
-  Streamlit sign-up tab).
+- Accounts live in `data/auth/credentials.yaml` (bcrypt hashes written by
+  `scripts/add_user.py`; accounts created by the retired Streamlit sign-up tab keep working).
 - The shared `phase1-demo` matter (built by `python -m policy_advisor.ingestion.build_index`)
   appears in "Your cases" as **Reference library (shared, read-only)** for every user,
   exactly as in the prototype.
 - `ANTHROPIC_API_KEY` in `.env` is now optional for the web app: users bring their own
-  key (next section). The server key is still used by the Streamlit prototype, the
+  key (next section). The server key is still used by the
   ingestion scripts and the eval harness, and by web users only when
   `ALLOW_SHARED_ANTHROPIC_KEY=true`. Without any usable key the server still starts:
   login, cases and uploads work, ask/analyze/chat return `403 claude_key_required`, and
   ingestion skips translation for that user's uploads (language detection still runs).
   `TRANSLATE_ON_INGEST=false` still switches translation off for everyone.
-- Docker: `docker compose up api` (port 8000). `docker compose up app` still runs the
-  Streamlit prototype on 8501.
+- Docker: `docker compose up api` (port 8000), or `docker run` the image: its default
+  command is the same uvicorn server.
 
 ## Bring your own Claude key (revision 3)
 
@@ -85,7 +84,7 @@ never reaches the browser in either mode; only the chosen key's *source* is repo
 
 Web uploads are indexed from the original text and are not translated, so a document
 can be reviewed as soon as it is read. `TRANSLATE_ON_INGEST` still applies to the
-Streamlit app and the ingestion scripts.
+ingestion scripts.
 
 ## The live speech bubble (revision 3)
 
@@ -126,8 +125,8 @@ administrator for an account and says clearly when a username or password is wro
 
 ## Server Claude key not detected?
 
-This section is about the **server's** key in `.env` (used by the Streamlit prototype,
-ingestion scripts, and by web users only under `ALLOW_SHARED_ANTHROPIC_KEY=true`). Web
+This section is about the **server's** key in `.env` (used by the
+ingestion scripts, the eval harness, and by web users only under `ALLOW_SHARED_ANTHROPIC_KEY=true`). Web
 users who see *"I need your Claude key before I can start thinking."* simply have not
 added their own yet: see *Bring your own Claude key* above. If `/api/health` reports
 `llm_configured: false` although you set a server key:

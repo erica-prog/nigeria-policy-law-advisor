@@ -1,6 +1,5 @@
-"""Admin-provisioned account creation. Lawyers can also self-register in the
-UI's "Sign up" tab (see auth.py); this script is the admin-side path for
-creating an account without going through that form.
+"""Admin-provisioned account creation - the only way to create a lawyer's
+account (the web API has no sign-up endpoint yet).
 
 Usage:
   uv run python -m scripts.add_user <username> "<Display Name>"
@@ -12,9 +11,22 @@ history or process listings.
 import argparse
 import getpass
 
-import streamlit_authenticator as stauth
+from policy_advisor.api.credentials import hash_password, load_credentials, save_credentials
 
-from policy_advisor.auth import load_credentials, save_credentials
+
+def create_account(username: str, display_name: str, password: str) -> None:
+    """Add one account to the credential store, or exit if it exists."""
+    if username in load_credentials()["usernames"]:
+        raise SystemExit(f"User '{username}' already exists.")
+    if not password:
+        raise SystemExit("Password cannot be empty.")
+    save_credentials(
+        {
+            "usernames": {
+                username: {"name": display_name, "password": hash_password(password), "email": ""}
+            }
+        }
+    )
 
 
 def main() -> None:
@@ -23,24 +35,12 @@ def main() -> None:
     parser.add_argument("display_name")
     args = parser.parse_args()
 
-    credentials = load_credentials()
-    if args.username in credentials["usernames"]:
-        raise SystemExit(f"User '{args.username}' already exists.")
-
     password = getpass.getpass("Password: ")
     confirm = getpass.getpass("Confirm password: ")
-    if not password:
-        raise SystemExit("Password cannot be empty.")
     if password != confirm:
         raise SystemExit("Passwords did not match.")
 
-    credentials["usernames"][args.username] = {
-        "name": args.display_name,
-        "password": stauth.Hasher.hash(password),
-        "email": "",
-    }
-
-    save_credentials(credentials)
+    create_account(args.username, args.display_name, password)
     print(f"Created account '{args.username}' ({args.display_name}).")
 
 

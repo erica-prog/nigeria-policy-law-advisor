@@ -41,7 +41,6 @@ class Settings(BaseSettings):
     # add-on. Optional here so tools that never touch the database still
     # import; db.py raises a clear error if it's missing when needed.
     database_url: SecretStr | None = None
-    policy_agent_port: int = 8501
     log_level: str = "info"
     retrieval_top_k: int = 8
     # Two-band relevance gate, calibrated against eval/golden_set.json by
@@ -85,7 +84,7 @@ class Settings(BaseSettings):
     translate_on_ingest: bool = True
     # Bring-your-own-key (docs/17): web users normally think with their own
     # Claude key. Only when this is true may a user without a key fall back to
-    # the server's ANTHROPIC_API_KEY. The Streamlit prototype is unaffected.
+    # the server's ANTHROPIC_API_KEY.
     allow_shared_anthropic_key: bool = False
 
     def llm_configured(self) -> bool:

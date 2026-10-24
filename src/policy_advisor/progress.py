@@ -2,7 +2,7 @@
 jobs) can tell the user what is happening without threading a callback through
 every chain signature. A chain calls `report_stage(...)` at the points where the
 stage really changes; the caller installs a listener with `stage_listener()` for
-the duration of one request. With no listener installed (Streamlit, scripts,
+the duration of one request. With no listener installed (scripts,
 tests) the calls are no-ops, so no existing behaviour changes."""
 
 from collections.abc import Callable, Iterator

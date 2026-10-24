@@ -123,10 +123,10 @@ to be public, would be enough to read lawyers' chats.
 ### 5. Run the app
 
 ```bash
-uv run streamlit run src/policy_advisor/app.py
+uv run uvicorn policy_advisor.api.main:app --reload
 ```
 
-or with Docker, `docker compose up -d`: the container reads `DATABASE_URL` from
+or with Docker, `docker compose up api`: the container reads `DATABASE_URL` from
 `.env`.
 
 ## Backups

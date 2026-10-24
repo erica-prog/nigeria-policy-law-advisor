@@ -71,3 +71,14 @@ def test_session_is_200_logged_in_or_out(api):
     assert body["user"]["username"] == "alice" and body["user"]["advisor_ready"] is False
     api.client.cookies.set(SESSION_COOKIE, "eyJ1IjogImFsaWNlIn0.forged.signature")
     assert api.client.get("/api/session").json() == {"user": None}
+
+
+def test_account_created_by_add_user_script_can_log_in(api):
+    # AC-2 in docs/20: the admin script and the API share one credential store.
+    from scripts.add_user import create_account
+
+    create_account("carol", "Carol Okafor", "carol-pass-789")
+    client = api.login("carol", "carol-pass-789")
+    me = client.get("/api/me")
+    assert me.status_code == 200
+    assert me.json()["display_name"] == "Carol Okafor"

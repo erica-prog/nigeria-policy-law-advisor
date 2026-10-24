@@ -115,6 +115,11 @@ class CaseReasoningChain:
         # arguments without ever emitting it.
         self._argument_llm = _client(ARGUMENT_MAX_TOKENS, ARGUMENT_TIMEOUT_SECONDS)
 
+    @property
+    def retriever(self) -> HybridRetriever:
+        """The retriever this chain searches with; shared with the chains built on it."""
+        return self._retriever
+
     def invalidate_matter(self, matter_id: str) -> None:
         """Drop the cached index for this matter after a document is added or removed."""
         self._retriever.invalidate_matter(matter_id)

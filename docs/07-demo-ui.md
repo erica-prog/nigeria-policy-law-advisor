@@ -1,4 +1,8 @@
-# 07 — Demoing the Agent (Streamlit vs. TS/HTML/CSS) 
+# 07 — Demoing the Agent (Streamlit vs. TS/HTML/CSS)
+
+> **Superseded (2026-10-24).** The Streamlit app was removed; the browser client in
+> `web/`, served by FastAPI, is the only surface. See [17-web-app-mvp.md](17-web-app-mvp.md).
+> Kept for the reasoning it records.
 
 You have two reasonable paths to make the RAG agent visible and testable by
 the lawyer, rather than living only in logs/terminal output. They serve

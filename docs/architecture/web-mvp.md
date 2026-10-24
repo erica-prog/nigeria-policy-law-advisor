@@ -80,8 +80,8 @@ replace the bottom layer without changing the API.
 ## Identity and permissions (rule 1)
 
 1. `POST /api/auth/login` verifies the username and password against the same
-   `data/auth/credentials.yaml` that `scripts/add_user.py` and the Streamlit login write
-   (bcrypt hashes, the format `streamlit_authenticator` uses). On success the server
+   `data/auth/credentials.yaml` that `scripts/add_user.py` writes (bcrypt hashes; owned
+   by `api/credentials.py`). On success the server
    sets a cookie containing `{"u": username}` signed with `AUTH_COOKIE_KEY`
    (`itsdangerous.URLSafeTimedSerializer`, 7-day max age, matching the prototype).
 2. `current_user` dependency: reads and verifies the cookie on every `/api/*` request
@@ -113,7 +113,7 @@ for the job queue in the long-term design.
 Web uploads index the original text and do not translate it. Translating every
 chunk through Claude held the document in `processing` for the whole file, so it
 could not be reviewed, and it spent the user's key before any question. Language
-detection still runs. `TRANSLATE_ON_INGEST` still applies to the Streamlit app and
+detection still runs. `TRANSLATE_ON_INGEST` still applies to
 the ingestion scripts (default unchanged). The upload handler still resolves the
 uploader's key and passes it to `add_document(api_key=...)` for anything else that
 call spends a key on.
@@ -130,8 +130,8 @@ Progress comes from `policy_advisor/progress.py`: a `contextvars.ContextVar` lis
 The job thread installs a listener around `run_chat`; the pipeline calls
 `report_stage("reading_documents" | "searching_web" | "writing" | "checking_citations")`
 at the point where it starts retrieving, falls back to the web, calls the model or
-runs the faithfulness/judge check. Without a listener the calls are no-ops, so the
-Streamlit prototype, the eval harness and the synchronous endpoints are unaffected.
+runs the faithfulness/judge check. Without a listener the calls are no-ops, so
+the eval harness and the synchronous endpoints are unaffected.
 The stages are the client's only source for the bubble narration, so the bubble
 describes work that is actually happening.
 

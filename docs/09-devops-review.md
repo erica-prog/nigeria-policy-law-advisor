@@ -236,6 +236,9 @@ Then in that file:
 
 ## 3. Is the Streamlit application up to date?
 
+> **Superseded (2026-10-24).** The Streamlit app was removed with its dependencies; this
+> section is kept for the dependency-tracking advice, which applies to the web app too.
+
 ### What was checked
 - `pyproject.toml` pins `streamlit>=1.38` and `streamlit-authenticator>=0.4.2`.
 - The environment actually has `streamlit 1.58.0` installed, which is also

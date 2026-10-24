@@ -1,82 +1,55 @@
 # AGENTS.md
 
-Project memory for the **Law/Policy Advisor RAG Agent**. Read this before
-responding to any request about this project.
-
-## Goal
-Build a production-ready RAG agent that acts as a **law and policy advisor**.
-The end user is a practicing lawyer (non-technical). The agent must be robust
-enough for real production use, not a demo.
-
-## Stack
-- **Codex API** — core reasoning and generation
-- **MCP** — tool / context integration
-- **LangChain** — orchestration
-- **Hugging Face** — embeddings and models
-- **Python** + **TypeScript**
-- **uv** — Python environment and dependency management
-- **.env** — all secrets and config
-- **JSON** — data interchange / config where relevant
-
-## Audience & teaching notes
-- The developer (me) is **new to TypeScript but willing to learn** — explain
-  TS concepts as they come up; don't assume prior knowledge.
-- Comfortable enough with Python.
-
-## Response rules
-- **Explain, don't build.** Provide guidance on *how* to build the project,
-  not a finished implementation, unless I explicitly ask for code.
-- **Deliver the guidance as created markdown files** (one per topic), not as
-  chat replies. Save them into a `docs/` folder.
-- Suggested files to produce: `00-overview.md`, `01-architecture.md`,
-  `02-environment-setup.md` (uv, .env), `03-data-and-retrieval.md`,
-  `04-mcp-integration.md`, `05-typescript-guide.md`, `06-production.md`
-  (eval, error handling, observability, secrets). Add or split files as the
-  project grows.
-- Lead with **production concerns**: retrieval quality, evaluation, secrets
-  handling, error handling, observability, and reliability.
-- When TypeScript appears, briefly explain the unfamiliar parts inside the doc.
-
-## Out of scope (unless I ask)
-- Generating the full codebase
-- Deployment infra choices beyond what's needed to explain the architecture
 Instructions for every agent (human or AI) working in this repository. Read this file,
-`docs/product-brief.md`, and any existing architecture and API contracts before making
-changes. Custom Cursor subagents for this project live in `.cursor/agents/`.
+`CLAUDE.md`, `docs/00-overview.md` and the architecture and API contracts under
+`docs/architecture/` and `docs/contracts/` before making changes. Where this file and
+`CLAUDE.md` overlap, this file wins. `CLAUDE.md` imports this file for Claude Code; the
+Phase 2 capability record is `docs/21-phase-2-capabilities-record.md`.
 
 ## Shared brief
 
-We are building a React Native app for Nigerian legal research and case analysis.
+We are building a **production-grade legal research and case-analysis advisor**: a
+FastAPI backend with a browser client, used by practising lawyers who are not
+developers. The agent must be robust enough for real professional use, not a demo.
 
 Users must be able to:
 
-1. Sign up, log in, reset their password and log out.
-2. Create and manage separate legal cases.
+1. Log in and log out (sign-up and password reset are not yet in the web API).
+2. Create and manage separate legal cases (matters).
 3. Upload PDF and DOCX documents, including scanned PDFs.
 4. Ask questions about their uploaded documents.
 5. Receive analysis with clickable source citations.
-6. Optionally expand research to a curated legal library and the web.
+6. Optionally expand research to a curated legal library and official web sources.
 7. Identify missing evidence, contradictory material and counterarguments.
 
-Initial scope: commercial disputes and related civil litigation.
+Current scope: Nigerian commercial disputes and related civil litigation.
+Planned direction: a USA + Nigeria platform covering investigations and immigration,
+federated primary-law sources, grounded drafting and bulk contract analysis. That plan
+is `docs/19-adr-001-multi-jurisdiction-legal-platform.md` (status: Proposed) and the
+review behind it is `docs/18-architecture-review.md`. Do not build against the ADR's
+target data model until it is marked Accepted.
 
 Stack:
 
-| Layer               | Technology                                        |
-| ------------------- | ------------------------------------------------- |
-| Mobile              | React Native, Expo, TypeScript                    |
-| Backend             | Python, FastAPI                                   |
-| Database            | PostgreSQL + pgvector                             |
-| Files               | Private object storage                            |
-| Auth                | Managed provider, selected by the lead architect  |
-| Document processing | Background jobs                                   |
+| Layer               | Technology                                                            |
+| ------------------- | --------------------------------------------------------------------- |
+| Reasoning           | Claude API (Anthropic), via LangChain for prompts and structured output |
+| Embeddings          | Hugging Face sentence-transformers (local, no token required)         |
+| Backend             | Python 3.12, FastAPI, managed with `uv`                               |
+| Browser client      | Plain HTML, CSS and ES modules in `web/` (no build step)              |
+| Storage (today)     | Supabase Postgres + pgvector for matters, chunks and chat history (`docs/16-supabase-setup.md`); conversation logs, credentials and user keys still on disk under `data/`; uploaded originals are not retained |
+| Auth (today)        | bcrypt credentials file plus a signed HttpOnly session cookie         |
+| Document processing | In-process background jobs (an MVP stand-in for a worker queue); BM25 held in memory per matter |
+| Tool integration    | MCP (designed in `docs/04-mcp-integration.md`; not yet implemented)   |
+| TypeScript          | Planned for an MCP connector server; see `docs/05-typescript-guide.md` |
+| Config and secrets  | `.env` only; see `.env.example`                                       |
 
 ## Mandatory rules
 
 These apply to every agent and every change. They are not negotiable.
 
 1. Enforce user and case permissions on the backend before retrieval.
-2. Never expose API secrets in the mobile application.
+2. Never expose API secrets to the browser client.
 3. Never invent legal authorities, quotations, facts or citations.
 4. Distinguish case evidence from legal authority.
 5. Web research cannot replace missing case evidence.
@@ -84,6 +57,22 @@ These apply to every agent and every change. They are not negotiable.
 7. Use synthetic or anonymised documents during development.
 8. Follow the lead's API contracts and source-reference schema.
 9. Flag proposed shared-interface changes before implementing them.
+
+## How to respond to the developer (from Phase 1)
+
+The developer is comfortable in Python and new to TypeScript but willing to learn.
+
+- **Explain, don't build.** Give guidance on how to build, not a finished
+  implementation, unless code is explicitly requested.
+- **Deliver guidance as markdown files in `docs/`**, one per topic, following the
+  numbered `docs/NN-title.md` convention. Chat replies summarise; the doc is the
+  deliverable.
+- **Lead with production concerns**: retrieval quality, evaluation, secrets handling,
+  error handling, observability and reliability.
+- **Teach TypeScript as it appears.** When TS shows up, explain the unfamiliar parts
+  inside the doc; do not assume prior knowledge.
+- Out of scope unless asked: generating the full codebase, and deployment
+  infrastructure beyond what the architecture needs.
 
 ## Handoff report
 
@@ -96,34 +85,41 @@ Every agent ends its work with a handoff report containing:
 
 ## Where things are today
 
-The repository currently holds a working Python retrieval-and-reasoning prototype with a
-Streamlit interface. The React Native app and FastAPI backend described in the brief do
-not exist yet; they are to be designed by the lead architect and built by the role agents.
-Reuse the prototype's retrieval, faithfulness and reasoning logic rather than rewriting it.
+The repository holds a working Python retrieval-and-reasoning pipeline, a FastAPI web
+API with a browser client. The Streamlit prototype was removed on 2026-10-24. Reuse the retrieval, faithfulness and reasoning logic rather than
+rewriting it.
 
-| Area                                   | Location                                                            |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| Settings (env-driven, pydantic)        | `src/policy_advisor/config.py`, `.env.example`                      |
-| Ingestion (PDF, DOCX, OCR, chunking)   | `src/policy_advisor/ingestion/`                                     |
-| Retrieval (BM25 + dense, hybrid)       | `src/policy_advisor/retrieval/`                                     |
-| Generation, faithfulness, case reasoning | `src/policy_advisor/generation/`                                  |
-| Web search                             | `src/policy_advisor/generation/web_search.py`                       |
-| Streamlit prototype UI and auth        | `src/policy_advisor/app.py`, `src/policy_advisor/auth.py`           |
-| Web MVP: FastAPI backend, browser client | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`       |
-| Architecture and API contracts (web MVP) | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`       |
-| Evaluation (golden set, invariants)    | `eval/`                                                             |
-| Tests                                  | `tests/`                                                            |
-| CI                                     | `.github/workflows/ci.yml`                                          |
-| Design documents                       | `docs/` (numbered; product brief in `docs/product-brief.md`)        |
-| Avatar assets                          | `assets/`, `docs/15-avatar-character-asset.md`                      |
+| Area                                     | Location                                                        |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| Settings (env-driven, pydantic)          | `src/policy_advisor/config.py`, `.env.example`                  |
+| Database, migrations, Supabase guide     | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-supabase-setup.md` |
+| Ingestion (PDF, DOCX, OCR, chunking)     | `src/policy_advisor/ingestion/`                                 |
+| Retrieval (BM25 + dense, hybrid)         | `src/policy_advisor/retrieval/`                                 |
+| Generation, faithfulness, relevance gate, case reasoning, advisory | `src/policy_advisor/generation/`              |
+| Web search (allow-listed official sites) | `src/policy_advisor/generation/web_search.py`                   |
+| Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
+| Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
+| Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
+| Evaluation (golden set, rubric)          | `eval/`                                                         |
+| Tests                                    | `tests/`                                                        |
+| CI                                       | `.github/workflows/ci.yml`                                      |
+| Design documents                         | `docs/` (numbered; start at `docs/00-overview.md`)              |
+| Role subagents                           | `.claude/agents/` (canonical; `.cursor/agents` is a symlink)    |
+| Verification skills (API smoke checks)   | `.claude/skills/` (canonical; `.cursor/skills` and `.agents/skills` are symlinks) |
+| Path-scoped rules for Claude Code        | `.claude/rules/`                                                |
 
-Open pull requests may carry newer work (for example the Supabase/pgvector store and the
-hardened advisory pipeline). Check `git log`, open PRs and `docs/` before assuming the
-state of a module.
+Known gaps an agent should not be surprised by (details in `docs/18-architecture-review.md`):
+`main` at `580d393` did not install (`uv.lock` failed to parse) and `ingest_document.py`
+and `matter_store.py` raised `NameError` on upload and retrieval; branch
+`fix-uv-lock-dangling` repaired all three and was merged into `main` as pull request 11 on
+2026-10-24; this branch includes it. `docs/product-brief.md` still
+describes a React Native app; `docs/architecture/web-mvp.md` still
+says storage is Chroma. Check `git log`, open PRs and `docs/` before assuming the state
+of a module.
 
-API contracts and the source-reference schema are owned by the lead architect and, once
-written, live under `docs/architecture/` and `docs/contracts/`. Until they exist, do not
-build against an assumed interface; ask the lead architect to produce them first.
+API contracts and the source-reference schema are owned by the lead architect and live
+under `docs/architecture/` and `docs/contracts/`. Do not build against an assumed
+interface; if a contract is missing, ask for it first.
 
 ## Repository conventions
 
@@ -133,26 +129,12 @@ build against an assumed interface; ask the lead architect to produce them first
 - Tests: `uv run pytest`. Tests must never touch a production database or real client
   documents; use local services and synthetic fixtures.
 - Secrets come from environment variables (see `.env.example`). Never commit `.env`,
-  keys or client documents. Cloud agents receive secrets through Cursor Dashboard secrets.
+  keys or client documents.
 - Retrieval quality is guarded by `eval/run_golden_set.py` and the case-reasoning
-  invariants in CI. Changes that touch retrieval or generation must keep those gates green.
+  rubric in `eval/`. Changes that touch retrieval or generation must keep the CI eval
+  gate green and should extend the golden set when they add a document type or
+  jurisdiction.
 - Follow the numbered `docs/NN-title.md` convention for new design documents.
+- `.claude/` is the canonical home of subagents, skills and rules; the Cursor and Codex
+  folders are symlinks to it. Edit the canonical copy only.
 - Small, focused commits with descriptive messages. One logical change per commit.
-
-## Working with the subagents
-
-The six role agents in `.cursor/agents/` are:
-
-| Agent                      | Delegate when                                                        |
-| -------------------------- | -------------------------------------------------------------------- |
-| `lead-architect`           | Architecture, API contracts, schemas, auth provider, cross-cutting decisions |
-| `mobile-developer`         | React Native / Expo / TypeScript app work                            |
-| `backend-developer`        | FastAPI, PostgreSQL, storage, background jobs, permissions           |
-| `rag-engineer`             | Ingestion, chunking, embeddings, hybrid retrieval, citations         |
-| `legal-research-engineer`  | Legal library, web research, evidence/authority analysis, gap finding |
-| `qa-security-reviewer`     | Tests, security review, permission and prompt-injection checks       |
-
-Each agent reads this file and `docs/product-brief.md` first, then the architecture and
-contract documents relevant to its task, and ends with the handoff report above.
-
-=======

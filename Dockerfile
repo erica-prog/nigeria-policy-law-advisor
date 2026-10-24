@@ -19,7 +19,7 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY src ./src
 # Static browser client and avatar frames served by the FastAPI app
-# (docs/17-web-app-mvp.md). Harmless for the Streamlit entrypoint.
+# (docs/17-web-app-mvp.md).
 COPY web ./web
 COPY assets ./assets
 COPY pyproject.toml ./
@@ -31,7 +31,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 RUN mkdir -p data && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 8501 8000
-# Default stays the Streamlit prototype. For the web app (docker-compose `api`
-# service): uvicorn policy_advisor.api.main:app --host 0.0.0.0 --port 8000
-CMD ["streamlit", "run", "src/policy_advisor/app.py", "--server.address=0.0.0.0"]
+EXPOSE 8000
+# The web app: FastAPI serving the JSON API and the browser client (docs/17).
+CMD ["uvicorn", "policy_advisor.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
