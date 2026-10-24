@@ -66,6 +66,7 @@ Not "it runs on my machine." Specifically:
 - [20-plan-claude-layout-and-streamlit-removal.md](20-plan-claude-layout-and-streamlit-removal.md) — plan: `.claude/` project layout, CLAUDE.md revision, Streamlit removal; acceptance criteria, slices, risks, pending decisions
 - [21-phase-2-capabilities-record.md](21-phase-2-capabilities-record.md) — the Phase 2 memory (formerly `CLAUDE-2.md`): bring-your-own-document, case reasoning, multi-language; checklist marked done or open
 - [22-plan-platform-phase-0-1.md](22-plan-platform-phase-0-1.md) — plan for ADR-001 Phase 0 and Phase 1: mypy blocking, retained originals, taxonomy and locator schemes, corpus tiers, storage completion, reranker
+- [23-plan-platform-phase-2.md](23-plan-platform-phase-2.md) — plan for ADR-001 Phase 2: source registry, US and Nigeria connectors, US parsers and golden set, the agent loop with a tool policy, playbooks and routing evals
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase
