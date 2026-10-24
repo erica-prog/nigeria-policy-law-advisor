@@ -6,9 +6,9 @@ already a developer's server. This script patches those directories before
 the app imports them, listens on 127.0.0.1:8765, and refuses any other port
 or the repository data/ tree.
 
-    uv run python .cursor/skills/verify-policy-advisor/pa-verify.py launch
-    uv run python .cursor/skills/verify-policy-advisor/pa-verify.py doctor
-    uv run python .cursor/skills/verify-policy-advisor/pa-verify.py cleanup
+    uv run python .claude/skills/verify-policy-advisor/pa-verify.py launch
+    uv run python .claude/skills/verify-policy-advisor/pa-verify.py doctor
+    uv run python .claude/skills/verify-policy-advisor/pa-verify.py cleanup
 """
 
 from __future__ import annotations

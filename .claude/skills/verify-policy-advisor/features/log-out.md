@@ -20,7 +20,7 @@ Preconditions:
 - `pa-verify doctor` printed `pa-verify doctor ok`.
 - Logged in as `verify`, and a case file already exists if you are proving `logout-keeps-cases`.
 - `URL` is `http://127.0.0.1:8765` and `JAR` is the cookie jar.
-- `OUT` is `.cursor/skills/verify-policy-advisor/evidence/log-out`.
+- `OUT` is `.claude/skills/verify-policy-advisor/evidence/log-out`.
 
 - **Log out.** Run `curl -sS -c "$JAR" -b "$JAR" -o "$OUT/logout.body" -w '%{http_code}' -X POST "$URL/api/auth/logout"`. The status is `204`.
 - **Session is gone.** Run `curl -sS -b "$JAR" -o "$OUT/me.json" -w '%{http_code}' "$URL/api/me"` and `curl -sS -b "$JAR" -o "$OUT/session.json" "$URL/api/session"`. `/api/me` is `401` with code `unauthenticated`. `/api/session` is `{"user": null}`.

@@ -18,9 +18,9 @@ Start a new case lets a signed-in person open a blank conversation. The case row
 Preconditions:
 
 - `pa-verify doctor` printed `pa-verify doctor ok`.
-- Logged in as `verify` with the cookie jar at `.cursor/skills/verify-policy-advisor/run/cookies.txt`.
+- Logged in as `verify` with the cookie jar at `.claude/skills/verify-policy-advisor/run/cookies.txt`.
 - `URL` is `http://127.0.0.1:8765` and `DATA` is the `data=` line from doctor.
-- `OUT` is `.cursor/skills/verify-policy-advisor/evidence/start-a-case`.
+- `OUT` is `.claude/skills/verify-policy-advisor/evidence/start-a-case`.
 - No case is titled `Foxglove supply dispute`.
 
 - **Create the case.** This is the call `ensureMatter` makes, with a title so the list has a readable name. Run `curl -sS -c "$JAR" -b "$JAR" -o "$OUT/create.json" -w '%{http_code}' -H 'content-type: application/json' -d '{"title":"Foxglove supply dispute"}' "$URL/api/matters"`. The status is `201`. The body has `owner` `verify`, `read_only` `false`, `title` `Foxglove supply dispute`, and `document_count` `0`. Record `id` as `CASE`.

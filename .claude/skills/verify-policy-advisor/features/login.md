@@ -19,8 +19,8 @@ Preconditions:
 
 - `pa-verify doctor` printed `pa-verify doctor ok`.
 - `URL` is `http://127.0.0.1:8765`.
-- `JAR` is `.cursor/skills/verify-policy-advisor/run/cookies.txt`.
-- `OUT` is `.cursor/skills/verify-policy-advisor/evidence/login`.
+- `JAR` is `.claude/skills/verify-policy-advisor/run/cookies.txt`.
+- `OUT` is `.claude/skills/verify-policy-advisor/evidence/login`.
 
 - **Open the card.** Run `curl -sS -o "$OUT/page.html" -w '%{http_code}' "$URL/"`. The status is `200` and the file contains `id="login-form"` and `Let's go`.
 - **Wrong password.** Run `curl -sS -o "$OUT/wrong.json" -w '%{http_code}' -H 'content-type: application/json' -d '{"username":"verify","password":"wrong-password"}' "$URL/api/auth/login"`. The status is `401` and the body code is `invalid_credentials`. The browser shows `That username or password is not right. Try again.` in `#login-error`.

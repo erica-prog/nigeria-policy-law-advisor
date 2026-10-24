@@ -109,9 +109,10 @@ rewriting it.
 | Path-scoped rules for Claude Code        | `.claude/rules/`                                                |
 
 Known gaps an agent should not be surprised by (details in `docs/18-architecture-review.md`):
-`main` at `580d393` does not install (`uv.lock` fails to parse) and `ingest_document.py`
-and `matter_store.py` raise `NameError` on upload and retrieval; branch
-`fix-uv-lock-dangling` repairs all three; it is merged into branch `2026-10-19-pozq` but not yet into `main`. `docs/product-brief.md` still
+`main` at `580d393` did not install (`uv.lock` failed to parse) and `ingest_document.py`
+and `matter_store.py` raised `NameError` on upload and retrieval; branch
+`fix-uv-lock-dangling` repaired all three and was merged into `main` as pull request 11 on
+2026-10-24; this branch includes it. `docs/product-brief.md` still
 describes a React Native app; `docs/architecture/web-mvp.md` still
 says storage is Chroma. Check `git log`, open PRs and `docs/` before assuming the state
 of a module.

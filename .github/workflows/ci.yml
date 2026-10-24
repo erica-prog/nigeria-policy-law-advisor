@@ -159,4 +159,20 @@ jobs:
           fi
       - name: Structural invariants (all seed cases)
         if: github.event_name != 'pull_request'
-        run: uv run python -m eval.run_case_reasoning_invariants --with-advisory
+        run: |
+          set +e
+          uv run python -m eval.run_case_reasoning_invariants --with-advisory > /tmp/step-out.txt 2>&1
+          code=$?
+          set -e
+          tail -n 80 /tmp/step-out.txt
+          if [ "$code" -ne 0 ]; then
+            python3 - << 'PY'
+          import pathlib, re
+          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
+          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
+          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
+          line = line.replace("::", " -- ")[:500]
+          print(f"::error::{line}")
+          PY
+            exit "$code"
+          fi

@@ -379,7 +379,7 @@ looks like; use the SDK rather than copying that approach.
 ## Action Items
 
 Phase 0 — make `main` true again (days)
-1. [ ] Merge `fix-uv-lock-dangling` (lock, ingestion and matter-store `NameError`s, ownership into the `matters` table, no live key in unit tests). Confirm CI is green.
+1. [x] Merge `fix-uv-lock-dangling` (lock, ingestion and matter-store `NameError`s, ownership into the `matters` table, no live key in unit tests). Merged as pull request 11 on 2026-10-24. CI on that push: lint-and-test and Docker green; the two eval jobs failed only for the missing `ANTHROPIC_WORKSPACE_ID` secret, since added. Confirm green on the next pull request.
 2. [ ] Land this branch's `AGENTS.md`; rewrite `docs/product-brief.md` and the six Cursor agents to the web client and cookie auth; update `docs/architecture/web-mvp.md` storage section; complete the document map in `docs/00-overview.md`.
 3. [ ] Make `mypy` blocking (18 errors remain after the fix branch); decide whether `ruff format` becomes a CI step (51 files would change).
 4. [ ] Stop deleting uploads: add object storage for originals (migration `0002` adds `documents` with a storage key); keep the ingestion job otherwise unchanged.

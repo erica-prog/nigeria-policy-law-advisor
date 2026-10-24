@@ -20,7 +20,7 @@ Preconditions:
 - `pa-verify doctor` printed `pa-verify doctor ok`.
 - Logged in as `verify`.
 - `URL` is `http://127.0.0.1:8765`.
-- `OUT` is `.cursor/skills/verify-policy-advisor/evidence/your-cases`.
+- `OUT` is `.claude/skills/verify-policy-advisor/evidence/your-cases`.
 
 - **List cases.** Run `curl -sS -b "$JAR" -o "$OUT/list.json" -w '%{http_code}' "$URL/api/matters"`. The status is `200`. The body includes a matter with `id` `phase1-demo`, `read_only` `true`, and `title` `Reference library (shared, read-only)`.
 - **Shared case is not writable.** Run `curl -sS -b "$JAR" -o "$OUT/delete-shared.json" -w '%{http_code}' -X DELETE "$URL/api/matters/phase1-demo"`. The status is `403` and the code is `matter_read_only`.

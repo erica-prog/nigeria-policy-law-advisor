@@ -7,7 +7,7 @@ Exit 1 when that violation is reachable. Exit 2 when the source no longer
 matches a shape this file knows. Exit 0 only when no violating end state
 is reachable.
 
-    uv run python .cursor/skills/verify-document-cancel/check_document_cancel.py
+    uv run python .claude/skills/verify-document-cancel/check_document_cancel.py
 """
 
 from __future__ import annotations

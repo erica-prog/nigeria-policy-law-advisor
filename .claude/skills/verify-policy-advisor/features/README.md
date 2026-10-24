@@ -4,9 +4,9 @@ This directory is the maintained source for verifying the user-facing behavior o
 
 ## Baseline preconditions
 
-- Launch with `uv run python .cursor/skills/verify-policy-advisor/pa-verify.py launch` and require `pa-verify ready`.
-- The only instance this map may drive is `http://127.0.0.1:8765` with data under `.cursor/skills/verify-policy-advisor/run/data`.
-- Run `uv run python .cursor/skills/verify-policy-advisor/pa-verify.py doctor` and require `pa-verify doctor ok` before the first recipe.
+- Launch with `uv run python .claude/skills/verify-policy-advisor/pa-verify.py launch` and require `pa-verify ready`.
+- The only instance this map may drive is `http://127.0.0.1:8765` with data under `.claude/skills/verify-policy-advisor/run/data`.
+- Run `uv run python .claude/skills/verify-policy-advisor/pa-verify.py doctor` and require `pa-verify doctor ok` before the first recipe.
 - The seeded user is `verify` / `verify-pass-123`, display name `Verify User`.
 - Never drive the developer's server on port 8000, and never read or write the repository `data/` tree.
 
@@ -14,7 +14,7 @@ This directory is the maintained source for verifying the user-facing behavior o
 
 - Start every recipe from a freshly launched server unless its preconditions say otherwise.
 - Prefer the route the page calls. The commands below are literal.
-- Save the session cookie in `.cursor/skills/verify-policy-advisor/run/cookies.txt`.
+- Save the session cookie in `.claude/skills/verify-policy-advisor/run/cookies.txt`.
 - A browser pass, when you have one, uses the accessible names in each feature file.
 - Do not remove `evidence/` during cleanup.
 

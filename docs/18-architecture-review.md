@@ -76,9 +76,12 @@ directions. Branch `fix-uv-lock-dangling` (8 commits, 2026-10-19, contains
 all of `main`) repairs all three, moves matter ownership from `meta.json`
 into the `matters` table, keeps live Anthropic calls out of the unit-test
 job, and adds the workspace-id header. Its lock exports cleanly and ruff is
-clean on the repaired files. **Merge it before anything else.** Until then,
-no CI result on `main` means anything. Branch `2026-10-19-pozq` already carries
-this merge, so the pull request from it brings the repair with it.
+clean on the repaired files. **Update 2026-10-24:** merged into `main` as pull request 11. On that push,
+`lint-and-test` and the Docker build passed; `eval-gate` and
+`case-reasoning-invariants` failed at their first Claude call because the
+`ANTHROPIC_WORKSPACE_ID` repository secret was not yet set (Anthropic returns
+400 for an organisation key with no `anthropic-workspace-id` header). The secret
+has since been added; the next pull-request run is the proof.
 
 ### F1. Jurisdiction is a flat string with Nigerian values baked in
 `jurisdiction` is `"federal" | "lagos" | None` on every chunk, and the system
@@ -228,7 +231,8 @@ ADR.
 
 ## 6. What this review recommends (summary; details in the ADR)
 
-1. Merge `fix-uv-lock-dangling` and get `main` green (F0).
+1. Done 2026-10-24: `fix-uv-lock-dangling` merged as pull request 11; eval jobs need
+   the `ANTHROPIC_WORKSPACE_ID` secret, now set (F0).
 2. Stop deleting uploads: put originals in object storage (F3).
 3. Fix the documentation conflicts (F8): this branch's `AGENTS.md`, then
    the product brief and Cursor agents.

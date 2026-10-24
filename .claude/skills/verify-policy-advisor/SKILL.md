@@ -17,7 +17,7 @@ The scripted harness is `pa-verify.py` plus `curl`. The page and the curl comman
 From the repository root:
 
 ```bash
-uv run python .cursor/skills/verify-policy-advisor/pa-verify.py launch
+uv run python .claude/skills/verify-policy-advisor/pa-verify.py launch
 ```
 
 Ready is two lines you can check, not just an open port:
@@ -25,7 +25,7 @@ Ready is two lines you can check, not just an open port:
 - `GET /api/health` returns `200` and `{"status":"ok",...}`.
 - `GET /` returns `200` and the HTML contains `id="login-form"`.
 
-Launch prints `url=http://127.0.0.1:8765`, `data=<path>`, `pid=<pid>`, and `pa-verify ready`. The data directory is `.cursor/skills/verify-policy-advisor/run/data`, created empty except for one seeded account. It is not the repository `data/` tree. The server listens only on `127.0.0.1:8765`.
+Launch prints `url=http://127.0.0.1:8765`, `data=<path>`, `pid=<pid>`, and `pa-verify ready`. The data directory is `.claude/skills/verify-policy-advisor/run/data`, created empty except for one seeded account. It is not the repository `data/` tree. The server listens only on `127.0.0.1:8765`.
 
 Seeded account, in that disposable directory only:
 
@@ -40,14 +40,14 @@ Do not start a second copy. If launch says one is already running, run doctor or
 ## Doctor
 
 ```bash
-uv run python .cursor/skills/verify-policy-advisor/pa-verify.py doctor
+uv run python .claude/skills/verify-policy-advisor/pa-verify.py doctor
 ```
 
 Run this first whenever a request fails. It checks that the recorded pid is alive, that the process command is `pa-verify.py serve`, that this pid owns port 8765, that the data path is the disposable directory, that `/api/health` is ok, and that the login form is being served. Exit 0 prints `pa-verify doctor ok`.
 
 ## Drive
 
-Read `.cursor/skills/verify-policy-advisor/features/README.md` and the feature file you are proving. Use the curl commands in that file. Keep the cookie jar at `.cursor/skills/verify-policy-advisor/run/cookies.txt`.
+Read `.claude/skills/verify-policy-advisor/features/README.md` and the feature file you are proving. Use the curl commands in that file. Keep the cookie jar at `.claude/skills/verify-policy-advisor/run/cookies.txt`.
 
 Stable handles in the page, when a browser is available: the login form is `#login-form`, the submit button is named `Let's go`, the username and password inputs are named `Username` and `Password`, the error is `#login-error`, the cases button is `#drawer-toggle` (`Your cases`), the new-case button is `#new-case` (`+ Start a new case`), and logout is `#logout-btn` (`Log out`).
 
@@ -57,7 +57,7 @@ Do not call `/ask`, `/analyze`, or `/chat` in a verification run. Those routes c
 
 ## Evidence
 
-Write proof under `.cursor/skills/verify-policy-advisor/evidence/<feature-id>/`. Cleanup must not delete that directory.
+Write proof under `.claude/skills/verify-policy-advisor/evidence/<feature-id>/`. Cleanup must not delete that directory.
 
 For each proof keep:
 
@@ -70,7 +70,7 @@ For each proof keep:
 ## Cleanup
 
 ```bash
-uv run python .cursor/skills/verify-policy-advisor/pa-verify.py cleanup
+uv run python .claude/skills/verify-policy-advisor/pa-verify.py cleanup
 ```
 
 This sends `SIGTERM` to the process group recorded at launch, and `SIGKILL` only if that same pid is still alive. It deletes `run/data`, `run/state.json`, and `run/server.log`. It does not delete `evidence/`. It will not kill a pid whose command line is not `pa-verify.py serve`, and it will not delete the repository `data/` tree.

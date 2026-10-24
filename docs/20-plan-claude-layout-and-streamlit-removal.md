@@ -250,3 +250,9 @@ Implemented on branch `2026-10-19-pozq` as three commits (S2, S3, S1), in that o
 
 Risk R1 is retired by AC-3. R2: the lock diff was removals only plus the `pyyaml`
 promotion. R4 stands: announce the default-command change in the pull request.
+
+CI context (2026-10-24, later): `fix-uv-lock-dangling` reached `main` as pull request 11.
+On that push `lint-and-test` and Docker passed; `eval-gate` and
+`case-reasoning-invariants` failed with Anthropic 400 "key is not scoped to a
+workspace" because the `ANTHROPIC_WORKSPACE_ID` secret was unset. The secret has been
+added; the push-time invariants step now also annotates its failing line.

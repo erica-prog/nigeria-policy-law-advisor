@@ -21,7 +21,7 @@ Preconditions:
 - `pa-verify doctor` printed `pa-verify doctor ok`.
 - Logged in as `verify`, with `CASE` set to a writable matter id.
 - A synthetic DOCX, not a client document, is available. The unit-test helper `tests/api/helpers.py` `synthetic_docx_bytes` builds one for Foxglove Trading Ltd.
-- `OUT` is `.cursor/skills/verify-policy-advisor/evidence/add-document`.
+- `OUT` is `.claude/skills/verify-policy-advisor/evidence/add-document`.
 
 - **Upload.** Run `curl -sS -b "$JAR" -o "$OUT/upload.json" -w '%{http_code}' -F 'file=@supply.docx;type=application/vnd.openxmlformats-officedocument.wordprocessingml.document' "$URL/api/matters/$CASE/documents"`. The status is `202`. The body `name` is `supply.docx` and `status` is `queued` or `processing`.
 - **Poll.** Run `curl -sS -b "$JAR" "$URL/api/matters/$CASE/documents"` until `supply.docx` has `status` `ready` or `failed`. Record the body as `$OUT/documents.json`.

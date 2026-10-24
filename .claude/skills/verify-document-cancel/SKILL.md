@@ -29,7 +29,7 @@ Last confirmed against the working tree at commit `9bc78af2248a06816771233a9c427
 From the repository root:
 
 ```bash
-uv run python .cursor/skills/verify-document-cancel/check_document_cancel.py
+uv run python .claude/skills/verify-document-cancel/check_document_cancel.py
 ```
 
 The run takes a few seconds. It does not start the web server and it does not read `data/`.
