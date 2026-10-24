@@ -19,7 +19,7 @@ import time
 from policy_advisor.config import DATA_DIR, INDEX_DIR, PHASE1_DEMO_MATTER_ID, get_settings
 from policy_advisor.ingestion.chunk import CORPUS, chunk_corpus
 from policy_advisor.ingestion.embed import embed_texts
-from policy_advisor.ingestion.matter_store import replace_matter_chunks
+from policy_advisor.ingestion.matter_store import replace_matter_chunks, set_matter_tier
 from policy_advisor.logging_utils import get_logger, log_event
 from policy_advisor.retrieval.vector_store import chunk_to_record
 
@@ -42,6 +42,9 @@ def main() -> None:
         raise RuntimeError("Chunking produced zero chunks - check parser regexes against the source PDFs.")
 
     embeddings = embed_texts([chunk.text for chunk in chunks])
+    # The demo corpus is the shared reference library, so its matter is the
+    # authority tier; set before the insert so every chunk inherits it.
+    set_matter_tier(PHASE1_DEMO_MATTER_ID, "authority")
     replace_matter_chunks(PHASE1_DEMO_MATTER_ID, [chunk_to_record(c) for c in chunks], embeddings)
 
     manifest = {

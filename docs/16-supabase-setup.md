@@ -9,7 +9,8 @@ Postgres database, using the pgvector extension for vector search.
 | Table | Holds |
 |---|---|
 | `matters` | Each matter and its owner |
-| `chunks` | Each piece of each document: its text, metadata and 384-number embedding, in one row |
+| `chunks` | Each piece of each document: its text, metadata (jurisdiction id, locator scheme, tier, trust kind, provenance) and 384-number embedding, in one row |
+| `matters` (`tier`) | `matter` for a lawyer's case; `firm` and `authority` for shared collections such as the reference library |
 | `chat_exchanges` | Each lawyer's last five question-and-answer exchanges per matter |
 | `documents` | One row per retained original: blob-store key, sha256, size, content type, uploader |
 | `index_meta` | Which embedding model produced the stored vectors |

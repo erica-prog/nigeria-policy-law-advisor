@@ -34,7 +34,9 @@ secrets; in particular no response, log line or error ever contains an API key.
   "quote": "verbatim text of the retrieved passage",
   "url": null,
   "doc_type": "generic",
-  "jurisdiction": null
+  "jurisdiction": null,
+  "trust_kind": "evidence" | "firm" | "authority" | "web",
+  "tier": "matter" | "firm" | "authority" | null
 }
 ```
 

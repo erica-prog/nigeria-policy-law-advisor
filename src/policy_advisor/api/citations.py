@@ -15,13 +15,30 @@ def kind_for_doc_type(doc_type: str | None) -> SourceKind:
     return "authority" if doc_type in AUTHORITY_DOC_TYPES else "evidence"
 
 
+def trust_kind_of(meta: dict) -> str:
+    """The stored trust label, or the doc-type rule for rows written before it existed."""
+    return meta.get("trust_kind") or kind_for_doc_type(meta.get("doc_type"))
+
+
+def kind_for_trust(trust_kind: str) -> SourceKind:
+    """The client's three-way label: firm knowledge renders as authority."""
+    if trust_kind in ("authority", "firm"):
+        return "authority"
+    if trust_kind == "web":
+        return "web"
+    return "evidence"
+
+
 def chunk_reference(chunk, ref_id: str, cited_as: str | None = None) -> SourceReference:
     meta = chunk.metadata
     page = meta.get("page")
     jurisdiction = _canonical_jurisdiction(meta.get("jurisdiction"))
+    trust_kind = trust_kind_of(meta)
     return SourceReference(
         id=ref_id,
-        kind=kind_for_doc_type(meta.get("doc_type")),
+        kind=kind_for_trust(trust_kind),
+        trust_kind=trust_kind,  # type: ignore[arg-type]
+        tier=meta.get("tier") or None,
         document=str(meta.get("source_document", "")),
         locator=meta.get("locator"),
         cited_as=cited_as,
@@ -45,6 +62,8 @@ def web_reference(citation, ref_id: str) -> SourceReference:
         url=citation.url,
         doc_type="web",
         jurisdiction=None,
+        trust_kind="web",
+        tier=None,
     )
 
 

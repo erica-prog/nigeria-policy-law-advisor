@@ -26,6 +26,9 @@ AvatarState = Literal[
     "idle", "listening", "verified_source", "web_source", "unverified", "no_results"
 ]
 SourceKind = Literal["evidence", "authority", "web"]
+# The four corpus trust labels (ADR-001). `kind` above stays for the client;
+# `firm` renders as authority there until the client learns the fourth label.
+TrustKind = Literal["evidence", "firm", "authority", "web"]
 AnswerSource = Literal["corpus", "web", "none"]
 DocumentStatus = Literal["queued", "processing", "ready", "failed"]
 
@@ -121,6 +124,8 @@ class SourceReference(BaseModel):
     url: str | None = None
     doc_type: str | None = None
     jurisdiction: str | None = None
+    trust_kind: TrustKind | None = None
+    tier: str | None = None
 
 
 class AskRequest(BaseModel):

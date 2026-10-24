@@ -74,6 +74,15 @@ def chunk_to_record(chunk: Chunk) -> dict:
         "translated_language": chunk.translated_language or "",
         "translation_flagged": chunk.translation_flagged,
         "translation_flag_reason": chunk.translation_flag_reason or "",
+        "tier": chunk.tier,
+        "trust_kind": chunk.trust_kind,
+        "locator_scheme": chunk.locator_scheme or "",
+        "source_id": chunk.source_id or "",
+        "effective_date": chunk.effective_date or "",
+        "licence": chunk.licence or "",
+        "country": chunk.country or "",
+        "jurisdiction_level": chunk.jurisdiction_level or "",
+        "region": chunk.region or "",
     }
 
 

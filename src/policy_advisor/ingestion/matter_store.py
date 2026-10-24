@@ -12,6 +12,7 @@ every read and write is scoped by matter_id, and the shared demo matter is
 read-only at the ingestion layer.
 """
 
+import datetime
 import json
 import os
 from pathlib import Path
@@ -41,7 +42,17 @@ METADATA_COLUMNS = (
     "translated_language",
     "translation_flagged",
     "translation_flag_reason",
+    "tier",
+    "trust_kind",
+    "locator_scheme",
+    "source_id",
+    "effective_date",
+    "licence",
+    "country",
+    "jurisdiction_level",
+    "region",
 )
+TIERS = ("matter", "firm", "authority")
 _INSERT_COLUMNS = (*METADATA_COLUMNS, "text", "embedding")
 
 # Stored as NULL, surfaced as "" - the shape Chroma returned and that the rest
@@ -52,6 +63,12 @@ _EMPTY_STRING_WHEN_NULL = (
     "translated_text",
     "translated_language",
     "translation_flag_reason",
+    "locator_scheme",
+    "source_id",
+    "licence",
+    "country",
+    "jurisdiction_level",
+    "region",
 )
 
 
@@ -60,6 +77,8 @@ def record_from_row(row: dict) -> dict:
     for column in _EMPTY_STRING_WHEN_NULL:
         if record[column] is None:
             record[column] = ""
+    date = record.get("effective_date")
+    record["effective_date"] = date.isoformat() if isinstance(date, datetime.date) else (date or "")
     record["text"] = row["text"]
     return record
 
@@ -69,6 +88,27 @@ def _ensure_matter(conn: DictConnection, matter_id: str) -> None:
         "INSERT INTO matters (matter_id) VALUES (%s) ON CONFLICT (matter_id) DO NOTHING",
         (matter_id,),
     )
+
+
+def _matter_tier(conn: DictConnection, matter_id: str) -> str:
+    row = conn.execute("SELECT tier FROM matters WHERE matter_id = %s", (matter_id,)).fetchone()
+    return row["tier"] if row else "matter"
+
+
+def set_matter_tier(matter_id: str, tier: str) -> None:
+    """Make a matter a `firm` or `authority` collection (or back to `matter`).
+    Its chunks follow, so tier filters never disagree with the matter."""
+    if tier not in TIERS:
+        raise ValueError(f"unknown tier {tier!r}; expected one of {TIERS}")
+    with connect() as conn, transaction(conn):
+        _ensure_matter(conn, matter_id)
+        conn.execute("UPDATE matters SET tier = %s WHERE matter_id = %s", (tier, matter_id))
+        conn.execute("UPDATE chunks SET tier = %s WHERE matter_id = %s", (tier, matter_id))
+
+
+def get_matter_tier(matter_id: str) -> str:
+    with connect() as conn:
+        return _matter_tier(conn, matter_id)
 
 
 def _bump_version(conn: DictConnection, matter_id: str) -> None:
@@ -86,6 +126,9 @@ def _insert_chunks(
             f"{len(records)} chunks but {len(embeddings)} embeddings - they must pair up one to one."
         )
     placeholders = ", ".join("%s" for _ in _INSERT_COLUMNS)
+    # A chunk's tier is its matter's tier, whatever the record says: the
+    # matter is the unit of isolation and of trust.
+    tier = _matter_tier(conn, matter_id)
     with conn.cursor() as cur:
         # psycopg pipelines executemany, so hundreds of rows cost roughly one
         # round trip to Supabase rather than one each.
@@ -108,6 +151,20 @@ def _insert_chunks(
                     record.get("translated_language") or None,
                     bool(record.get("translation_flagged")),
                     record.get("translation_flag_reason") or None,
+                    tier,
+                    record.get("trust_kind")
+                    or (
+                        "authority"
+                        if record.get("doc_type") in ("statute", "judgment")
+                        else "evidence"
+                    ),
+                    record.get("locator_scheme") or None,
+                    record.get("source_id") or None,
+                    record.get("effective_date") or None,
+                    record.get("licence") or None,
+                    record.get("country") or None,
+                    record.get("jurisdiction_level") or None,
+                    record.get("region") or None,
                     record["text"],
                     np.asarray(embedding, dtype=np.float32),
                 )
