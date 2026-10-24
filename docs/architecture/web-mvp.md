@@ -36,15 +36,18 @@ Existing prototype modules (reused, not rewritten)
    generation/case_reasoning.py   CaseReasoningChain.analyze
    generation/web_search.py       reached only through RAGChain(allow_web_fallback=True)
    v
-Storage (unchanged from main): Chroma under data/index/chroma, per-matter chunks,
-meta.json (owner, title, created_at, updated_at) and conversation.json under
-data/index/matters/<matter_id>/, credentials and encrypted user keys
-(user_keys.json) under data/auth/.
+Storage: Supabase Postgres + pgvector (db.py, migrations/): matters (owner,
+content_version), chunks (text, metadata and embedding in one row), chat_exchanges,
+index_meta, and documents (retained originals: storage key, sha256, size). Originals
+live in the blob store (data/originals locally; object storage later). Still on disk
+until Phase 1 of ADR-001 moves them: meta.json (title, timestamps) and
+conversation.json under data/index/matters/<matter_id>/, credentials.yaml and the
+encrypted user_keys.json under data/auth/.
 ```
 
-The API layer never opens Chroma or the chunk files itself. Everything goes through the
-public functions listed above, so the storage PR (#4, Supabase Postgres + pgvector) can
-replace the bottom layer without changing the API.
+The API layer never opens the database or the blob store directly for retrieval.
+Everything goes through the public functions listed above, so the storage layer can
+change (and has: Chroma became Postgres) without changing the API.
 
 ## Trust boundary
 
