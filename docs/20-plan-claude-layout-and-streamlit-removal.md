@@ -239,10 +239,10 @@ Implemented on branch `2026-10-19-pozq` as three commits (S2, S3, S1), in that o
 | Criterion | Result | Evidence or gap |
 |---|---|---|
 | AC-1 | pass | `grep` finds no Streamlit import under `src/`, `scripts/`, `tests/`, `eval/`; `uv tree` has no streamlit entry |
-| AC-2 | pending CI | `test_account_created_by_add_user_script_can_log_in` written; needs the test Postgres |
+| AC-2 | pass | `test_account_created_by_add_user_script_can_log_in` passed in `lint-and-test` on pull request 12 |
 | AC-3 | pass | `tests/test_credentials.py::test_legacy_streamlit_authenticator_hash_still_verifies` passes; fails when the fixture hash is altered by one character |
-| AC-4 | pending CI | Docker daemon unavailable on the development machine; `docker-publish.yml` builds the image |
-| AC-5 | partial | `uv sync --frozen` and `uv run ruff check .` pass; mypy unchanged at 18 advisory errors; 246 tests collect; the database-backed suite runs in CI |
+| AC-4 | pass | Docker workflow built the image on pull request 12 (`8d1b84a` and `0d35085`) |
+| AC-5 | pass | On pull request 12 at `0d35085`: `lint-and-test`, `eval-gate` and `case-reasoning-invariants` all passed; mypy 17 advisory errors |
 | AC-6, AC-7 | pending (owner) | run `/context` and `/doctor prompt-audit` in a Claude Code session at the repo root |
 | AC-8 | pass | `ls -L` on the three symlinks lists the same skills and agents |
 | AC-9 | pass | no doc or comment instructs running Streamlit, except the superseded doc 09 section under its banner |
@@ -256,3 +256,9 @@ On that push `lint-and-test` and Docker passed; `eval-gate` and
 `case-reasoning-invariants` failed with Anthropic 400 "key is not scoped to a
 workspace" because the `ANTHROPIC_WORKSPACE_ID` secret was unset. The secret has been
 added; the push-time invariants step now also annotates its failing line.
+
+Pull request 12 (`2026-10-19-pozq` into `main`): first run at `8d1b84a` had
+`lint-and-test`, `eval-gate` and Docker green and `case-reasoning-invariants` red on an
+advisory-mode `AttributeError` (`CaseReasoningChain` had no public `retriever`); fixed
+in `0d35085` with a regression test that uses the real chain. Re-run at `0d35085`: every
+job green.
