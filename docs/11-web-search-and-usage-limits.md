@@ -1,5 +1,7 @@
 # 11 — Web Search Fallback and Usage Limits
 
+> **Since Phase 2 (docs/24):** the domain allow-list is no longer a constant in `web_search.py`. It is the union of `config.domains` over the allowed `web_search` rows of the source registry, and an empty registry turns web search off.
+
 Written after a live test session against the running app (`allow_web_fallback`
 checked, question: "what is the top law cases in Nigeria" against the
 `phase1-demo` matter) surfaced two real issues. Both are traced to the actual

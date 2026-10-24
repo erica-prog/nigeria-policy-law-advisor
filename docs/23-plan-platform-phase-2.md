@@ -118,4 +118,4 @@ after the Phase 0 and 1 pull request merges.
 
 | Slice | Branch | Commit | Verification | Notes |
 |---|---|---|---|---|
-| P2-A | `platform/phase-2-a` | pending | pending | started 2026-10-24 from `platform/phase-0-1` at `f1bd2f3` because the Phase 0 and 1 pull request was not yet merged; the branch rebases onto `main` cleanly once it is |
+| P2-A | `platform/phase-2-a` | the slice commit on that branch (`Source registry: ...`) | `ruff`, `mypy`, `pytest` green locally against Postgres 17 + pgvector; 11 new tests in `tests/test_sources.py`; 323 passed, 3 skipped | started 2026-10-24 from `platform/phase-0-1` at `f1bd2f3` because the Phase 0 and 1 pull request was not yet merged; the branch rebases onto `main` cleanly once it is |
