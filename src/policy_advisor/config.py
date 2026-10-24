@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     originals_dir: Path = ORIGINALS_DIR
     log_level: str = "info"
     retrieval_top_k: int = 8
+    # Keyword search backend per matter: up to this many chunks the retriever
+    # builds an in-memory BM25 index from the matter's rows; above it, keyword
+    # hits come from Postgres full-text search (migration 0004), which never
+    # loads the matter into memory. 0 forces full-text search everywhere.
+    keyword_index_max_chunks: int = 5000
     # Two-band relevance gate, calibrated against eval/golden_set.json by
     # eval/calibrate_relevance_floor.py. Re-run it after changing
     # EMBEDDING_MODEL, the distance space, or chunking - all three move the

@@ -23,7 +23,11 @@ from policy_advisor.jurisdictions import storage_values
 
 
 def search(
-    matter_id: str, query_vector: np.ndarray, k: int, jurisdiction: str | None = None
+    matter_id: str,
+    query_vector: np.ndarray,
+    k: int,
+    jurisdiction: str | None = None,
+    tier: str | None = None,
 ) -> list[tuple[dict, str, float]]:
     """The k nearest chunks in one matter as (metadata, text, cosine distance),
     nearest first.
@@ -36,15 +40,19 @@ def search(
     on insertion order so results are reproducible.
     """
     values = list(storage_values(jurisdiction))
+    # Naming the tier lets the planner use the authority tier's HNSW index
+    # (migration 0004); for a lawyer's matter it changes nothing.
+    tier_clause = "AND tier = %(tier)s " if tier else ""
     with connect() as conn:
         rows = conn.execute(
             f"SELECT {', '.join(METADATA_COLUMNS)}, text, embedding <=> %(query)s AS distance "
             "FROM chunks "
-            "WHERE matter_id = %(matter)s AND (%(all)s OR jurisdiction = ANY(%(values)s)) "
+            f"WHERE matter_id = %(matter)s {tier_clause}AND (%(all)s OR jurisdiction = ANY(%(values)s)) "
             "ORDER BY distance, inserted_seq LIMIT %(k)s",
             {
                 "query": np.asarray(query_vector, dtype=np.float32),
                 "matter": matter_id,
+                "tier": tier,
                 "all": not values,
                 "values": values,
                 "k": k,
@@ -56,6 +64,50 @@ def search(
         text = record.pop("text")
         hits.append((record, text, float(row["distance"])))
     return hits
+
+
+def keyword_search(
+    matter_id: str, query: str, k: int, jurisdiction: str | None = None
+) -> list[tuple[dict, str, float]]:
+    """Full-text keyword hits in one matter as (metadata, text, rank), best
+    first. `websearch_to_tsquery` parses free text safely (quotes, minus,
+    "or"), and the generated search_vector covers the translation too, so a
+    query in either language matches. Rank is relative within the query, like
+    BM25's score; the retriever normalises it the same way."""
+    values = list(storage_values(jurisdiction))
+    with connect() as conn:
+        rows = conn.execute(
+            f"SELECT {', '.join(METADATA_COLUMNS)}, text, ts_rank_cd(search_vector, q) AS rank "
+            "FROM chunks, websearch_to_tsquery('english', %(query)s) q "
+            "WHERE matter_id = %(matter)s AND search_vector @@ q "
+            "AND (%(all)s OR jurisdiction = ANY(%(values)s)) "
+            "ORDER BY rank DESC, inserted_seq LIMIT %(k)s",
+            {"query": query, "matter": matter_id, "all": not values, "values": values, "k": k},
+        ).fetchall()
+    hits = []
+    for row in rows:
+        record = record_from_row(row)
+        text = record.pop("text")
+        hits.append((record, text, float(row["rank"])))
+    return hits
+
+
+def locator_matches(matter_id: str, locator: str) -> list[tuple[str, dict]]:
+    """Every chunk in a matter whose locator is exactly `locator`, as
+    (text, metadata), in insertion order - the exact-match short-circuit for
+    matters searched through the database rather than an in-memory index."""
+    with connect() as conn:
+        rows = conn.execute(
+            f"SELECT {', '.join(METADATA_COLUMNS)}, text FROM chunks "
+            "WHERE matter_id = %s AND locator = %s ORDER BY inserted_seq",
+            (matter_id, locator),
+        ).fetchall()
+    out = []
+    for row in rows:
+        record = record_from_row(row)
+        text = record.pop("text")
+        out.append((text, record))
+    return out
 
 
 def chunk_to_record(chunk: Chunk) -> dict:

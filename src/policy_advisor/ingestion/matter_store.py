@@ -15,6 +15,7 @@ read-only at the ingestion layer.
 import datetime
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -263,6 +264,30 @@ def matter_version(matter_id: str) -> int:
             "SELECT content_version FROM matters WHERE matter_id = %s", (matter_id,)
         ).fetchone()
     return row["content_version"] if row else 0
+
+
+@dataclass(frozen=True)
+class MatterSummary:
+    version: int
+    tier: str
+    chunk_count: int
+
+
+def matter_summary(matter_id: str) -> MatterSummary:
+    """Version, tier and size in one query - what the retriever needs to decide
+    how to search a matter before it loads anything."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT m.content_version, m.tier, "
+            "(SELECT count(*) FROM chunks c WHERE c.matter_id = m.matter_id) AS chunk_count "
+            "FROM matters m WHERE m.matter_id = %s",
+            (matter_id,),
+        ).fetchone()
+    if row is None:
+        return MatterSummary(version=0, tier="matter", chunk_count=0)
+    return MatterSummary(
+        version=row["content_version"], tier=row["tier"], chunk_count=int(row["chunk_count"])
+    )
 
 
 def load_matter_snapshot(matter_id: str) -> tuple[int, list[dict]]:

@@ -7,18 +7,21 @@ Magistrates' Court rule just because both mention the same topic.
 
 Every query is scoped to one matter (CLAUDE-2.md capability 1) - there is no
 "search everything" mode. Vector search runs in Postgres against the matter's
-rows. BM25 has no database equivalent here, so each matter's keyword index is
-built from those same rows, held in memory, and rebuilt when the matter's
-content_version changes. Reading the version on every query is one indexed
-lookup, and it means an upload is visible to every retriever instance and every
-app process - not only the one that happened to be told about it."""
+rows. Keyword search has two backends chosen per matter by size
+(`KEYWORD_INDEX_MAX_CHUNKS`): a BM25 index built in memory from the matter's
+rows and rebuilt when its content_version changes, or Postgres full-text
+search (migration 0004) for matters too large to hold in memory - the
+authority tier and bulk-analysis matters. Reading the matter's version, tier
+and size on every query is one indexed lookup, and it means an upload is
+visible to every retriever instance and every app process - not only the one
+that happened to be told about it."""
 
 import re
 from dataclasses import dataclass, field
 
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion.embed import embed_query
-from policy_advisor.ingestion.matter_store import load_matter_snapshot, matter_version
+from policy_advisor.ingestion.matter_store import load_matter_snapshot, matter_summary
 from policy_advisor.jurisdictions import storage_values
 from policy_advisor.retrieval import vector_store
 from policy_advisor.retrieval.bm25_index import BM25Index, build_bm25_index
@@ -65,12 +68,17 @@ def _build_locator_index(bm25_index: BM25Index) -> dict[str, list[tuple[str, dic
 @dataclass
 class _MatterIndex:
     version: int
-    bm25: BM25Index
-    locators: dict[str, list[tuple[str, dict]]]
+    tier: str
+    chunk_count: int
+    # "bm25": `bm25` and `locators` are populated from an in-memory snapshot.
+    # "fts": both are None and every lookup goes to the database.
+    backend: str
+    bm25: BM25Index | None = None
+    locators: dict[str, list[tuple[str, dict]]] | None = None
 
     @property
     def is_empty(self) -> bool:
-        return not self.bm25.documents
+        return self.chunk_count == 0
 
 
 class HybridRetriever:
@@ -80,25 +88,53 @@ class HybridRetriever:
         bm25_weight: float = 0.5,
         max_distance: float | None = None,
         certain_distance: float | None = None,
+        keyword_index_max_chunks: int | None = None,
     ):
         settings = get_settings()
         self._vector_weight = vector_weight
         self._bm25_weight = bm25_weight
-        self._max_distance = settings.retrieval_max_distance if max_distance is None else max_distance
+        self._keyword_index_max_chunks = (
+            settings.keyword_index_max_chunks
+            if keyword_index_max_chunks is None
+            else keyword_index_max_chunks
+        )
+        self._max_distance = (
+            settings.retrieval_max_distance if max_distance is None else max_distance
+        )
         self._certain_distance = (
             settings.retrieval_certain_distance if certain_distance is None else certain_distance
         )
         self._indexes: dict[str, _MatterIndex] = {}
 
     def _index_for_matter(self, matter_id: str) -> _MatterIndex:
+        summary = matter_summary(matter_id)
         cached = self._indexes.get(matter_id)
-        if cached is not None and cached.version == matter_version(matter_id):
+        if cached is not None and cached.version == summary.version:
             return cached
-        version, records = load_matter_snapshot(matter_id)
-        bm25 = build_bm25_index(records)
-        index = _MatterIndex(version=version, bm25=bm25, locators=_build_locator_index(bm25))
+        if summary.chunk_count <= self._keyword_index_max_chunks:
+            version, records = load_matter_snapshot(matter_id)
+            bm25 = build_bm25_index(records)
+            index = _MatterIndex(
+                version=version,
+                tier=summary.tier,
+                chunk_count=len(records),
+                backend="bm25",
+                bm25=bm25,
+                locators=_build_locator_index(bm25),
+            )
+        else:
+            index = _MatterIndex(
+                version=summary.version,
+                tier=summary.tier,
+                chunk_count=summary.chunk_count,
+                backend="fts",
+            )
         self._indexes[matter_id] = index
         return index
+
+    def keyword_backend(self, matter_id: str) -> str:
+        """Which keyword backend this matter is searched with right now."""
+        return self._index_for_matter(matter_id).backend
 
     def invalidate_matter(self, matter_id: str) -> None:
         """Drop this matter's cached indexes now rather than on the next query.
@@ -109,7 +145,7 @@ class HybridRetriever:
         self._indexes.pop(matter_id, None)
 
     def _exact_locator_matches(
-        self, query: str, index: _MatterIndex, jurisdiction: str | None
+        self, query: str, index: _MatterIndex, matter_id: str, jurisdiction: str | None
     ) -> list[RetrievedChunk]:
         """A lawyer typing "Order 5 Rule 3" wants that rule, not whatever a
         vector/BM25 search over rule *bodies* happens to rank highest - rules
@@ -119,30 +155,39 @@ class HybridRetriever:
         if not match:
             return []
         locator = f"Order {int(match.group(1))} Rule {int(match.group(2))}"
-        candidates = index.locators.get(locator, [])
+        if index.locators is not None:
+            candidates = index.locators.get(locator, [])
+        else:
+            candidates = vector_store.locator_matches(matter_id, locator)
         values = storage_values(jurisdiction)
         if values:
             jurisdiction_matches = [c for c in candidates if c[1].get("jurisdiction") in values]
             candidates = jurisdiction_matches or candidates
-        return [RetrievedChunk(text=text, metadata=metadata, fused_score=1.0) for text, metadata in candidates]
+        return [
+            RetrievedChunk(text=text, metadata=metadata, fused_score=1.0)
+            for text, metadata in candidates
+        ]
 
     def retrieve(
         self, query: str, top_k: int, matter_id: str, jurisdiction: str | None = None
     ) -> list[RetrievedChunk]:
         index = self._index_for_matter(matter_id)
-        exact_matches = self._exact_locator_matches(query, index, jurisdiction)
+        if index.is_empty:
+            # Nothing to search: don't load the embedding model or hit the database.
+            return []
+        exact_matches = self._exact_locator_matches(query, index, matter_id, jurisdiction)
         exact_chunk_ids = {c.metadata["chunk_id"] for c in exact_matches}
 
         candidate_pool = max(top_k * 4, 20)
 
         by_chunk_id: dict[str, RetrievedChunk] = {}
 
-        # Skip embedding the query for an empty matter - it would load the
-        # model, and query the database, for nothing.
-        vector_hits = (
-            []
-            if index.is_empty
-            else vector_store.search(matter_id, embed_query(query), k=candidate_pool, jurisdiction=jurisdiction)
+        vector_hits = vector_store.search(
+            matter_id,
+            embed_query(query),
+            k=candidate_pool,
+            jurisdiction=jurisdiction,
+            tier=index.tier,
         )
         # Distance: lower is more similar. Negate before normalizing so higher
         # always means "better" in the fused score.
@@ -155,16 +200,36 @@ class HybridRetriever:
                 vector_distance=distance,
             )
 
-        bm25_hits = index.bm25.search(query, top_k=candidate_pool)
-        bm25_scores = _normalize([score for _, score in bm25_hits])
-        for (bm25_doc, _raw_score), norm_score in zip(bm25_hits, bm25_scores):
-            chunk_id = bm25_doc.metadata["chunk_id"]
+        # Keyword hits as (metadata, text, score) from whichever backend this
+        # matter uses; both scores are relative within the query, so the same
+        # min-max normalisation applies before fusion.
+        if index.bm25 is not None:
+            keyword_hits = [
+                (doc.metadata, doc.text, score)
+                for doc, score in index.bm25.search(query, top_k=candidate_pool)
+            ]
+        else:
+            keyword_hits = vector_store.keyword_search(
+                matter_id, query, k=candidate_pool, jurisdiction=jurisdiction
+            )
+        if index.bm25 is not None:
+            keyword_scores = _normalize([score for _, _, score in keyword_hits])
+        else:
+            # Full-text search returns only rows that match, so a lone hit is
+            # the best match, not a tie at zero: scale by the top rank (ranks
+            # are non-negative) rather than min-max over the matches.
+            top_rank = max((score for _, _, score in keyword_hits), default=0.0)
+            keyword_scores = [
+                score / top_rank if top_rank > 0 else 1.0 for _, _, score in keyword_hits
+            ]
+        for (metadata, text, _raw_score), norm_score in zip(keyword_hits, keyword_scores):
+            chunk_id = metadata["chunk_id"]
             existing = by_chunk_id.get(chunk_id)
             if existing:
                 existing.bm25_score = norm_score
             else:
                 by_chunk_id[chunk_id] = RetrievedChunk(
-                    text=bm25_doc.text, metadata=bm25_doc.metadata, bm25_score=norm_score
+                    text=text, metadata=metadata, bm25_score=norm_score
                 )
 
         candidates = list(by_chunk_id.values())
