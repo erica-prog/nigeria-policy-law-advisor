@@ -36,9 +36,9 @@ Stack:
 | Embeddings          | Hugging Face sentence-transformers (local, no token required)         |
 | Backend             | Python 3.12, FastAPI, managed with `uv`                               |
 | Browser client      | Plain HTML, CSS and ES modules in `web/` (no build step)              |
-| Storage (today)     | Chroma under `data/index/chroma`, per-matter JSON sidecars; ADR-001 proposes PostgreSQL + pgvector and object storage |
+| Storage (today)     | Supabase Postgres + pgvector for matters, chunks and chat history (`docs/16-supabase-setup.md`); conversation logs, credentials and user keys still on disk under `data/`; uploaded originals are not retained |
 | Auth (today)        | bcrypt credentials file plus a signed HttpOnly session cookie         |
-| Document processing | In-process background jobs (an MVP stand-in for a worker queue)       |
+| Document processing | In-process background jobs (an MVP stand-in for a worker queue); BM25 held in memory per matter |
 | Tool integration    | MCP (designed in `docs/04-mcp-integration.md`; not yet implemented)   |
 | TypeScript          | Planned for an MCP connector server; see `docs/05-typescript-guide.md` |
 | Config and secrets  | `.env` only; see `.env.example`                                       |
@@ -92,25 +92,29 @@ rewriting it.
 | Area                                     | Location                                                        |
 | ---------------------------------------- | --------------------------------------------------------------- |
 | Settings (env-driven, pydantic)          | `src/policy_advisor/config.py`, `.env.example`                  |
+| Database, migrations, Supabase guide     | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-supabase-setup.md` |
 | Ingestion (PDF, DOCX, OCR, chunking)     | `src/policy_advisor/ingestion/`                                 |
 | Retrieval (BM25 + dense, hybrid)         | `src/policy_advisor/retrieval/`                                 |
-| Generation, faithfulness, case reasoning | `src/policy_advisor/generation/`                                |
+| Generation, faithfulness, relevance gate, case reasoning, advisory | `src/policy_advisor/generation/`              |
 | Web search (allow-listed official sites) | `src/policy_advisor/generation/web_search.py`                   |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Streamlit prototype and auth             | `src/policy_advisor/app.py`, `src/policy_advisor/auth.py`       |
-| User management                          | `scripts/add_user.py`                                           |
+| User management, database tools          | `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
 | Evaluation (golden set, rubric)          | `eval/`                                                         |
 | Tests                                    | `tests/`                                                        |
 | CI                                       | `.github/workflows/ci.yml`                                      |
 | Design documents                         | `docs/` (numbered; start at `docs/00-overview.md`)              |
+| Cursor role agents (brief still says React Native) | `.cursor/agents/`                                     |
 | Verification skills                      | `.cursor/skills/` and `.agents/skills/` (API smoke checks)      |
 
-Known gaps an agent should not be surprised by: `assets/avatar` is referenced by the
-Dockerfile and the API but is not in the repository; docs 15 and 16 are referenced but
-absent; several `cursor/*` branches carry unmerged work (pgvector store, SQLite store,
-hardened pipeline). Check `git log`, open PRs and `docs/` before assuming the state of a
-module.
+Known gaps an agent should not be surprised by (details in `docs/18-architecture-review.md`):
+`main` at `580d393` does not install (`uv.lock` fails to parse) and `ingest_document.py`
+and `matter_store.py` raise `NameError` on upload and retrieval; branch
+`fix-uv-lock-dangling` repairs all three and is unmerged. `docs/product-brief.md` and
+`.cursor/agents/` still describe a React Native app; `docs/architecture/web-mvp.md` still
+says storage is Chroma. Check `git log`, open PRs and `docs/` before assuming the state
+of a module.
 
 API contracts and the source-reference schema are owned by the lead architect and live
 under `docs/architecture/` and `docs/contracts/`. Do not build against an assumed
