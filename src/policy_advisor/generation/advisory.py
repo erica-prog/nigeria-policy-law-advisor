@@ -26,7 +26,7 @@ against actual. Worth doing, and out of scope here.
 
 from langchain_anthropic import ChatAnthropic
 
-from policy_advisor.config import get_settings
+from policy_advisor.config import get_settings, workspace_headers
 from policy_advisor.generation.advisory_models import (
     OUTCOME_CONFIDENCE_LOW,
     AdvisoryOpinion,
@@ -98,6 +98,7 @@ class AdvisoryChain:
             max_tokens=2048,
             default_request_timeout=45,
             max_retries=0,  # retried explicitly via call_with_retry
+            default_headers=workspace_headers(settings, None) or None,
         )
 
     def advise(

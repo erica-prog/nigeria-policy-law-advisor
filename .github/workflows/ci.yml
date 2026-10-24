@@ -44,9 +44,10 @@ jobs:
       - name: Type check (advisory only - pre-existing errors not yet fixed)
         run: uv run mypy src
         continue-on-error: true
+      # The three *_real_call tests call Anthropic when this secret is set.
+      # A workspace-scoped key is rejected there. Unit tests stay mocked;
+      # eval-gate is the job that spends a real key.
       - name: Unit tests
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run pytest
 
   eval-gate:
@@ -64,6 +65,7 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
@@ -78,7 +80,23 @@ jobs:
         # measures recall@8 of 1.0 on the golden set, so 0.85 would no longer
         # catch a single question dropping out entirely (11 scored questions,
         # so one total miss costs about 0.09).
-        run: uv run python -m eval.run_golden_set --fail-below 0.9
+        run: |
+          set +e
+          uv run python -m eval.run_golden_set --fail-below 0.9 > /tmp/step-out.txt 2>&1
+          code=$?
+          set -e
+          tail -n 80 /tmp/step-out.txt
+          if [ "$code" -ne 0 ]; then
+            python3 - << 'PY'
+          import pathlib, re
+          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
+          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
+          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
+          line = line.replace("::", " -- ")[:500]
+          print(f"::error::{line}")
+          PY
+            exit "$code"
+          fi
 
       - name: Relevance-floor calibration report
         # Advisory: prints where the answerable and off-corpus questions sit
@@ -110,6 +128,7 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
@@ -121,7 +140,23 @@ jobs:
         run: uv run python -m policy_advisor.ingestion.build_index
       - name: Structural invariants (single case)
         if: github.event_name == 'pull_request'
-        run: uv run python -m eval.run_case_reasoning_invariants --id c01 --with-advisory
+        run: |
+          set +e
+          uv run python -m eval.run_case_reasoning_invariants --id c01 --with-advisory > /tmp/step-out.txt 2>&1
+          code=$?
+          set -e
+          tail -n 80 /tmp/step-out.txt
+          if [ "$code" -ne 0 ]; then
+            python3 - << 'PY'
+          import pathlib, re
+          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
+          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
+          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
+          line = line.replace("::", " -- ")[:500]
+          print(f"::error::{line}")
+          PY
+            exit "$code"
+          fi
       - name: Structural invariants (all seed cases)
         if: github.event_name != 'pull_request'
         run: uv run python -m eval.run_case_reasoning_invariants --with-advisory

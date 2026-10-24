@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 
 import anthropic
 
-from policy_advisor.config import get_settings
+from policy_advisor.config import get_settings, workspace_headers
 from policy_advisor.llm_retry import call_with_retry
 
 OFFICIAL_SOURCE_DOMAINS = ["nass.gov.ng", "ndpc.gov.ng"]
@@ -47,7 +47,10 @@ def search_official_sources(
     """`api_key` overrides the server key from settings (the web API passes the
     requesting user's own key); None keeps the previous behaviour."""
     settings = get_settings()
-    client = anthropic.Anthropic(api_key=api_key or settings.anthropic_api_key.get_secret_value())
+    client = anthropic.Anthropic(
+        api_key=api_key or settings.anthropic_api_key.get_secret_value(),
+        default_headers=workspace_headers(settings, api_key) or None,
+    )
 
     response = call_with_retry(
         lambda: client.messages.create(
