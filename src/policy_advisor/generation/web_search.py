@@ -10,22 +10,20 @@ search API) so the existing ANTHROPIC_API_KEY covers it, and so the
 domain restriction below is enforced server-side, not by us post-filtering
 results we can't fully trust to begin with.
 
-OFFICIAL_SOURCE_DOMAINS is a starter draft, not a finished allowlist -
-deciding what counts as an authoritative source for legal research is a
-legal-judgment call, not an engineering one. Confirmed so far:
-- nass.gov.ng - National Assembly of Nigeria (legislation/Acts)
-- ndpc.gov.ng - Nigeria Data Protection Commission (relevant to the
-  existing Meta v NDPC judgment in the demo corpus)
-Review and extend this list before relying on it for real research."""
+Which domains count as official is a registry question, not a constant:
+`sources.web_search_domains()` returns the union of `config.domains` over the
+allowed `web_search` rows (docs/24-source-registry.md). No allowed row means
+no search at all - the function returns "not found" without calling Anthropic,
+because a web search with no restriction would put unvetted pages on the same
+footing as the lawyer's documents."""
 
 from dataclasses import dataclass, field
 
 import anthropic
 
+from policy_advisor import sources
 from policy_advisor.config import get_settings, workspace_headers
 from policy_advisor.llm_retry import call_with_retry
-
-OFFICIAL_SOURCE_DOMAINS = ["nass.gov.ng", "ndpc.gov.ng"]
 
 
 @dataclass
@@ -42,10 +40,17 @@ class WebSearchResult:
 
 
 def search_official_sources(
-    question: str, response_language: str = "English", api_key: str | None = None
+    question: str,
+    response_language: str = "English",
+    api_key: str | None = None,
+    domains: list[str] | None = None,
 ) -> WebSearchResult:
     """`api_key` overrides the server key from settings (the web API passes the
-    requesting user's own key); None keeps the previous behaviour."""
+    requesting user's own key); None keeps the previous behaviour. `domains`
+    overrides the registry's allow-list (tests and evals); None reads it."""
+    allowed_domains = sources.web_search_domains() if domains is None else list(domains)
+    if not allowed_domains:
+        return WebSearchResult(answer="", citations=[], found=False)
     settings = get_settings()
     client = anthropic.Anthropic(
         api_key=api_key or settings.anthropic_api_key.get_secret_value(),
@@ -60,7 +65,7 @@ def search_official_sources(
                 {
                     "type": "web_search_20250305",
                     "name": "web_search",
-                    "allowed_domains": OFFICIAL_SOURCE_DOMAINS,
+                    "allowed_domains": allowed_domains,
                     "max_uses": 3,
                 }
             ],

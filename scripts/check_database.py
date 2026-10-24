@@ -35,6 +35,7 @@ APP_TABLES = (
     "users",
     "user_keys",
     "document_jobs",
+    "sources",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")
@@ -134,6 +135,16 @@ def run_checks(url: str) -> tuple[list[str], list[str], list[str]]:
         for table in ("matters", "chunks", "chat_exchanges"):
             count = conn.execute(f"SELECT count(*) FROM {table}").fetchone()
             facts.append(f"{table}: {count[0] if count else 0} rows")
+        registry = conn.execute(
+            "SELECT count(*), count(*) FILTER (WHERE allowed) FROM sources"
+        ).fetchone()
+        total, allowed = (registry[0], registry[1]) if registry else (0, 0)
+        facts.append(f"sources: {total} registered, {allowed} allowed")
+        if total == 0:
+            warnings.append(
+                "The source registry is empty: web search is off until "
+                "`uv run python -m scripts.manage_sources seed` runs."
+            )
 
         # End-to-end: a stored chunk searched for with its own embedding should
         # come back first, at distance zero.

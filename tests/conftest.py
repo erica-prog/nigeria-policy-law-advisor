@@ -62,3 +62,7 @@ def fresh_db():
             "index_meta RESTART IDENTITY CASCADE"
         )
     return database_url()
+    # `sources` is deliberately not truncated: migration 0007 seeds the Phase 1
+    # web allow-list and the real web-search test relies on it. Tests that
+    # edit the registry use the `registry` fixture in tests/test_sources.py,
+    # which empties it and restores the packaged seed afterwards.

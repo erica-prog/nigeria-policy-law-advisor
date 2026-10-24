@@ -375,8 +375,8 @@ doc rather than being left to doc 11:
   citation card built to handle it in docs 13 and 14 — is dead code until the
   relevance floor exists. Don't build the voice trust-signalling for a branch
   you can't exercise; fix the floor first so you can test it end to end.
-- Widening `OFFICIAL_SOURCE_DOMAINS`
-  ([web_search.py](../src/policy_advisor/generation/web_search.py) line 27)
+- Widening the web-search allow-list (now rows in the source registry,
+  [docs/24](24-source-registry.md); formerly a constant in `web_search.py`)
   beyond `nass.gov.ng` and `ndpc.gov.ng` is what makes this useful in
   practice, and that file's own docstring is right that it's a
   legal-judgment call. Decide the list with a qualified lawyer — which
