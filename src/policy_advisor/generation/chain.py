@@ -72,6 +72,11 @@ class RAGChain:
     def _call_llm(self, messages):
         return self._llm.invoke(messages)
 
+    @property
+    def retriever(self) -> HybridRetriever:
+        """The retriever this chain searches with; shared with the chains built on it."""
+        return self._retriever
+
     def invalidate_matter(self, matter_id: str) -> None:
         """Call after add_document/remove_document for this matter, so the
         cached BM25 index doesn't keep serving the pre-update chunk list."""
