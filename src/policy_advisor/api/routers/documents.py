@@ -1,20 +1,30 @@
 import re
+import shutil
 import tempfile
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, Response, UploadFile, status
+from fastapi.responses import FileResponse
 
 from policy_advisor.api.conversations import now_iso
 from policy_advisor.api.deps import CurrentUser, Jobs, Matter, Services, WritableMatter
 from policy_advisor.api.errors import ApiError
+from policy_advisor.api.jobs import CONTENT_TYPES
 from policy_advisor.api.schemas import DocumentList, DocumentOut
-from policy_advisor.api.user_keys import resolve_anthropic_key
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES
 from policy_advisor.ingestion.ingest_document import remove_document
-from policy_advisor.ingestion.matter_store import list_documents, update_matter_meta
+from policy_advisor.ingestion.matter_store import (
+    delete_document_record,
+    get_document_record,
+    list_documents,
+    record_document,
+    update_matter_meta,
+)
+from policy_advisor.jurisdictions import UnknownJurisdiction, load_taxonomy, normalize_jurisdiction
 from policy_advisor.logging_utils import log_event
+from policy_advisor.storage import document_key
 
 router = APIRouter(prefix="/api/matters/{matter_id}/documents", tags=["documents"])
 
@@ -64,9 +74,19 @@ async def upload_document(
     user: CurrentUser,
     background: BackgroundTasks,
     file: Annotated[UploadFile, File()],
-    jurisdiction: Annotated[Literal["federal", "lagos"] | None, Form()] = None,
+    jurisdiction: Annotated[str | None, Form()] = None,
 ) -> DocumentOut:
     name = safe_document_name(file.filename)
+    try:
+        jurisdiction = normalize_jurisdiction(jurisdiction)
+    except UnknownJurisdiction:
+        raise ApiError(
+            422,
+            "unknown_jurisdiction",
+            "Unknown jurisdiction. Accepted values: "
+            + ", ".join(load_taxonomy().accepted_values())
+            + ".",
+        ) from None
     max_bytes = get_settings().max_upload_mb * 1024 * 1024
     temp_dir = Path(tempfile.mkdtemp(prefix="pa-upload-"))
     written = 0
@@ -84,12 +104,25 @@ async def upload_document(
         temp_dir.rmdir()
         raise ApiError(415, "unsupported_document", "The uploaded file is empty.")
 
-    job = jobs.create(matter.id, name, temp_dir)
+    # The bytes go to the blob store now, so a worker in another process (or
+    # this one after a restart) can read them; the record carries their hash.
+    key = document_key(matter.id, name)
+    info = services.blob_store.put(key, temp_dir / name)
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    record_document(
+        matter.id,
+        name,
+        storage_key=key,
+        sha256=info.sha256,
+        size=info.size,
+        content_type=CONTENT_TYPES.get(Path(name).suffix.lower()),
+        uploaded_by=user.username,
+    )
+    job = jobs.create(matter.id, name, key, jurisdiction=jurisdiction, uploaded_by=user.username)
     update_matter_meta(matter.id, updated_at=now_iso())
     log_event(services.logger, "document_upload_queued", matter_id=matter.id, document=name)
-    # Translation during ingestion runs on the uploader's own key (or is
-    # skipped when they have none); the server key is never spent here.
-    background.add_task(jobs.run, job, services, jurisdiction, resolve_anthropic_key(user.username))
+    if get_settings().inline_workers:
+        background.add_task(jobs.run_pending, services)
     return job.to_document()
 
 
@@ -101,5 +134,25 @@ def delete_document(name: str, matter: WritableMatter, jobs: Jobs, services: Ser
     if name in list_documents(matter.id):
         remove_document(matter.id, name)
         services.invalidate_matter(matter.id)
+    # The retained original goes with the chunks: the lawyer removed the document.
+    services.blob_store.delete(document_key(matter.id, name))
+    delete_document_record(matter.id, name)
     jobs.forget_document(matter.id, name)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{name}/original")
+def download_original(name: str, matter: Matter, services: Services) -> FileResponse:
+    """The uploaded file as it was received. Ownership is checked by the
+    `Matter` dependency before anything is read; the shared library has no
+    retained originals and answers 404."""
+    record = get_document_record(matter.id, name)
+    path = services.blob_store.path_for(record["storage_key"]) if record else None
+    if record is None or path is None:
+        raise ApiError(404, "document_not_found", "Document not found.")
+    return FileResponse(
+        path,
+        media_type=record["content_type"] or "application/octet-stream",
+        filename=record["name"],
+        headers={"X-Content-SHA256": record["sha256"]},
+    )

@@ -180,7 +180,7 @@ def test_keys_cannot_be_stored_on_the_insecure_default_cookie_key(api_byok, monk
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "server_not_configured"
     assert "AUTH_COOKIE_KEY" in response.json()["error"]["message"]
-    assert not user_keys.user_keys_path().exists()
+    assert user_keys.get_user_key_info("alice") is None
 
 
 # ---- the key never leaves the server ----
@@ -214,14 +214,17 @@ def test_key_is_encrypted_at_rest_and_never_in_a_response_or_log(
     bodies.append(alice.get(KEY_URL).text)
     bodies.append(alice.get("/api/me").text)
 
-    path = api_byok.root / "auth" / "user_keys.json"
-    assert path.exists()
-    raw = path.read_text()
-    assert ALICE_KEY not in raw
-    assert ALICE_KEY[7:-4] not in raw, "no partial plaintext either"
-    stored = json.loads(raw)["users"]["alice"]
+    from policy_advisor.db import connect
+
+    with connect() as conn:
+        stored = conn.execute(
+            "SELECT token, last4 FROM user_keys WHERE username = 'alice'"
+        ).fetchone()
+    assert stored is not None
+    assert ALICE_KEY not in stored["token"]
+    assert ALICE_KEY[7:-4] not in stored["token"], "no partial plaintext either"
     assert stored["last4"] == "abcd" and stored["token"].startswith("gAAAA")  # Fernet token
-    assert (path.stat().st_mode & 0o777) == 0o600
+    assert not (api_byok.root / "auth" / "user_keys.json").exists(), "nothing is written to disk"
 
     # Round trip through the store, using the fake chain to prove the request
     # path sees the real key while no response body does.
@@ -390,10 +393,11 @@ def test_each_users_chain_is_built_with_their_own_key_never_anothers(api_byok):
     )
 
 
-def test_upload_translation_runs_on_the_uploaders_key_or_is_skipped(api_byok, monkeypatch):
+def test_uploads_never_carry_a_claude_key_into_ingestion(api_byok, monkeypatch):
     """Web uploads index the original text and never translate, so a document
-    becomes reviewable without a Claude call per chunk. The uploader's key is
-    still the one recorded for the job; the server key is never used."""
+    becomes reviewable without a Claude call per chunk. Ingestion runs from the
+    document queue, possibly in another process, so it never receives a key at
+    all: not the uploader's (which is never persisted) and not the server's."""
     seen: list[dict] = []
 
     def fake_add_document(matter_id, file_path, jurisdiction=None, *, api_key=None, translate=None):
@@ -419,7 +423,7 @@ def test_upload_translation_runs_on_the_uploaders_key_or_is_skipped(api_byok, mo
 
     assert _put(alice, ALICE_KEY)[0].status_code == 200
     upload("after-key.docx")
-    assert seen[-1] == {"api_key": ALICE_KEY, "translate": False}
+    assert seen[-1] == {"api_key": None, "translate": False}
 
 
 @pytest.mark.parametrize(

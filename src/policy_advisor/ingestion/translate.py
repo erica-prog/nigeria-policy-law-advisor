@@ -6,7 +6,8 @@ always retained alongside the translation; nothing here ever replaces it."""
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from policy_advisor.config import get_settings, workspace_headers
+from policy_advisor.config import get_settings
+from policy_advisor.llm import chat_model, message_text
 from policy_advisor.llm_retry import call_with_retry
 
 LANGUAGE_NAMES = {"en": "English", "fr": "French"}
@@ -29,14 +30,8 @@ def get_translation_llm(api_key: str | None = None) -> ChatAnthropic:
     """`api_key` overrides the server key from settings (the web API passes the
     uploading user's own key); None keeps the previous behaviour."""
     settings = get_settings()
-    return ChatAnthropic(
-        model=settings.anthropic_model,
-        api_key=api_key or settings.anthropic_api_key.get_secret_value(),
-        max_tokens=2048,
-        default_request_timeout=45,
-        max_retries=0,  # retried explicitly in translate_text, so each attempt is visible
-        default_headers=workspace_headers(settings, api_key) or None,
-    )
+    # Retried explicitly in translate_text, so each attempt is visible.
+    return chat_model(settings, api_key, max_tokens=2048, timeout=45)
 
 
 def translate_text(llm: ChatAnthropic, text: str, source_language: str, target_language: str) -> str:
@@ -45,4 +40,4 @@ def translate_text(llm: ChatAnthropic, text: str, source_language: str, target_l
         target_language=LANGUAGE_NAMES.get(target_language, target_language),
         text=text,
     )
-    return call_with_retry(lambda: llm.invoke(messages)).content
+    return message_text(call_with_retry(lambda: llm.invoke(messages)))

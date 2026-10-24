@@ -27,7 +27,13 @@ JUDGE_CHECK_PATH = "policy_advisor.generation.case_reasoning.judge_check"
 def _issue_args(locator: str) -> IssueArguments:
     return IssueArguments(
         issue="some issue",
-        arguments=[Argument(side="claimant", summary="s", supporting_authorities=[Authority(locator=locator, relevance="r")])],
+        arguments=[
+            Argument(
+                side="claimant",
+                summary="s",
+                supporting_authorities=[Authority(locator=locator, relevance="r")],
+            )
+        ],
         assessment="z",
     )
 
@@ -53,8 +59,9 @@ def test_no_retry_needed_when_first_attempt_is_clean():
     chain = _chain_with_retrieved([_chunk("Order 1 Rule 1")])
     clean = _issue_args("Order 1 Rule 1")
 
-    with patch.object(chain, "_generate_issue_arguments", return_value=clean) as gen, patch(
-        JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)
+    with (
+        patch.object(chain, "_generate_issue_arguments", return_value=clean) as gen,
+        patch(JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)),
     ):
         result = chain._analyze_issue("facts", "some issue", "matter-a", None, "English")
 
@@ -67,8 +74,9 @@ def test_one_retry_succeeds_and_clears_the_flag():
     chain = _chain_with_retrieved([_chunk("Order 1 Rule 1")])
     bad_then_good = [_issue_args("Order 99 Rule 99"), _issue_args("Order 1 Rule 1")]
 
-    with patch.object(chain, "_generate_issue_arguments", side_effect=bad_then_good) as gen, patch(
-        JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)
+    with (
+        patch.object(chain, "_generate_issue_arguments", side_effect=bad_then_good) as gen,
+        patch(JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)),
     ):
         result = chain._analyze_issue("facts", "some issue", "matter-a", None, "English")
 
@@ -80,8 +88,9 @@ def test_still_unsupported_after_one_retry_is_flagged_not_retried_again():
     chain = _chain_with_retrieved([_chunk("Order 1 Rule 1")])
     always_bad = _issue_args("Order 99 Rule 99")
 
-    with patch.object(chain, "_generate_issue_arguments", return_value=always_bad) as gen, patch(
-        JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)
+    with (
+        patch.object(chain, "_generate_issue_arguments", return_value=always_bad) as gen,
+        patch(JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)),
     ):
         result = chain._analyze_issue("facts", "some issue", "matter-a", None, "English")
 
@@ -94,8 +103,14 @@ def test_judge_flag_marks_unverified_even_with_clean_citations():
     chain = _chain_with_retrieved([_chunk("Order 1 Rule 1")])
     clean = _issue_args("Order 1 Rule 1")
 
-    with patch.object(chain, "_generate_issue_arguments", return_value=clean) as gen, patch(
-        JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=False, judge_flagged=True, judge_notes="overreach")
+    with (
+        patch.object(chain, "_generate_issue_arguments", return_value=clean) as gen,
+        patch(
+            JUDGE_CHECK_PATH,
+            return_value=StepCheckOutcome(
+                faithful=False, judge_flagged=True, judge_notes="overreach"
+            ),
+        ),
     ):
         result = chain._analyze_issue("facts", "some issue", "matter-a", None, "English")
 
@@ -111,8 +126,11 @@ def test_the_authorities_available_at_analysis_time_are_recorded():
     # reported violations against authorities the chain never saw.
     chain = _chain_with_retrieved([_chunk("Order 1 Rule 1"), _chunk("Order 2 Rule 5")])
 
-    with patch.object(chain, "_generate_issue_arguments", return_value=_issue_args("Order 1 Rule 1")), patch(
-        JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)
+    with (
+        patch.object(
+            chain, "_generate_issue_arguments", return_value=_issue_args("Order 1 Rule 1")
+        ),
+        patch(JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)),
     ):
         result = chain._analyze_issue("facts", "some issue", "matter-a", None, "English")
 
@@ -138,10 +156,12 @@ def test_issue_arguments_use_a_budget_large_enough_for_the_assessment(monkeypatc
     created = []
 
     class _FakeLLM:
-        def __init__(self, **kwargs):
-            created.append(kwargs)
+        @classmethod
+        def model_validate(cls, data):
+            created.append(dict(data))
+            return cls()
 
-    monkeypatch.setattr("policy_advisor.generation.case_reasoning.ChatAnthropic", _FakeLLM)
+    monkeypatch.setattr("policy_advisor.llm.ChatAnthropic", _FakeLLM)
     monkeypatch.setattr("policy_advisor.generation.case_reasoning.HybridRetriever", MagicMock)
     monkeypatch.setattr(
         "policy_advisor.generation.case_reasoning.get_logger", lambda *_args, **_kwargs: MagicMock()
@@ -152,7 +172,9 @@ def test_issue_arguments_use_a_budget_large_enough_for_the_assessment(monkeypatc
 
     CaseReasoningChain()
 
-    argument_client = next(client for client in created if client["max_tokens"] == ARGUMENT_MAX_TOKENS)
+    argument_client = next(
+        client for client in created if client["max_tokens"] == ARGUMENT_MAX_TOKENS
+    )
     assert argument_client["default_request_timeout"] == ARGUMENT_TIMEOUT_SECONDS
     assert ARGUMENT_MAX_TOKENS > 2048
     shared = [client for client in created if client["max_tokens"] == 2048]
@@ -162,25 +184,37 @@ def test_issue_arguments_use_a_budget_large_enough_for_the_assessment(monkeypatc
 def test_complete_issue_arguments_are_returned_without_a_shorten_retry():
     chain, structured = _argument_chain()
     good = _issue_args("Order 1 Rule 1")
-    structured.invoke.return_value = {"parsed": good, "parsing_error": None, "raw": _raw("tool_use")}
+    structured.invoke.return_value = {
+        "parsed": good,
+        "parsing_error": None,
+        "raw": _raw("tool_use"),
+    }
 
     assert chain._generate_issue_arguments("facts", "some issue", "context", "English") is good
     structured.invoke.assert_called_once()
-    chain._argument_llm.with_structured_output.assert_called_once_with(IssueArguments, include_raw=True)
+    chain._argument_llm.with_structured_output.assert_called_once_with(
+        IssueArguments, include_raw=True
+    )
 
 
 def test_truncated_issue_arguments_are_requested_once_more_briefly():
     chain, structured = _argument_chain()
     good = _issue_args("Order 1 Rule 1")
     structured.invoke.side_effect = [
-        {"parsed": None, "parsing_error": ValueError("assessment missing"), "raw": _raw("max_tokens")},
+        {
+            "parsed": None,
+            "parsing_error": ValueError("assessment missing"),
+            "raw": _raw("max_tokens"),
+        },
         {"parsed": good, "parsing_error": None, "raw": _raw("tool_use")},
     ]
 
     assert chain._generate_issue_arguments("facts", "some issue", "context", "English") is good
     assert structured.invoke.call_count == 2
     second_messages = structured.invoke.call_args_list[1].args[0]
-    corrections = [message.content for message in second_messages if isinstance(message, HumanMessage)]
+    corrections = [
+        message.content for message in second_messages if isinstance(message, HumanMessage)
+    ]
     assert any("assessment" in content for content in corrections)
 
 
@@ -226,8 +260,9 @@ def test_no_retrieved_authorities_yields_no_authority_confidence():
     chain = _chain_with_retrieved([])
     empty = IssueArguments(issue="some issue", arguments=[], assessment="nothing found in context")
 
-    with patch.object(chain, "_generate_issue_arguments", return_value=empty), patch(
-        JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)
+    with (
+        patch.object(chain, "_generate_issue_arguments", return_value=empty),
+        patch(JUDGE_CHECK_PATH, return_value=StepCheckOutcome(faithful=True)),
     ):
         result = chain._analyze_issue("facts", "some issue", "matter-a", None, "English")
 

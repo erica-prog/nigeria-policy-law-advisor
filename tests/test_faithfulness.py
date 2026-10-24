@@ -40,3 +40,12 @@ def test_no_citations_is_trivially_faithful():
     faithful, unsupported = check_faithfulness("An answer with no citations at all.", [])
     assert faithful is True
     assert unsupported == []
+
+
+def test_a_longer_rule_number_is_not_a_pinpoint_of_a_shorter_one():
+    """ "Order 5 Rule 30" starts with "Order 5 Rule 3" but is a different rule.
+    The scheme-aware check (docs/22 AC-5) must flag it."""
+    chunks = [FakeChunk(metadata={"locator": "Order 5 Rule 3"})]
+    faithful, unsupported = check_faithfulness("Claim [Source: Order 5 Rule 30].", chunks)
+    assert faithful is False
+    assert unsupported == ["Order 5 Rule 30"]

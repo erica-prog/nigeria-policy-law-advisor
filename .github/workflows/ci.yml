@@ -41,9 +41,8 @@ jobs:
         run: uv sync --frozen
       - name: Lint
         run: uv run ruff check .
-      - name: Type check (advisory only - pre-existing errors not yet fixed)
+      - name: Type check
         run: uv run mypy src
-        continue-on-error: true
       # The three *_real_call tests call Anthropic when this secret is set.
       # A workspace-scoped key is rejected there. Unit tests stay mocked;
       # eval-gate is the job that spends a real key.

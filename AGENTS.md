@@ -95,6 +95,7 @@ rewriting it.
 | Database, migrations, Supabase guide     | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-supabase-setup.md` |
 | Ingestion (PDF, DOCX, OCR, chunking)     | `src/policy_advisor/ingestion/`                                 |
 | Retrieval (BM25 + dense, hybrid)         | `src/policy_advisor/retrieval/`                                 |
+| Jurisdiction taxonomy and locator schemes (data + loader) | `src/policy_advisor/jurisdictions/`; human guides per country in `jurisdictions/` |
 | Generation, faithfulness, relevance gate, case reasoning, advisory | `src/policy_advisor/generation/`              |
 | Web search (allow-listed official sites) | `src/policy_advisor/generation/web_search.py`                   |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |

@@ -34,7 +34,9 @@ secrets; in particular no response, log line or error ever contains an API key.
   "quote": "verbatim text of the retrieved passage",
   "url": null,
   "doc_type": "generic",
-  "jurisdiction": null
+  "jurisdiction": null,
+  "trust_kind": "evidence" | "firm" | "authority" | "web",
+  "tier": "matter" | "firm" | "authority" | null
 }
 ```
 
@@ -54,6 +56,15 @@ secrets; in particular no response, log line or error ever contains an API key.
 The server emits a citation only when the locator resolves to a chunk that was retrieved
 for that request. Unresolved locators appear in `unsupported_citations` and set
 `faithful: false`.
+
+## Jurisdictions
+
+Every `jurisdiction` field (upload form, ask, analyze, chat, and on source references) is
+a taxonomy id from `src/policy_advisor/jurisdictions/data/taxonomy.json`: today
+`ng-federal`, `ng-lagos`, `us-federal`, `us-ny`. The prototype's values `federal` and
+`lagos` remain accepted as aliases of the first two and are returned as their ids. A
+value outside the taxonomy is rejected with `422` (`unknown_jurisdiction` on upload,
+`validation_error` elsewhere). `null` means no filter.
 
 ## Endpoints
 
@@ -135,10 +146,16 @@ shows an id; it shows `title`.
 
 - `GET /api/matters/{id}/documents` -> `{ "documents": [Document] }`.
 - `POST /api/matters/{id}/documents` multipart `file` (`.pdf` or `.docx`, up to
-  `MAX_UPLOAD_MB`), optional form field `jurisdiction` (`federal`|`lagos`) ->
+  `MAX_UPLOAD_MB`), optional form field `jurisdiction` (a jurisdiction id, see
+  "Jurisdictions" above; unknown values -> `422 unknown_jurisdiction`) ->
   `202 Document` with status `queued`. Shared matter -> `403 matter_read_only`.
 - `GET /api/matters/{id}/documents/{name}` -> `Document` (poll for status).
-- `DELETE /api/matters/{id}/documents/{name}` -> `204`.
+- `DELETE /api/matters/{id}/documents/{name}` -> `204`. Removes the chunks, the retained
+  original and its record.
+- `GET /api/matters/{id}/documents/{name}/original` -> the uploaded bytes as received
+  (`Content-Type` from the upload, `Content-Disposition` attachment, `X-Content-SHA256`).
+  Owner only, as for every matter route; the shared library and a document whose
+  processing has not reached `ready` -> `404 document_not_found`.
 
 ### Ask
 
@@ -154,7 +171,8 @@ Response `200`:
 ```json
 {
   "answer": "... [Source: Order 5 Rule 3] ...",
-  "source": "corpus",
+  "source": "corpus",   // "corpus" (the matter), "library" (the matter had nothing; the shared
+                        // reference library did - citations are authority), "web", or "none"
   "faithful": true,
   "unsupported_citations": [],
   "citations": [SourceReference],

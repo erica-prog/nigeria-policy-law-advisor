@@ -28,12 +28,14 @@ export function renderAnswer(result, openPassage, { label } = {}) {
     label ||
     (result.source === "web"
       ? "⚠ From an official website, not verified against your documents"
-      : result.source === "none"
-        ? "Nothing relevant found"
-        : "From your documents");
+      : result.source === "library"
+        ? "From the reference library: legal authority, not evidence from your case"
+        : result.source === "none"
+          ? "Nothing relevant found"
+          : "From your documents");
   card.append(el("div", { class: "msg__label", text: heading }));
   card.append(renderAnswerText(result.answer, result.citations, result.unsupported_citations, openPassage));
-  if (!result.faithful && result.source === "corpus") {
+  if (!result.faithful && (result.source === "corpus" || result.source === "library")) {
     card.append(
       el("div", { class: "msg__warning" }, [
         "Citation check failed. These locators were not among the retrieved passages: ",

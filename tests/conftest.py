@@ -43,6 +43,9 @@ def _refuse_unsafe(url: str) -> None:
 
 _refuse_unsafe(TEST_DATABASE_URL)
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+# No cross-encoder in unit tests: deterministic ordering, no model download.
+# Tests that exercise reranking inject their own scorer.
+os.environ["RERANK_ENABLED"] = "false"
 
 
 @pytest.fixture
@@ -54,5 +57,8 @@ def fresh_db():
     # actually use - the last line of defence if settings were read early.
     _refuse_unsafe(database_url())
     with connect() as conn:
-        conn.execute("TRUNCATE chat_exchanges, chunks, matters, index_meta RESTART IDENTITY CASCADE")
+        conn.execute(
+            "TRUNCATE chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
+            "index_meta RESTART IDENTITY CASCADE"
+        )
     return database_url()

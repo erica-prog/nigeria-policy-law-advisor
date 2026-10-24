@@ -5,14 +5,13 @@ the result before it's returned to the caller."""
 
 from dataclasses import dataclass, field
 
-from langchain_anthropic import ChatAnthropic
-
-from policy_advisor.config import get_settings, workspace_headers
-from policy_advisor.llm_retry import with_llm_retry
+from policy_advisor.config import get_settings
 from policy_advisor.generation.faithfulness import check_faithfulness
 from policy_advisor.generation.prompt import LANGUAGE_NAMES, PROMPT, format_context
 from policy_advisor.generation.relevance_check import judge_relevance
 from policy_advisor.generation.web_search import WebSearchCitation, search_official_sources
+from policy_advisor.llm import chat_model
+from policy_advisor.llm_retry import with_llm_retry
 from policy_advisor.logging_utils import get_logger, log_event, timed_request
 from policy_advisor.progress import report_stage
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
@@ -44,6 +43,8 @@ class AnswerResult:
     # official-sources fallback instead - never checked the same way, so the
     # UI must render it as a visually distinct, lower-trust block, not a
     # normal chat bubble (api/avatar.py maps it to the avatar's trust state).
+    # "library": the matter had nothing, the shared authority library did; the
+    # passages are authority and the client must say so.
     source: str = "corpus"
     web_citations: list[WebSearchCitation] = field(default_factory=list)
 
@@ -59,14 +60,8 @@ class RAGChain:
         self._api_key = api_key or settings.anthropic_api_key.get_secret_value()
         self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.chain", settings.log_level)
-        self._llm = ChatAnthropic(
-            model=settings.anthropic_model,
-            api_key=self._api_key,
-            max_tokens=1024,
-            default_request_timeout=30,
-            max_retries=0,  # retried explicitly below, so each attempt is logged
-            default_headers=workspace_headers(settings, api_key) or None,
-        )
+        # Retried explicitly below, so each attempt is logged.
+        self._llm = chat_model(settings, api_key, max_tokens=1024, timeout=30)
 
     @with_llm_retry
     def _call_llm(self, messages):
@@ -89,14 +84,22 @@ class RAGChain:
         jurisdiction: str | None = None,
         conversation_language: str = "en",
         allow_web_fallback: bool = False,
+        library_matters: list[str] | None = None,
     ) -> AnswerResult:
+        """`library_matters`: authority collections to widen to when the matter
+        has nothing relevant (the scope ladder: matter, library, then web)."""
         with timed_request(self._logger, question) as fields:
             fields["matter_id"] = matter_id
             fields["conversation_language"] = conversation_language
             report_stage("reading_documents")
-            retrieved = self._retriever.retrieve(
-                question, top_k=self._settings.retrieval_top_k, matter_id=matter_id, jurisdiction=jurisdiction
+            retrieved, scope = self._retriever.retrieve_widening(
+                question,
+                top_k=self._settings.retrieval_top_k,
+                matter_id=matter_id,
+                jurisdiction=jurisdiction,
+                library_matters=library_matters,
             )
+            fields["scope"] = scope
             fields["retrieved_chunk_ids"] = [c.metadata["chunk_id"] for c in retrieved]
             fields["retrieved_scores"] = [round(c.fused_score, 4) for c in retrieved]
 
@@ -123,17 +126,24 @@ class RAGChain:
             if not retrieved:
                 if not allow_web_fallback:
                     fields["outcome"] = "no_relevant_chunks"
-                    return AnswerResult(answer=NOT_FOUND_MESSAGE, retrieved=[], faithful=True, source="none")
+                    return AnswerResult(
+                        answer=NOT_FOUND_MESSAGE, retrieved=[], faithful=True, source="none"
+                    )
 
                 fields["outcome"] = "web_fallback_attempted"
                 report_stage("searching_web")
                 web_result = search_official_sources(
                     question, response_language=response_language, api_key=self._api_key
                 )
-                log_event(self._logger, "web_fallback_used", matter_id=matter_id, found=web_result.found)
+                log_event(
+                    self._logger, "web_fallback_used", matter_id=matter_id, found=web_result.found
+                )
                 if not web_result.found:
                     return AnswerResult(
-                        answer=NOT_FOUND_EVEN_ON_WEB_MESSAGE, retrieved=[], faithful=True, source="none"
+                        answer=NOT_FOUND_EVEN_ON_WEB_MESSAGE,
+                        retrieved=[],
+                        faithful=True,
+                        source="none",
                     )
                 return AnswerResult(
                     answer=web_result.answer,
@@ -173,4 +183,5 @@ class RAGChain:
                 faithful=faithful,
                 unsupported_citations=unsupported,
                 usage=dict(usage),
+                source="library" if scope == "library" else "corpus",
             )

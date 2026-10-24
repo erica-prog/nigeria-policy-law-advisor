@@ -1,6 +1,7 @@
 # ADR-001: Evolve the Nigerian single-matter RAG prototype into a USA + Nigeria legal AI platform
 
-**Status:** Proposed (revision 2, re-based on `main` at `580d393`)
+**Status:** Accepted 2026-10-24 (revision 2, re-based on `main` at `580d393`; accepted by the
+product owner with the instruction to deliver the platform in full, phase by phase)
 **Date:** 2026-10-24
 **Deciders:** product owner / lead architect (you). A practising lawyer should
 sign off the jurisdiction taxonomy and the source allow-list, since both are
@@ -380,15 +381,15 @@ looks like; use the SDK rather than copying that approach.
 
 Phase 0 — make `main` true again (days)
 1. [x] Merge `fix-uv-lock-dangling` (lock, ingestion and matter-store `NameError`s, ownership into the `matters` table, no live key in unit tests). Merged as pull request 11 on 2026-10-24. CI on that push: lint-and-test and Docker green; the two eval jobs failed only for the missing `ANTHROPIC_WORKSPACE_ID` secret, since added. Confirm green on the next pull request.
-2. [ ] Land this branch's `AGENTS.md`; rewrite `docs/product-brief.md` and the six Cursor agents to the web client and cookie auth; update `docs/architecture/web-mvp.md` storage section; complete the document map in `docs/00-overview.md`.
-3. [ ] Make `mypy` blocking (18 errors remain after the fix branch); decide whether `ruff format` becomes a CI step (51 files would change).
-4. [ ] Stop deleting uploads: add object storage for originals (migration `0002` adds `documents` with a storage key); keep the ingestion job otherwise unchanged.
+2. [x] `AGENTS.md`, the `.claude/agents` port, `docs/product-brief.md`, the architecture storage section and the overview map are done (pull request 12 and `ea2073c`).
+3. [x] `mypy` is blocking with zero errors (`80f61f2`). `ruff format` stays a convention, not a CI step.
+4. [x] Originals retained in a blob store with a `documents` table and owner-only download (`e2ad389`).
 
 Phase 1 — data contract and storage (weeks)
-5. [ ] Write the jurisdiction taxonomy, locator-scheme registry and `jurisdictions/ng/` folder; have a lawyer review them.
-6. [ ] Define the unified chunk metadata contract and the three tiers; migration `0003`; update `docs/contracts/`.
-7. [ ] Postgres FTS for keyword retrieval on `firm` and `authority`; HNSW on `authority`; move `conversation.json`, `meta.json`, credentials and user keys into tables; Postgres-backed worker queue replacing the in-process job tables.
-8. [ ] Add a cross-encoder reranker; calibrate the relevance gate per tier; add a golden-set case that expects scope widening.
+5. [x] Taxonomy, locator schemes and `jurisdictions/ng/` (`0e92df3`). Lawyer review still pending: `reviewed_by_lawyer` is false.
+6. [x] Tiers and the chunk metadata contract, migration `0003` (`648a2b1`); source references carry `trust_kind` and `tier`.
+7. [x] Full-text search and the authority HNSW index (`79f8588`); conversations, titles, accounts and keys in tables (`380e2f3`); the document queue and worker (`6cf2d0a`).
+8. [x] Reranker, per-tier gate overrides and the scope ladder with golden-set case `g_widen_01` (`519c957`); measured in docs/22.
 
 Phase 2 — sources, agent loop, playbooks (weeks)
 9. [ ] Source registry table and admin view; register the plugin's US connectors (pinned version) and the `web_search` allow-list.

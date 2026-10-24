@@ -242,5 +242,24 @@
     "expect_refusal": true,
     "example_answer": "Constitutional/legislative procedure - not in this corpus.",
     "matter_id": "phase1-demo"
+  },
+  {
+    "id": "g_widen_01",
+    "question": "When did the Federal High Court Civil Procedure Rules 2009 come into force?",
+    "jurisdiction": "federal",
+    "expected": [
+      {
+        "source_document": "FHC Civil Procedure Rules.pdf",
+        "locator": "Order 1 Rule 2"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "They may be cited as the Federal High Court (Civil Procedure) Rules 2009 and came into force on 30 April 2009.",
+    "matter_id": "eval-empty-matter",
+    "widen_to": [
+      "phase1-demo"
+    ],
+    "expect_scope": "library",
+    "note": "docs/22 AC-10: the matter has no documents; the scope ladder must answer from the reference library and label it so."
   }
 ]

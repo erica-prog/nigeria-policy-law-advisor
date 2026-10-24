@@ -138,11 +138,11 @@ def _steps(state: dict, shape: str) -> list[tuple[str, dict]]:
 
 def _confirm_on_real_code(shape: str) -> dict:
     """Drive the real functions through the violating schedule. Returns what happened."""
+    import policy_advisor.api.routers.documents as documents
+    import policy_advisor.ingestion.ingest_document as ingest
     from policy_advisor.api.deps import MatterAccess
     from policy_advisor.api.jobs import JobTable
     from policy_advisor.api.routers.documents import delete_document
-    import policy_advisor.api.routers.documents as documents
-    import policy_advisor.ingestion.ingest_document as ingest
     from policy_advisor.logging_utils import get_logger
 
     chunks: set[str] = set()
@@ -248,8 +248,8 @@ def _confirm_on_real_code(shape: str) -> dict:
 
 def _control_forget_during_ingest() -> bool:
     """Forget before the cancelled read. The current check removes the chunks."""
-    from policy_advisor.api.jobs import JobTable
     import policy_advisor.ingestion.ingest_document as ingest
+    from policy_advisor.api.jobs import JobTable
     from policy_advisor.logging_utils import get_logger
 
     chunks: set[str] = set()

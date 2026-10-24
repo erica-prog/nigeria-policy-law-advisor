@@ -6,12 +6,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from policy_advisor.config import PHASE1_DEMO_MATTER_ID
-from policy_advisor.ingestion.docx_text import extract_docx
 from policy_advisor.ingestion.document_type import classify_document_type
+from policy_advisor.ingestion.docx_text import extract_docx
 from policy_advisor.ingestion.generic_chunk import parse_generic
 from policy_advisor.ingestion.parse_judgment import parse_judgment
 from policy_advisor.ingestion.parse_rules import parse_rules
 from policy_advisor.ingestion.pdf_text import PdfText, extract_pdf
+from policy_advisor.jurisdictions import load_taxonomy, normalize_jurisdiction
+from policy_advisor.jurisdictions.locators import scheme_of
+
+AUTHORITY_DOC_TYPES = frozenset({"statute", "judgment"})
 
 SUPPORTED_SUFFIXES = {".pdf", ".docx"}
 
@@ -28,7 +32,9 @@ class DocumentSpec:
 # chunk_uploaded_document() below instead of this hand-mapped list.
 CORPUS: list[DocumentSpec] = [
     DocumentSpec("FHC Civil Procedure Rules.pdf", "statute", "federal"),
-    DocumentSpec("Lagos-State-Magistrates-Courts-Civil-Procedure-Rules-2009.pdf", "statute", "lagos"),
+    DocumentSpec(
+        "Lagos-State-Magistrates-Courts-Civil-Procedure-Rules-2009.pdf", "statute", "lagos"
+    ),
     DocumentSpec("Meta v NDPC Terms & Consent Judgment.pdf", "judgment", "federal"),
 ]
 
@@ -53,6 +59,33 @@ class Chunk:
     translated_language: str | None = None
     translation_flagged: bool = False
     translation_flag_reason: str = ""
+    # Corpus tier and trust (ADR-001 decision 1). `tier` is the matter's tier;
+    # `trust_kind` is what the client renders: statutes and judgments are
+    # authority, everything a lawyer uploads about a case is evidence.
+    tier: str = "matter"
+    trust_kind: str = "evidence"
+    # Which citation grammar the locator is written in (jurisdictions/locators.py).
+    locator_scheme: str | None = None
+    # Provenance for library and connector content; empty for uploads.
+    source_id: str | None = None
+    effective_date: str | None = None
+    licence: str | None = None
+    # Structured jurisdiction, derived from the taxonomy id in `jurisdiction`.
+    country: str | None = None
+    jurisdiction_level: str | None = None
+    region: str | None = None
+
+
+def _enrich(chunks: list[Chunk], tier: str) -> list[Chunk]:
+    """Fill the derived fields every chunk carries, in one place."""
+    for chunk in chunks:
+        chunk.tier = tier
+        chunk.trust_kind = "authority" if chunk.doc_type in AUTHORITY_DOC_TYPES else "evidence"
+        chunk.locator_scheme = scheme_of(chunk.locator)
+        j = load_taxonomy().resolve(chunk.jurisdiction)
+        if j is not None:
+            chunk.country, chunk.jurisdiction_level, chunk.region = j.country, j.level, j.region
+    return chunks
 
 
 def extract_document(path: Path) -> PdfText:
@@ -61,7 +94,9 @@ def extract_document(path: Path) -> PdfText:
         return extract_pdf(path)
     if suffix == ".docx":
         return extract_docx(path)
-    raise ValueError(f"Unsupported document format: {suffix} (supported: {sorted(SUPPORTED_SUFFIXES)})")
+    raise ValueError(
+        f"Unsupported document format: {suffix} (supported: {sorted(SUPPORTED_SUFFIXES)})"
+    )
 
 
 def _build_chunks(
@@ -133,7 +168,15 @@ def chunk_document(spec: DocumentSpec, data_dir: Path) -> list[Chunk]:
     """Phase 1's hand-mapped demo corpus path - doc_type and jurisdiction are
     already known, so this skips classification."""
     pdf_text = extract_pdf(data_dir / spec.filename)
-    return _build_chunks(pdf_text, spec.doc_type, spec.filename, PHASE1_DEMO_MATTER_ID, spec.jurisdiction)
+    chunks = _build_chunks(
+        pdf_text,
+        spec.doc_type,
+        spec.filename,
+        PHASE1_DEMO_MATTER_ID,
+        normalize_jurisdiction(spec.jurisdiction),
+    )
+    # The demo corpus is the shared reference library: the authority tier.
+    return _enrich(chunks, tier="authority")
 
 
 def chunk_corpus(data_dir: Path) -> list[Chunk]:
@@ -143,7 +186,9 @@ def chunk_corpus(data_dir: Path) -> list[Chunk]:
     return chunks
 
 
-def chunk_uploaded_document(matter_id: str, file_path: Path, jurisdiction: str | None = None) -> list[Chunk]:
+def chunk_uploaded_document(
+    matter_id: str, file_path: Path, jurisdiction: str | None = None
+) -> list[Chunk]:
     """The general ingestion path for any document a lawyer adds at runtime:
     extract -> classify -> chunk with the matching strategy -> tag with the
     matter it belongs to. Falls back to a generic recursive-split chunker
@@ -152,4 +197,7 @@ def chunk_uploaded_document(matter_id: str, file_path: Path, jurisdiction: str |
     ingestion - it just gets a less structurally-precise chunking strategy."""
     pdf_text = extract_document(file_path)
     doc_type = classify_document_type(pdf_text)
-    return _build_chunks(pdf_text, doc_type, file_path.name, matter_id, jurisdiction)
+    chunks = _build_chunks(
+        pdf_text, doc_type, file_path.name, matter_id, normalize_jurisdiction(jurisdiction)
+    )
+    return _enrich(chunks, tier="matter")

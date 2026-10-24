@@ -45,6 +45,8 @@ def split_numbered_blocks(text: str, start_re: re.Pattern, base_offset: int = 0)
             if current is not None:
                 blocks.append(_finalize(current))
             match = start_re.match(stripped)
+            if match is None:  # is_start[i] came from this same regex; keep the type checker honest
+                continue
             number = int(match.group(1))
             heading = " ".join(pending_heading).strip() or None
             pending_heading = []

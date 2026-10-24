@@ -20,8 +20,8 @@ from policy_advisor.api.conversations import (
     now_iso,
 )
 from policy_advisor.api.deps import ChatJobs, CurrentUser, Jobs, Matter, MatterAccess, Services
-from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.errors import ApiError
+from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.routers.advice import require_key, run_analyze, run_ask
 from policy_advisor.api.schemas import (
     AnalyzeRequest,
@@ -104,6 +104,13 @@ def bubble_for_answer(
         return (
             "Your documents do not cover this, so this comes from official websites. It is legal "
             "authority, not evidence from your case.",
+            [CHIP_ASK],
+        )
+    if answer.source == "library":
+        return (
+            "Your documents do not cover this, so this comes from the reference library. It is "
+            f"legal authority, not evidence from your case: {_plural(len(answer.citations), 'citation')} "
+            "you can open.",
             [CHIP_ASK],
         )
     if answer.source == "none":

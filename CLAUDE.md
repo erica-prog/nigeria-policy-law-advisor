@@ -12,8 +12,8 @@ Claude. Keep both under 200 lines; when they overlap, `AGENTS.md` wins.
 - `docs/18-architecture-review.md`: what exists on `main`, what to keep, ranked gaps.
 - `docs/19-adr-001-multi-jurisdiction-legal-platform.md`: where the product is going
   (USA + Nigeria; three corpus tiers; jurisdiction taxonomy; MCP connectors; agent loop;
-  bulk analysis; grounded drafting). **Proposed** until marked Accepted: do not build
-  against its target data model before then; do use its action list for sequencing.
+  bulk analysis; grounded drafting). **Accepted 2026-10-24**: its action list is the
+  sequencing authority; each phase gets a short plan in the `docs/20` format first.
 - `docs/20-plan-claude-layout-and-streamlit-removal.md`: the plan format used here
   (acceptance criteria, slices, risks with a disproving check, verification map).
 
@@ -38,7 +38,7 @@ Claude. Keep both under 200 lines; when they overlap, `AGENTS.md` wins.
   `docker run -d -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=policy_advisor_test -p 5433:5432 pgvector/pgvector:pg16`
   then `TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/policy_advisor_test`),
   and `tests/conftest.py` refuses any non-local database host on purpose.
-- `uv run mypy src` is advisory in CI (18 known errors); do not add to them.
+- `uv run mypy src` is a blocking CI check; keep it at zero errors.
 - The only product surface is the browser client in `web/` served by FastAPI. The
   Streamlit prototype was removed on 2026-10-24; do not reintroduce it.
 - Accounts: `uv run python -m scripts.add_user <username> "<Display Name>"`. There is no

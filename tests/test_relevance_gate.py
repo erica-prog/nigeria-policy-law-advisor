@@ -13,6 +13,7 @@ or database is needed.
 import numpy as np
 import pytest
 
+from policy_advisor.ingestion.matter_store import MatterSummary
 from policy_advisor.retrieval.bm25_index import BM25Document, BM25Index
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk, _MatterIndex
 
@@ -28,27 +29,45 @@ _vector_hits: list[tuple[dict, str, float]] = []
 def _offline(monkeypatch):
     # The stubbed index below is always current, and vector search returns
     # whatever the test chose, so no database or embedding model is involved.
-    monkeypatch.setattr("policy_advisor.retrieval.hybrid_retriever.matter_version", lambda matter_id: 1)
-    monkeypatch.setattr("policy_advisor.retrieval.hybrid_retriever.embed_query", lambda query: np.zeros(3))
+    monkeypatch.setattr(
+        "policy_advisor.retrieval.hybrid_retriever.matter_summary",
+        lambda matter_id: MatterSummary(version=1, tier="matter", chunk_count=1),
+    )
+    monkeypatch.setattr(
+        "policy_advisor.retrieval.hybrid_retriever.embed_query", lambda query: np.zeros(3)
+    )
     monkeypatch.setattr(
         "policy_advisor.retrieval.hybrid_retriever.vector_store.search",
-        lambda matter_id, query_vector, k, jurisdiction=None: list(_vector_hits),
+        lambda matter_id, query_vector, k, jurisdiction=None, tier=None: list(_vector_hits),
     )
     _vector_hits.clear()
 
 
 def _hit(chunk_id: str, locator: str, distance: float) -> tuple[dict, str, float]:
-    return ({"chunk_id": chunk_id, "locator": locator, "jurisdiction": "federal"}, f"text of {chunk_id}", distance)
+    return (
+        {"chunk_id": chunk_id, "locator": locator, "jurisdiction": "federal"},
+        f"text of {chunk_id}",
+        distance,
+    )
 
 
-def _retriever(vector_hits: list[tuple[dict, str, float]], locators: dict | None = None) -> HybridRetriever:
+def _retriever(
+    vector_hits: list[tuple[dict, str, float]], locators: dict | None = None
+) -> HybridRetriever:
     """A retriever whose vector search returns exactly these (metadata, text,
     distance) hits. Its keyword index holds the same chunks, so the matter
     isn't empty, but no query term matches them, so BM25 adds nothing."""
     _vector_hits[:] = vector_hits
     retriever = HybridRetriever(max_distance=MAX, certain_distance=CERTAIN)
     bm25 = BM25Index([BM25Document(metadata=meta, text=text) for meta, text, _ in vector_hits])
-    retriever._indexes["m"] = _MatterIndex(version=1, bm25=bm25, locators=locators or {})
+    retriever._indexes["m"] = _MatterIndex(
+        version=1,
+        tier="matter",
+        chunk_count=max(len(vector_hits), 1),
+        backend="bm25",
+        bm25=bm25,
+        locators=locators or {},
+    )
     return retriever
 
 
@@ -78,7 +97,9 @@ def test_exact_locator_match_bypasses_the_gate():
     # return nothing.
     retriever = _retriever(
         [_hit("c1", "Order 5 Rule 3", 0.99)],
-        locators={"Order 5 Rule 3": [("the rule", {"chunk_id": "c9", "locator": "Order 5 Rule 3"})]},
+        locators={
+            "Order 5 Rule 3": [("the rule", {"chunk_id": "c9", "locator": "Order 5 Rule 3"})]
+        },
     )
 
     results = retriever.retrieve("Order 5 Rule 3", top_k=8, matter_id="m")
@@ -157,3 +178,15 @@ def test_raw_distance_survives_normalization():
 
     assert sorted(c.vector_distance for c in results) == [0.10, 0.30]
     assert max(c.fused_score for c in results) == pytest.approx(0.5)
+
+
+def test_gate_thresholds_can_be_overridden_per_tier(monkeypatch):
+    # docs/22 AC-10: a library tier can carry its own calibration. 0.30 clears
+    # the matter gate (MAX) but not a tighter authority override.
+    retriever = _retriever([_hit("c1", "Order 1 Rule 1", 0.30)])
+    retriever._gate_overrides = {"authority": {"certain": 0.10, "max": 0.25}}
+    assert retriever.gate_for("matter") == (CERTAIN, MAX)
+    assert retriever.gate_for("authority") == (0.10, 0.25)
+    assert len(retriever.retrieve("q", top_k=8, matter_id="m")) == 1
+    retriever._indexes["m"].tier = "authority"
+    assert retriever.retrieve("q", top_k=8, matter_id="m") == []

@@ -68,8 +68,8 @@ def _looks_like_real_text(line: str) -> bool:
 
 
 def _extract_with_ocr(path: Path, dpi: int = 300) -> PdfText:
-    from pdf2image import convert_from_path
     import pytesseract
+    from pdf2image import convert_from_path
 
     images = convert_from_path(str(path), dpi=dpi)
     parts = []

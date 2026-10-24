@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "reviewed_by_lawyer": false,
+  "countries": {
+    "NG": {"name": "Nigeria"},
+    "US": {"name": "United States of America"}
+  },
+  "jurisdictions": {
+    "ng-federal": {
+      "country": "NG", "level": "federal", "region": null,
+      "name": "Nigeria (federal)",
+      "aliases": ["federal"],
+      "bodies": ["ng-sc", "ng-ca", "ng-fhc", "ng-nic", "ng-nass", "ng-ndpc", "ng-nis", "ng-interior"]
+    },
+    "ng-lagos": {
+      "country": "NG", "level": "state", "region": "Lagos",
+      "name": "Lagos State",
+      "aliases": ["lagos"],
+      "bodies": ["ng-lagos-high-court", "ng-lagos-magistrates", "ng-lagos-assembly"]
+    },
+    "us-federal": {
+      "country": "US", "level": "federal", "region": null,
+      "name": "United States (federal)",
+      "aliases": [],
+      "bodies": ["us-scotus", "us-circuit-courts", "us-district-courts", "us-congress", "us-federal-register", "us-uscis", "us-eoir", "us-bia", "us-dos"]
+    },
+    "us-ny": {
+      "country": "US", "level": "state", "region": "New York",
+      "name": "New York",
+      "aliases": [],
+      "bodies": ["us-ny-court-of-appeals", "us-ny-supreme-court"]
+    }
+  },
+  "bodies": {
+    "ng-sc": {"name": "Supreme Court of Nigeria", "kind": "court", "jurisdiction": "ng-federal"},
+    "ng-ca": {"name": "Court of Appeal", "kind": "court", "jurisdiction": "ng-federal"},
+    "ng-fhc": {"name": "Federal High Court", "kind": "court", "jurisdiction": "ng-federal"},
+    "ng-nic": {"name": "National Industrial Court", "kind": "court", "jurisdiction": "ng-federal"},
+    "ng-nass": {"name": "National Assembly", "kind": "legislature", "jurisdiction": "ng-federal"},
+    "ng-ndpc": {"name": "Nigeria Data Protection Commission", "kind": "regulator", "jurisdiction": "ng-federal"},
+    "ng-nis": {"name": "Nigeria Immigration Service", "kind": "agency", "jurisdiction": "ng-federal"},
+    "ng-interior": {"name": "Federal Ministry of Interior", "kind": "agency", "jurisdiction": "ng-federal"},
+    "ng-lagos-high-court": {"name": "High Court of Lagos State", "kind": "court", "jurisdiction": "ng-lagos"},
+    "ng-lagos-magistrates": {"name": "Lagos State Magistrates' Courts", "kind": "court", "jurisdiction": "ng-lagos"},
+    "ng-lagos-assembly": {"name": "Lagos State House of Assembly", "kind": "legislature", "jurisdiction": "ng-lagos"},
+    "us-scotus": {"name": "Supreme Court of the United States", "kind": "court", "jurisdiction": "us-federal"},
+    "us-circuit-courts": {"name": "United States Courts of Appeals", "kind": "court", "jurisdiction": "us-federal"},
+    "us-district-courts": {"name": "United States District Courts", "kind": "court", "jurisdiction": "us-federal"},
+    "us-congress": {"name": "United States Congress", "kind": "legislature", "jurisdiction": "us-federal"},
+    "us-federal-register": {"name": "Office of the Federal Register", "kind": "publisher", "jurisdiction": "us-federal"},
+    "us-uscis": {"name": "U.S. Citizenship and Immigration Services", "kind": "agency", "jurisdiction": "us-federal"},
+    "us-eoir": {"name": "Executive Office for Immigration Review", "kind": "tribunal", "jurisdiction": "us-federal"},
+    "us-bia": {"name": "Board of Immigration Appeals", "kind": "tribunal", "jurisdiction": "us-federal"},
+    "us-dos": {"name": "U.S. Department of State", "kind": "agency", "jurisdiction": "us-federal"},
+    "us-ny-court-of-appeals": {"name": "New York Court of Appeals", "kind": "court", "jurisdiction": "us-ny"},
+    "us-ny-supreme-court": {"name": "New York Supreme Court", "kind": "court", "jurisdiction": "us-ny"}
+  },
+  "practice_areas": {
+    "civil-procedure": {"name": "Civil procedure"},
+    "commercial": {"name": "Commercial disputes"},
+    "data-protection": {"name": "Data protection and privacy"},
+    "immigration": {"name": "Immigration"},
+    "investigations": {"name": "Investigations"}
+  }
+}

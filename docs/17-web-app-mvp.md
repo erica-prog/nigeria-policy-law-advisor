@@ -25,8 +25,9 @@ uv run uvicorn policy_advisor.api.main:app --reload
 
 Open <http://127.0.0.1:8000/>. The OpenAPI document is at `/docs`.
 
-- Accounts live in `data/auth/credentials.yaml` (bcrypt hashes written by
-  `scripts/add_user.py`; accounts created by the retired Streamlit sign-up tab keep working).
+- Accounts live in the `users` table (bcrypt hashes written by `scripts/add_user.py`).
+  Accounts from the prototype's `credentials.yaml` are imported once with
+  `uv run python -m scripts.migrate_auth_to_postgres`, hashes untouched, so they keep working.
 - The shared `phase1-demo` matter (built by `python -m policy_advisor.ingestion.build_index`)
   appears in "Your cases" as **Reference library (shared, read-only)** for every user,
   exactly as in the prototype.
@@ -39,6 +40,15 @@ Open <http://127.0.0.1:8000/>. The OpenAPI document is at `/docs`.
   `TRANSLATE_ON_INGEST=false` still switches translation off for everyone.
 - Docker: `docker compose up api` (port 8000), or `docker run` the image: its default
   command is the same uvicorn server.
+- Uploaded originals are kept under `ORIGINALS_DIR` (`data/originals`, inside the mounted
+  `data/` volume) and recorded in the `documents` table; the owner can download one at
+  `GET /api/matters/{id}/documents/{name}/original`. They are removed with the document
+  or the matter.
+- Document processing is a queue in the `document_jobs` table. By default the API
+  process ingests each upload itself (`INLINE_WORKERS=true`). With `INLINE_WORKERS=false`
+  run `uv run python -m policy_advisor.worker` (or `docker compose --profile worker up`)
+  alongside the API; several workers can run, and a job queued before a restart is
+  processed after it.
 
 ## Bring your own Claude key (revision 3)
 
@@ -64,9 +74,8 @@ allowed per user.
 
 What is stored and where:
 
-- `data/auth/user_keys.json`, next to `credentials.yaml` (it follows the same directory
-  relocations and test temp dirs), one entry per username, file mode `0600`, written
-  under a file lock.
+- The `user_keys` table, one row per username (the prototype's `user_keys.json` is
+  imported by the same script as the accounts).
 - Each key is encrypted with Fernet (AES-128-CBC + HMAC) under a key derived from
   `AUTH_COOKIE_KEY` with HKDF-SHA256. Rotating `AUTH_COOKIE_KEY` therefore invalidates
   stored keys: users are asked to paste theirs again, nothing is ever decrypted into a
@@ -120,7 +129,7 @@ uv run python -m scripts.add_user <username> "<Display Name>"
 ```
 
 The script prompts for the password twice (it never appears in shell history) and writes
-a bcrypt hash to `data/auth/credentials.yaml`. The login card tells users to ask their
+a bcrypt hash to the `users` table. The login card tells users to ask their
 administrator for an account and says clearly when a username or password is wrong.
 
 ## Server Claude key not detected?
@@ -226,10 +235,10 @@ added their own yet: see *Bring your own Claude key* above. If `/api/health` rep
   limit is in memory per process. A user's key is used for their uploads' translation
   and their questions only; there is no per-user spend view (Anthropic's console has
   it).
-- **Storage**: Chroma + JSON files under `data/index`, as on `main`, plus
-  `conversation.json` per matter. The API only calls `ingest_document`, `matter_store`,
-  `HybridRetriever`, `RAGChain` and `CaseReasoningChain`, so the storage PR can land
-  underneath; it should move the conversation log with the other two sidecars.
+- **Storage**: Postgres + pgvector for everything (chunks, documents, conversations,
+  users, keys; see doc 16) and the blob store for originals. The API only calls
+  `ingest_document`, `matter_store`, `conversations`, `credentials`, `user_keys`,
+  `HybridRetriever` and the chains.
 - **Evidence vs authority** is inferred from the prototype's `doc_type` (`statute`,
   `judgment` → authority; everything else → evidence). A curated library scope does not
   exist yet.

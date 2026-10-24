@@ -13,6 +13,7 @@ INDEX_DIR = DATA_DIR / "index"
 # by scripts/migrate_to_postgres.py now.
 MATTERS_DIR = INDEX_DIR / "matters"
 AUTH_DIR = DATA_DIR / "auth"
+ORIGINALS_DIR = DATA_DIR / "originals"
 PHASE1_DEMO_MATTER_ID = "phase1-demo"
 
 
@@ -41,8 +42,21 @@ class Settings(BaseSettings):
     # add-on. Optional here so tools that never touch the database still
     # import; db.py raises a clear error if it's missing when needed.
     database_url: SecretStr | None = None
+    # Where uploaded originals are kept (storage.py). A mounted volume in the
+    # container; an S3-compatible store is the planned alternative.
+    originals_dir: Path = ORIGINALS_DIR
+    # Document jobs (api/jobs.py) are rows in document_jobs. True: the API
+    # process runs the worker inline after each upload. False: run
+    # `python -m policy_advisor.worker` alongside the API.
+    inline_workers: bool = True
+    worker_poll_seconds: float = 2.0
     log_level: str = "info"
     retrieval_top_k: int = 8
+    # Keyword search backend per matter: up to this many chunks the retriever
+    # builds an in-memory BM25 index from the matter's rows; above it, keyword
+    # hits come from Postgres full-text search (migration 0004), which never
+    # loads the matter into memory. 0 forces full-text search everywhere.
+    keyword_index_max_chunks: int = 5000
     # Two-band relevance gate, calibrated against eval/golden_set.json by
     # eval/calibrate_relevance_floor.py. Re-run it after changing
     # EMBEDDING_MODEL, the distance space, or chunking - all three move the
@@ -76,6 +90,16 @@ class Settings(BaseSettings):
     # document behind a web result they never asked for.
     retrieval_certain_distance: float = 0.21
     retrieval_max_distance: float = 0.50
+    # Per-tier overrides of the two thresholds, as JSON in the environment:
+    #   RETRIEVAL_GATE_OVERRIDES='{"authority": {"certain": 0.21, "max": 0.50}}'
+    # A tier without an entry uses the two values above. Calibrate per tier with
+    # eval/calibrate_relevance_floor.py against a golden set for that tier.
+    retrieval_gate_overrides: dict[str, dict[str, float]] = {}
+    # Cross-encoder that rescores the top fused candidates on one relevance
+    # scale (retrieval/rerank.py). Empty disables reranking.
+    rerank_enabled: bool = True
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_top_n: int = 24
     auth_cookie_key: SecretStr = SecretStr("dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-.env")
     # Web API (docs/architecture/web-mvp.md)
     session_cookie_secure: bool = False

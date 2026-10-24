@@ -16,6 +16,7 @@ from typing import Any
 from policy_advisor.api.user_keys import AttemptLimiter, key_fingerprint
 from policy_advisor.config import get_settings
 from policy_advisor.logging_utils import get_logger
+from policy_advisor.storage import BlobStore, LocalBlobStore
 
 # Distinct keys whose chains stay warm; beyond this the least recently used
 # chain is dropped (its retriever is shared, so rebuilding is cheap).
@@ -34,12 +35,21 @@ class AdvisorServices:
         self.rag_chain_factory: Callable[[str], Any] | None = None
         self.case_chain_factory: Callable[[str], Any] | None = None
         self.ingest_lock = threading.Lock()
+        self._blob_store: BlobStore | None = None
         self.key_attempts = AttemptLimiter()
         self.logger = get_logger("policy_advisor.api", get_settings().log_level)
 
     def llm_configured(self) -> bool:
         """Server-level view (for /api/health): is there a server key at all?"""
         return get_settings().llm_configured()
+
+    @property
+    def blob_store(self) -> BlobStore:
+        """Where uploaded originals are kept; built once per process from settings."""
+        with self._lock:
+            if self._blob_store is None:
+                self._blob_store = LocalBlobStore(get_settings().originals_dir)
+            return self._blob_store
 
     @property
     def retriever(self):

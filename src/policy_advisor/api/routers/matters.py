@@ -15,6 +15,7 @@ from policy_advisor.api.deps import (
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.schemas import MatterCreate, MatterList, MatterOut
 from policy_advisor.config import PHASE1_DEMO_MATTER_ID
+from policy_advisor.ingestion.ingest_document import delete_matter as delete_matter_files
 from policy_advisor.ingestion.matter_store import (
     get_matter_meta,
     list_documents,
@@ -23,7 +24,6 @@ from policy_advisor.ingestion.matter_store import (
     set_matter_owner,
     update_matter_meta,
 )
-from policy_advisor.ingestion.ingest_document import delete_matter as delete_matter_files
 from policy_advisor.logging_utils import log_event
 
 router = APIRouter(prefix="/api/matters", tags=["matters"])
@@ -90,6 +90,8 @@ def delete_one_matter(matter: WritableMatter, services: Services, jobs: Jobs) ->
     """Deletes the case, its documents and its chat. The shared library is refused."""
     jobs.forget_matter(matter.id)
     delete_matter_files(matter.id)
+    # Retained originals go with the matter (the documents rows cascade).
+    services.blob_store.delete_prefix(f"{matter.id}/")
     services.invalidate_matter(matter.id)
     log_event(services.logger, "matter_deleted", matter_id=matter.id, owner=matter.owner)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

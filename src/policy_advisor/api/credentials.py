@@ -1,24 +1,24 @@
-"""The lawyer credential store: data/auth/credentials.yaml, bcrypt password
-hashes, one entry per username. This module is the only owner of the file.
-`scripts/add_user.py` writes accounts through `save_credentials`; the web API
-verifies logins through `verify_credentials`.
+"""Lawyer accounts: the `users` table, bcrypt password hashes, one row per
+username. This module is the only owner of accounts. `scripts/add_user.py`
+creates them through `create_user`; the web API verifies logins through
+`verify_credentials`; `scripts/migrate_auth_to_postgres.py` imports the
+prototype's credentials.yaml once.
 
-The on-disk format is unchanged from the original prototype
-(`usernames: {<username>: {name, password, email}}`), and the hashes are plain
-bcrypt, so accounts created before this module owned the file keep working."""
+The hashes are plain bcrypt, so accounts created by the prototype's UI keep
+working after the import."""
 
-import os
 from dataclasses import dataclass
-from pathlib import Path
 
 import bcrypt
-import yaml
-from filelock import FileLock
 
-from policy_advisor import config
+from policy_advisor.db import connect
 
 # Used when the username is unknown so a failed login costs the same time either way.
 _DUMMY_HASH = bcrypt.hashpw(b"not-a-real-password", bcrypt.gensalt(rounds=12))
+
+
+class UserExists(ValueError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -27,59 +27,73 @@ class UserRecord:
     display_name: str
 
 
-def credentials_path() -> Path:
-    return config.AUTH_DIR / "credentials.yaml"
+def hash_password(password: str, rounds: int = 12) -> str:
+    """bcrypt, cost 12 by default - the scheme every stored hash uses."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=rounds)).decode()
 
 
-def _lock_path() -> Path:
-    return config.AUTH_DIR / "credentials.yaml.lock"
+def create_user(
+    username: str, display_name: str, password: str, email: str = "", *, rounds: int = 12
+) -> UserRecord:
+    """Add one account. Raises `UserExists` rather than overwriting a hash."""
+    if not password:
+        raise ValueError("Password cannot be empty.")
+    with connect() as conn:
+        inserted = conn.execute(
+            "INSERT INTO users (username, display_name, email, password_hash) VALUES (%s, %s, %s, %s) "
+            "ON CONFLICT (username) DO NOTHING",
+            (username, display_name, email or None, hash_password(password, rounds)),
+        ).rowcount
+    if not inserted:
+        raise UserExists(f"User '{username}' already exists.")
+    return UserRecord(username=username, display_name=display_name)
 
 
-def load_credentials() -> dict:
-    path = credentials_path()
-    if not path.exists():
-        return {"usernames": {}}
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {"usernames": {}}
+def import_user(username: str, display_name: str, password_hash: str, email: str = "") -> bool:
+    """Insert an account with an existing bcrypt hash (the credentials.yaml
+    import). Returns False when the username is already taken."""
+    with connect() as conn:
+        return bool(
+            conn.execute(
+                "INSERT INTO users (username, display_name, email, password_hash) VALUES (%s, %s, %s, %s) "
+                "ON CONFLICT (username) DO NOTHING",
+                (username, display_name or username, email or None, password_hash),
+            ).rowcount
+        )
 
 
-def hash_password(password: str) -> str:
-    """bcrypt, cost 12 - the same scheme every stored hash already uses."""
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
+def list_usernames() -> list[str]:
+    with connect() as conn:
+        return [
+            row["username"] for row in conn.execute("SELECT username FROM users ORDER BY username")
+        ]
 
 
-def save_credentials(credentials: dict) -> None:
-    """Merge `credentials["usernames"]` into the file.
-
-    Read-modify-write under a file lock, then an atomic replace, so two
-    concurrent account creations cannot clobber each other and a reader never
-    sees a half-written file."""
-    path = credentials_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with FileLock(str(_lock_path())):
-        on_disk = load_credentials()
-        on_disk.setdefault("usernames", {}).update(credentials.get("usernames", {}))
-        tmp = path.with_name(path.name + ".tmp")
-        tmp.write_text(yaml.safe_dump(on_disk), encoding="utf-8")
-        os.replace(tmp, path)
+def _row(username: str) -> dict | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT username, display_name, password_hash FROM users WHERE username = %s",
+            (username,),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def get_user(username: str) -> UserRecord | None:
-    entry = load_credentials().get("usernames", {}).get(username)
-    if not entry:
+    row = _row(username)
+    if row is None:
         return None
-    return UserRecord(username=username, display_name=entry.get("name") or username)
+    return UserRecord(username=username, display_name=row["display_name"] or username)
 
 
 def verify_credentials(username: str, password: str) -> UserRecord | None:
-    entry = load_credentials().get("usernames", {}).get(username)
-    hashed = (entry or {}).get("password") if isinstance(entry, dict) else None
-    if not hashed:
+    row = _row(username)
+    if row is None or not row.get("password_hash"):
         bcrypt.checkpw(password.encode(), _DUMMY_HASH)
         return None
     try:
-        ok = bcrypt.checkpw(password.encode(), str(hashed).encode())
+        ok = bcrypt.checkpw(password.encode(), str(row["password_hash"]).encode())
     except ValueError:
         return None
     if not ok:
         return None
-    return UserRecord(username=username, display_name=entry.get("name") or username)
+    return UserRecord(username=username, display_name=row["display_name"] or username)

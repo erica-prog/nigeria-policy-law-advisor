@@ -1,0 +1,24 @@
+version: 1
+jurisdiction: ng
+reviewed_by_lawyer: false
+practice_areas:
+  civil-procedure:
+    bodies: [ng-fhc, ng-lagos-high-court, ng-lagos-magistrates, ng-ca, ng-sc]
+    locator_schemes: [ng_rules, judgment_para]
+    playbooks: []            # filled in Phase 2 (ADR-001 action 13)
+  commercial:
+    bodies: [ng-fhc, ng-lagos-high-court, ng-ca, ng-sc]
+    locator_schemes: [ng_rules, section, judgment_para, contract_clause]
+    playbooks: []
+  data-protection:
+    bodies: [ng-ndpc, ng-fhc]
+    locator_schemes: [section, judgment_para]
+    playbooks: []
+  immigration:
+    bodies: [ng-nis, ng-interior, ng-fhc]
+    locator_schemes: [section]
+    playbooks: []            # written new; the plugin has no immigration content
+  investigations:
+    bodies: [ng-fhc, ng-lagos-high-court]
+    locator_schemes: [exhibit_bates, contract_clause, section]
+    playbooks: []

@@ -50,14 +50,23 @@ Not "it runs on my machine." Specifically:
 - [04-mcp-integration.md](04-mcp-integration.md) — MCP concepts and tool design
 - [05-typescript-guide.md](05-typescript-guide.md) — TS concepts as they'll appear in this project
 - [06-production.md](06-production.md) — eval, error handling, observability, secrets
+- [07-demo-ui.md](07-demo-ui.md) — (superseded) Streamlit versus a web client for the first demo; kept for the reasoning
+- [08-deployment-cicd.md](08-deployment-cicd.md) — containers, CI/CD shape, what runs where
+- [09-devops-review.md](09-devops-review.md) — workflows, SSH, dependency currency review
+- [10-self-service-signup.md](10-self-service-signup.md) — (superseded) sign-up in the Streamlit UI; sign-up over the API is future tenancy work
 - [11-web-search-and-usage-limits.md](11-web-search-and-usage-limits.md) — why the web-search fallback and account rate limits behave the way they do, traced against the actual code
 - [12-voice-web-app-architecture.md](12-voice-web-app-architecture.md) — the spoken cartoon-advisor interface: client/server boundary, HTTP surface, auth refactor, latency budget
 - [13-voice-pipeline.md](13-voice-pipeline.md) — speech-to-text and text-to-speech, and the confidentiality and mis-transcription risks voice introduces
 - [14-cartoon-avatar-frontend.md](14-cartoon-avatar-frontend.md) — the avatar as a trust-state indicator, lip-sync, and the browser TypeScript
+- [15-avatar-character-asset.md](15-avatar-character-asset.md) — the advisor character's frames and state rules
+- [16-supabase-setup.md](16-supabase-setup.md) — the Postgres + pgvector database: tables, region, backups, running the app
+- [17-web-app-mvp.md](17-web-app-mvp.md) — running the web app, bring-your-own Claude key, chat jobs and the live bubble
 - [18-architecture-review.md](18-architecture-review.md) — code and structure review against the USA + Nigeria, Harvey-style target: what exists, what to keep, ranked gaps
 - [19-adr-001-multi-jurisdiction-legal-platform.md](19-adr-001-multi-jurisdiction-legal-platform.md) — ADR: three corpus tiers, jurisdiction taxonomy, Postgres + pgvector + workers, MCP connectors, agent loop, bulk analysis, grounded drafting
 - [20-plan-claude-layout-and-streamlit-removal.md](20-plan-claude-layout-and-streamlit-removal.md) — plan: `.claude/` project layout, CLAUDE.md revision, Streamlit removal; acceptance criteria, slices, risks, pending decisions
 - [21-phase-2-capabilities-record.md](21-phase-2-capabilities-record.md) — the Phase 2 memory (formerly `CLAUDE-2.md`): bring-your-own-document, case reasoning, multi-language; checklist marked done or open
+- [22-plan-platform-phase-0-1.md](22-plan-platform-phase-0-1.md) — plan for ADR-001 Phase 0 and Phase 1: mypy blocking, retained originals, taxonomy and locator schemes, corpus tiers, storage completion, reranker
+- [23-plan-platform-phase-2.md](23-plan-platform-phase-2.md) — plan for ADR-001 Phase 2: source registry, US and Nigeria connectors, US parsers and golden set, the agent loop with a tool policy, playbooks and routing evals
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase

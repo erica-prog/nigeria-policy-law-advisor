@@ -1,5 +1,5 @@
-"""Upload -> background ingestion -> ready -> listed -> removed, against a
-temporary Chroma index and matter store with a synthetic DOCX. TestClient
+"""Upload -> background ingestion -> ready -> listed -> removed, against the
+test database and a temporary blob store with a synthetic DOCX. TestClient
 runs BackgroundTasks before returning, so status is observable immediately."""
 
 from tests.api.helpers import synthetic_docx_bytes
@@ -132,3 +132,64 @@ def test_oversized_upload_is_rejected(api, monkeypatch):
     response = _upload(alice, "alice-v-acme")
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "upload_too_large"
+
+
+def test_original_is_retained_and_downloadable_by_the_owner_only(api):
+    # docs/22 AC-2: the bytes come back unchanged, with the recorded hash;
+    # another user gets 404, never 403, so the matter's existence is not leaked.
+    import hashlib
+
+    alice = api.login("alice")
+    alice.post("/api/matters", json={"id": "alice-v-acme"})
+    payload = synthetic_docx_bytes()
+    _upload(alice, "alice-v-acme", data=payload)
+
+    response = alice.get("/api/matters/alice-v-acme/documents/supply-agreement.docx/original")
+    assert response.status_code == 200, response.text
+    assert response.content == payload
+    assert response.headers["x-content-sha256"] == hashlib.sha256(payload).hexdigest()
+    assert "wordprocessingml" in response.headers["content-type"]
+
+    bob = api.login("bob")
+    assert (
+        bob.get("/api/matters/alice-v-acme/documents/supply-agreement.docx/original").status_code
+        == 404
+    )
+
+
+def test_removing_a_document_removes_its_original(api):
+    alice = api.login("alice")
+    alice.post("/api/matters", json={"id": "alice-v-acme"})
+    _upload(alice, "alice-v-acme")
+    stored = api.root / "originals" / "alice-v-acme" / "supply-agreement.docx"
+    assert stored.is_file()
+
+    alice.delete("/api/matters/alice-v-acme/documents/supply-agreement.docx")
+
+    assert not stored.exists()
+    assert (
+        alice.get("/api/matters/alice-v-acme/documents/supply-agreement.docx/original").status_code
+        == 404
+    )
+
+
+def test_deleting_a_case_removes_its_originals(api):
+    alice = api.login("alice")
+    alice.post("/api/matters", json={"id": "alice-v-acme"})
+    _upload(alice, "alice-v-acme")
+    folder = api.root / "originals" / "alice-v-acme"
+    assert folder.is_dir()
+
+    assert alice.delete("/api/matters/alice-v-acme").status_code == 204
+
+    assert not folder.exists()
+
+
+def test_a_failed_upload_leaves_no_original_behind(api):
+    alice = api.login("alice")
+    alice.post("/api/matters", json={"id": "alice-v-acme"})
+    _upload(alice, "alice-v-acme", name="broken.docx", data=b"not a docx at all")
+    detail = alice.get("/api/matters/alice-v-acme/documents/broken.docx").json()
+    assert detail["status"] == "failed"
+    assert not (api.root / "originals" / "alice-v-acme" / "broken.docx").exists()
+    assert alice.get("/api/matters/alice-v-acme/documents/broken.docx/original").status_code == 404

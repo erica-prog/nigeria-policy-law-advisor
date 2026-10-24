@@ -6,12 +6,11 @@ inject fake chains or run with the key unset."""
 from dataclasses import dataclass
 from pathlib import Path
 
-import bcrypt
 import pytest
-import yaml
 from fastapi.testclient import TestClient
 
 from policy_advisor import config
+from policy_advisor.api.credentials import create_user
 from policy_advisor.api.main import create_app
 from policy_advisor.config import get_settings
 from policy_advisor.db import connect, database_url
@@ -21,18 +20,10 @@ from tests.conftest import _refuse_unsafe
 USERS = {"alice": "alice-pass-123", "bob": "bob-pass-456"}
 
 
-def _write_credentials(auth_dir: Path) -> None:
-    auth_dir.mkdir(parents=True, exist_ok=True)
-    usernames = {
-        name: {
-            "name": name.title(),
-            "email": "",
-            # Same scheme as scripts/add_user.py (bcrypt); low cost for test speed.
-            "password": bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=4)).decode(),
-        }
-        for name, pw in USERS.items()
-    }
-    (auth_dir / "credentials.yaml").write_text(yaml.safe_dump({"usernames": usernames}))
+def _create_users() -> None:
+    # Same scheme as scripts/add_user.py (bcrypt); low cost for test speed.
+    for name, pw in USERS.items():
+        create_user(name, name.title(), pw, rounds=4)
 
 
 @dataclass
@@ -62,6 +53,7 @@ def _build_harness(
     monkeypatch.setenv("ALLOW_SHARED_ANTHROPIC_KEY", "true" if shared_key else "false")
     monkeypatch.setenv("TRANSLATE_ON_INGEST", "false")
     monkeypatch.setenv("AUTH_COOKIE_KEY", "unit-test-cookie-key")
+    monkeypatch.setenv("ORIGINALS_DIR", str(tmp_path / "originals"))
     # Settings ignore empty environment values (env_ignore_empty), so point the
     # .env lookup at a file that does not exist; a developer's real .env must
     # never leak into the "no model key" fixture.
@@ -72,11 +64,12 @@ def _build_harness(
     _refuse_unsafe(database_url())
     with connect() as conn:
         conn.execute(
-            "TRUNCATE chat_exchanges, chunks, matters, index_meta RESTART IDENTITY CASCADE"
+            "TRUNCATE chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
+            "index_meta RESTART IDENTITY CASCADE"
         )
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")
     monkeypatch.setattr(matter_store, "MATTERS_DIR", tmp_path / "matters")
-    _write_credentials(tmp_path / "auth")
+    _create_users()
     app = create_app(serve_static=False)
     client = TestClient(app, raise_server_exceptions=False)
     return ApiHarness(app=app, client=client, root=tmp_path)
