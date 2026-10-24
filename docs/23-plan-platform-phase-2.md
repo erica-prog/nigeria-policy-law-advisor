@@ -43,12 +43,12 @@ registry rows and feature flags.
 
 | ID | Decision | Status | Alternatives and recommendation |
 |---|---|---|---|
-| D1 | Agent harness | **Pending (yours)** | **Recommended:** the SDK tool runner on the raw Anthropic client, not LangChain; per-turn hooks give approval gates, caps and audit without a hand-written loop. The three chains stay as they are and are exposed as tools. Alternative: a manual loop (only if a transport the runner cannot do is needed). |
-| D2 | How MCP tools reach the model | **Pending (yours)** | **Recommended:** one in-process MCP client (Python `mcp` package): stdio for the vendored Node server and the TypeScript Nigeria server, streamable HTTP for hosted CourtListener and GovInfo; tools converted for the runner with `anthropic.lib.tools.mcp`. One policy and audit layer covers every tool. Alternative: the server-side MCP connector for the two hosted servers only; it splits policy enforcement across two mechanisms and is beta. |
-| D3 | Vendoring the plugin's US server | **Pending (yours)** | **Recommended:** copy `legal-research-server.mjs`, its test file and the MIT `LICENSE` into `connectors/legal-ai-skills/` with an `UPSTREAM.md` naming commit `ad5df19`; refresh by diff, never edit in place. Alternative: a git submodule (heavier; pulls 226 skills we do not run). |
-| D4 | Node in the runtime | **Pending (yours)** | **Recommended:** install Node 20 LTS into the Python image (`apt` from NodeSource or a multi-stage copy from `node:20-slim`) and build the TypeScript connector in the image. Alternative: run connectors as a separate container; more moving parts for one developer. |
-| D5 | Agent model and budgets | **Pending (yours)** | Default `AGENT_MODEL` to the existing `ANTHROPIC_MODEL` so one key and one bill; caps per run: 12 tool calls, 45 s per tool call, one retry per failing tool, and `max_tokens` 16000 per turn. Newer models (the skill's default is `claude-opus-5-5` with adaptive thinking and effort tuning) can be chosen per deployment; the loop must not depend on model-specific features such as task budgets. |
-| D6 | Where research surfaces in the product | **Pending (yours)** | **Recommended:** a `research` chat job (`intent: "research"` or the existing no-documents path) that runs the agent and returns `source: "research"` with citations carrying `trust_kind` and `source_id`; the client labels it like the library source. Case analysis keeps its fixed chain this phase. |
+| D1 | Agent harness | **Accepted 2026-10-24** (recommended option) | **Recommended:** the SDK tool runner on the raw Anthropic client, not LangChain; per-turn hooks give approval gates, caps and audit without a hand-written loop. The three chains stay as they are and are exposed as tools. Alternative: a manual loop (only if a transport the runner cannot do is needed). |
+| D2 | How MCP tools reach the model | **Accepted 2026-10-24** (recommended option) | **Recommended:** one in-process MCP client (Python `mcp` package): stdio for the vendored Node server and the TypeScript Nigeria server, streamable HTTP for hosted CourtListener and GovInfo; tools converted for the runner with `anthropic.lib.tools.mcp`. One policy and audit layer covers every tool. Alternative: the server-side MCP connector for the two hosted servers only; it splits policy enforcement across two mechanisms and is beta. |
+| D3 | Vendoring the plugin's US server | **Accepted 2026-10-24** (recommended option) | **Recommended:** copy `legal-research-server.mjs`, its test file and the MIT `LICENSE` into `connectors/legal-ai-skills/` with an `UPSTREAM.md` naming commit `ad5df19`; refresh by diff, never edit in place. Alternative: a git submodule (heavier; pulls 226 skills we do not run). |
+| D4 | Node in the runtime | **Accepted 2026-10-24** (recommended option) | **Recommended:** install Node 20 LTS into the Python image (`apt` from NodeSource or a multi-stage copy from `node:20-slim`) and build the TypeScript connector in the image. Alternative: run connectors as a separate container; more moving parts for one developer. |
+| D5 | Agent model and budgets | **Accepted 2026-10-24** (recommended option) | Default `AGENT_MODEL` to the existing `ANTHROPIC_MODEL` so one key and one bill; caps per run: 12 tool calls, 45 s per tool call, one retry per failing tool, and `max_tokens` 16000 per turn. Newer models (the skill's default is `claude-opus-5-5` with adaptive thinking and effort tuning) can be chosen per deployment; the loop must not depend on model-specific features such as task budgets. |
+| D6 | Where research surfaces in the product | **Accepted 2026-10-24** (recommended option) | **Recommended:** a `research` chat job (`intent: "research"` or the existing no-documents path) that runs the agent and returns `source: "research"` with citations carrying `trust_kind` and `source_id`; the client labels it like the library source. Case analysis keeps its fixed chain this phase. |
 | D7 | Connector credentials | Routine | Server settings (`COURTLISTENER_API_TOKEN`, `GOVINFO_API_KEY`, `REGULATIONS_GOV_API_KEY`), never per user, never persisted elsewhere; absent keys mark the source `unavailable` in the registry, and the agent says so. |
 | D8 | US corpus for the golden set | Routine | Public-domain federal material fetched through the adopted connectors and committed as text under `data/us/` with provenance (eCFR 8 CFR 245, USCIS Policy Manual Vol. 7 Pt. B, one Supreme Court opinion); seeded as an `authority` collection `us-library`. |
 | D9 | Playbook and eval formats | Routine | Playbooks as YAML under `playbooks/<practice_area>/<country>.yaml`; routing evals in the plugin's YAML shape (`prompt`, `expected_skill`, `expected_behavior`, `must_include`, `must_not_include`), MIT attribution kept on adapted text. |
@@ -109,6 +109,13 @@ the Nigeria source list stays open from Phase 1.
 
 ## 9. Readiness and next action
 
-P2-A, P2-B, D7 to D9 are ready. P2-C to P2-F wait on D1 to D6. Next action: decide
-D1 to D6 (the recommendations are one answer), then implementation runs P2-A → P2-B →
-P2-C and P2-D → P2-E → P2-F.
+D1 to D6 were accepted on 2026-10-24 with the recommended options; D7 to D9 are routine.
+All slices are ready within the authorised scope. Implementation order: P2-A → P2-B →
+P2-C and P2-D → P2-E → P2-F, one commit per slice, each on its own branch from `main`
+after the Phase 0 and 1 pull request merges.
+
+## 10. Implementation record
+
+| Slice | Branch | Commit | Verification | Notes |
+|---|---|---|---|---|
+| P2-A | `platform/phase-2-a` | pending | pending | started 2026-10-24 from `platform/phase-0-1` at `f1bd2f3` because the Phase 0 and 1 pull request was not yet merged; the branch rebases onto `main` cleanly once it is |
