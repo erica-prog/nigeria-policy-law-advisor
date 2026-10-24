@@ -231,3 +231,22 @@ Docs-only edits in S3 need no specialist.
 
 Next action: authorise implementation of S2 → S3 → S1 (one pull request,
 one commit per slice), starting with the legacy-hash fixture in S2.
+
+## 10. Implementation record (2026-10-24)
+
+Implemented on branch `2026-10-19-pozq` as three commits (S2, S3, S1), in that order.
+
+| Criterion | Result | Evidence or gap |
+|---|---|---|
+| AC-1 | pass | `grep` finds no Streamlit import under `src/`, `scripts/`, `tests/`, `eval/`; `uv tree` has no streamlit entry |
+| AC-2 | pending CI | `test_account_created_by_add_user_script_can_log_in` written; needs the test Postgres |
+| AC-3 | pass | `tests/test_credentials.py::test_legacy_streamlit_authenticator_hash_still_verifies` passes; fails when the fixture hash is altered by one character |
+| AC-4 | pending CI | Docker daemon unavailable on the development machine; `docker-publish.yml` builds the image |
+| AC-5 | partial | `uv sync --frozen` and `uv run ruff check .` pass; mypy unchanged at 18 advisory errors; 246 tests collect; the database-backed suite runs in CI |
+| AC-6, AC-7 | pending (owner) | run `/context` and `/doctor prompt-audit` in a Claude Code session at the repo root |
+| AC-8 | pass | `ls -L` on the three symlinks lists the same skills and agents |
+| AC-9 | pass | no doc or comment instructs running Streamlit, except the superseded doc 09 section under its banner |
+| AC-10 | pass | `CLAUDE-2.md` removed; `docs/21` holds every section, 21 items done, 4 open |
+
+Risk R1 is retired by AC-3. R2: the lock diff was removals only plus the `pyyaml`
+promotion. R4 stands: announce the default-command change in the pull request.
