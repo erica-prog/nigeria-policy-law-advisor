@@ -180,7 +180,7 @@ def test_keys_cannot_be_stored_on_the_insecure_default_cookie_key(api_byok, monk
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "server_not_configured"
     assert "AUTH_COOKIE_KEY" in response.json()["error"]["message"]
-    assert not user_keys.user_keys_path().exists()
+    assert user_keys.get_user_key_info("alice") is None
 
 
 # ---- the key never leaves the server ----
@@ -214,14 +214,17 @@ def test_key_is_encrypted_at_rest_and_never_in_a_response_or_log(
     bodies.append(alice.get(KEY_URL).text)
     bodies.append(alice.get("/api/me").text)
 
-    path = api_byok.root / "auth" / "user_keys.json"
-    assert path.exists()
-    raw = path.read_text()
-    assert ALICE_KEY not in raw
-    assert ALICE_KEY[7:-4] not in raw, "no partial plaintext either"
-    stored = json.loads(raw)["users"]["alice"]
+    from policy_advisor.db import connect
+
+    with connect() as conn:
+        stored = conn.execute(
+            "SELECT token, last4 FROM user_keys WHERE username = 'alice'"
+        ).fetchone()
+    assert stored is not None
+    assert ALICE_KEY not in stored["token"]
+    assert ALICE_KEY[7:-4] not in stored["token"], "no partial plaintext either"
     assert stored["last4"] == "abcd" and stored["token"].startswith("gAAAA")  # Fernet token
-    assert (path.stat().st_mode & 0o777) == 0o600
+    assert not (api_byok.root / "auth" / "user_keys.json").exists(), "nothing is written to disk"
 
     # Round trip through the store, using the fake chain to prove the request
     # path sees the real key while no response body does.

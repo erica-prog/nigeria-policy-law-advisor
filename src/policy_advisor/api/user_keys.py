@@ -2,37 +2,33 @@
 Anthropic API key; the server's ANTHROPIC_API_KEY is never spent on a user's
 questions unless ALLOW_SHARED_ANTHROPIC_KEY is on.
 
-Storage: `user_keys.json` next to `credentials.yaml` (config.AUTH_DIR), one
-Fernet token per user. The Fernet key is derived from AUTH_COOKIE_KEY with
-HKDF-SHA256, so the file alone is useless and the plaintext key is never on
-disk. Writes go through a file lock. Nothing here logs a key value; callers
-get `last4` for display and `resolve_anthropic_key()` for the call itself.
+Storage: the `user_keys` table, one Fernet token per user. The Fernet key is
+derived from AUTH_COOKIE_KEY with HKDF-SHA256, so the database alone is
+useless and the plaintext key is never stored. Nothing here logs a key value;
+callers get `last4` for display and `resolve_anthropic_key()` for the call
+itself.
 
 A user key is a user secret and gets the same care as the server key
 (AGENTS.md rule 2): it never appears in a response, log line or error."""
 
 import base64
 import hashlib
-import json
-import os
 import re
 import threading
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Literal
 
 import anthropic
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from filelock import FileLock
 
-from policy_advisor import config
 from policy_advisor.api.errors import ApiError
 from policy_advisor.config import get_settings
+from policy_advisor.db import connect
 from policy_advisor.logging_utils import get_logger, log_event
 
 logger = get_logger(__name__)
@@ -41,7 +37,6 @@ KeySource = Literal["user", "shared"]
 
 _HKDF_INFO = b"policy-advisor/user-claude-keys/v1"
 _KEY_RE = re.compile(r"^sk-ant-[A-Za-z0-9_\-]{20,300}$")
-_FILE_VERSION = 1
 
 # PUT attempts per user per minute: enough for a typo or two, too few to use
 # the endpoint as an oracle for guessing keys.
@@ -71,12 +66,6 @@ class StoredKeyInfo:
     updated_at: str
 
 
-def user_keys_path() -> Path:
-    # Resolved on every call, like credentials_path(), so tests that relocate
-    # config.AUTH_DIR are honoured.
-    return config.AUTH_DIR / "user_keys.json"
-
-
 def _fernet() -> Fernet:
     settings = get_settings()
     if settings.auth_cookie_key_is_insecure_default():
@@ -87,29 +76,12 @@ def _fernet() -> Fernet:
     return Fernet(base64.urlsafe_b64encode(derived))
 
 
-def _read_file(path: Path) -> dict:
-    if not path.exists():
-        return {"version": _FILE_VERSION, "users": {}}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {"version": _FILE_VERSION, "users": {}}
-    if not isinstance(data, dict) or not isinstance(data.get("users"), dict):
-        return {"version": _FILE_VERSION, "users": {}}
-    return data
-
-
-def _write_file(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, indent=1), encoding="utf-8")
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, path)
-
-
-def _lock(path: Path) -> FileLock:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return FileLock(str(path) + ".lock")
+def _entry(username: str) -> dict | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT token, last4, updated_at FROM user_keys WHERE username = %s", (username,)
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def key_fingerprint(api_key: str) -> str:
@@ -121,18 +93,22 @@ def key_fingerprint(api_key: str) -> str:
 
 
 def get_user_key_info(username: str) -> StoredKeyInfo | None:
-    entry = _read_file(user_keys_path())["users"].get(username)
-    if not isinstance(entry, dict) or "token" not in entry:
+    entry = _entry(username)
+    if entry is None:
         return None
+    updated = entry["updated_at"]
     return StoredKeyInfo(
-        last4=str(entry.get("last4", "")), updated_at=str(entry.get("updated_at", ""))
+        last4=str(entry["last4"]),
+        updated_at=updated.replace(microsecond=0).isoformat()
+        if hasattr(updated, "isoformat")
+        else str(updated),
     )
 
 
 def get_user_key(username: str) -> str | None:
     """Decrypted key for `username`, or None. Never log the result."""
-    entry = _read_file(user_keys_path())["users"].get(username)
-    if not isinstance(entry, dict) or "token" not in entry:
+    entry = _entry(username)
+    if entry is None:
         return None
     try:
         return _fernet().decrypt(str(entry["token"]).encode("ascii")).decode("utf-8")
@@ -202,29 +178,35 @@ def verify_key_with_anthropic(api_key: str) -> None:
 
 def store_user_key(username: str, api_key: str) -> StoredKeyInfo:
     fernet = _fernet()  # refuses on the insecure default before anything is written
-    path = user_keys_path()
-    info = StoredKeyInfo(
-        last4=api_key[-4:], updated_at=datetime.now(UTC).replace(microsecond=0).isoformat()
-    )
-    with _lock(path):
-        data = _read_file(path)
-        data["users"][username] = {
-            "token": fernet.encrypt(api_key.encode("utf-8")).decode("ascii"),
-            "last4": info.last4,
-            "updated_at": info.updated_at,
-        }
-        _write_file(path, data)
-    return info
+    token = fernet.encrypt(api_key.encode("utf-8")).decode("ascii")
+    last4 = api_key[-4:]
+    with connect() as conn:
+        row = conn.execute(
+            "INSERT INTO user_keys (username, token, last4, updated_at) VALUES (%s, %s, %s, now()) "
+            "ON CONFLICT (username) DO UPDATE SET token = excluded.token, last4 = excluded.last4, "
+            "updated_at = now() RETURNING updated_at",
+            (username, token, last4),
+        ).fetchone()
+    updated = row["updated_at"] if row else datetime.now(UTC)
+    return StoredKeyInfo(last4=last4, updated_at=updated.replace(microsecond=0).isoformat())
+
+
+def import_user_key(username: str, token: str, last4: str, updated_at: str) -> bool:
+    """Insert a token exactly as user_keys.json held it (the one-off import).
+    Returns False when the user already has a key."""
+    with connect() as conn:
+        return bool(
+            conn.execute(
+                "INSERT INTO user_keys (username, token, last4, updated_at) "
+                "VALUES (%s, %s, %s, COALESCE(%s::timestamptz, now())) ON CONFLICT (username) DO NOTHING",
+                (username, token, last4, updated_at or None),
+            ).rowcount
+        )
 
 
 def delete_user_key(username: str) -> bool:
-    path = user_keys_path()
-    with _lock(path):
-        data = _read_file(path)
-        removed = data["users"].pop(username, None) is not None
-        if removed:
-            _write_file(path, data)
-    return removed
+    with connect() as conn:
+        return bool(conn.execute("DELETE FROM user_keys WHERE username = %s", (username,)).rowcount)
 
 
 # ---- rate limit (in memory, per process) ----

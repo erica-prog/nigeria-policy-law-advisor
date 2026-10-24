@@ -25,7 +25,17 @@ from urllib.parse import urlparse
 
 import psycopg
 
-APP_TABLES = ("matters", "chunks", "chat_exchanges", "index_meta", "documents", "schema_migrations")
+APP_TABLES = (
+    "matters",
+    "chunks",
+    "chat_exchanges",
+    "index_meta",
+    "documents",
+    "conversations",
+    "users",
+    "user_keys",
+    "schema_migrations",
+)
 API_ROLES = ("anon", "authenticated")
 SEARCH_PATH = "public, extensions"
 
@@ -89,10 +99,15 @@ def run_checks(url: str) -> tuple[list[str], list[str], list[str]]:
                 "SELECT relrowsecurity FROM pg_class WHERE oid = %s::regclass", (f"public.{table}",)
             ).fetchone()
             if not (rls and rls[0]):
-                failures.append(f"Row-level security is OFF on {table}: the public API could read it.")
+                failures.append(
+                    f"Row-level security is OFF on {table}: the public API could read it."
+                )
 
         existing_roles = {
-            row[0] for row in conn.execute("SELECT rolname FROM pg_roles WHERE rolname = ANY(%s)", (list(API_ROLES),))
+            row[0]
+            for row in conn.execute(
+                "SELECT rolname FROM pg_roles WHERE rolname = ANY(%s)", (list(API_ROLES),)
+            )
         }
         for role in sorted(existing_roles):
             for table in APP_TABLES:
@@ -107,9 +122,13 @@ def run_checks(url: str) -> tuple[list[str], list[str], list[str]]:
         else:
             facts.append(f"api roles checked: {', '.join(sorted(existing_roles))}")
 
-        applied = [row[0] for row in conn.execute("SELECT version FROM schema_migrations ORDER BY version")]
+        applied = [
+            row[0] for row in conn.execute("SELECT version FROM schema_migrations ORDER BY version")
+        ]
         facts.append(f"migrations applied: {applied}")
-        model = conn.execute("SELECT value FROM index_meta WHERE key = 'embedding_model'").fetchone()
+        model = conn.execute(
+            "SELECT value FROM index_meta WHERE key = 'embedding_model'"
+        ).fetchone()
         facts.append(f"embedding model: {model[0] if model else 'none recorded yet'}")
         for table in ("matters", "chunks", "chat_exchanges"):
             count = conn.execute(f"SELECT count(*) FROM {table}").fetchone()
@@ -127,7 +146,9 @@ def run_checks(url: str) -> tuple[list[str], list[str], list[str]]:
                 (probe[2], probe[0]),
             ).fetchone()
             if nearest is None or nearest[0] != probe[1] or nearest[1] > 1e-5:
-                failures.append("A chunk searched for with its own embedding didn't come back first.")
+                failures.append(
+                    "A chunk searched for with its own embedding didn't come back first."
+                )
             else:
                 facts.append("vector search: a stored chunk finds itself at distance 0")
 

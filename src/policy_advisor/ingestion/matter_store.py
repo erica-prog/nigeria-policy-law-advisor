@@ -13,8 +13,6 @@ read-only at the ingestion layer.
 """
 
 import datetime
-import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -175,43 +173,53 @@ def _insert_chunks(
 
 
 def matter_meta_path(matter_id: str) -> Path:
+    """Where the Chroma-era meta.json lived; read only by scripts/migrate_to_postgres.py."""
     return MATTERS_DIR / matter_id / "meta.json"
 
 
-def _write_meta(path: Path, meta: dict) -> None:
-    # Atomic replace: the web API reads meta.json for the ownership check on
-    # every request while a background chat job may be updating it; a reader
-    # must never see a half-written file.
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(meta), encoding="utf-8")
-    os.replace(tmp, path)
+def _iso(value: object) -> str | None:
+    return (
+        value.isoformat()
+        if isinstance(value, datetime.datetime)
+        else (str(value) if value else None)
+    )
 
 
 def get_matter_meta(matter_id: str) -> dict:
-    """The whole meta.json sidecar: optional display fields for the chat client
-    (`title`, `created_at`, `updated_at`). Empty dict when the file does not exist.
-    Ownership lives on the matters row, not in this file."""
-    path = matter_meta_path(matter_id)
-    if not path.exists():
+    """Display fields for the chat client (`title`, `created_at`, `updated_at`)
+    plus `owner`, from the matters row. Empty dict when the matter does not exist."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT owner, title, created_at, updated_at FROM matters WHERE matter_id = %s",
+            (matter_id,),
+        ).fetchone()
+    if row is None:
         return {}
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return data if isinstance(data, dict) else {}
+    meta: dict = {}
+    for key in ("owner", "title"):
+        if row[key]:
+            meta[key] = row[key]
+    for key in ("created_at", "updated_at"):
+        if row[key] is not None:
+            meta[key] = _iso(row[key])
+    return meta
 
 
 def update_matter_meta(matter_id: str, **fields: str | None) -> dict:
-    """Merge display fields into meta.json. Only call for a matter that already
-    exists; the ownership check in the API layer runs before this."""
-    meta = get_matter_meta(matter_id)
-    for key, value in fields.items():
-        if key == "owner":
-            continue
-        if value is None:
-            meta.pop(key, None)
-        else:
-            meta[key] = value
-    _write_meta(matter_meta_path(matter_id), meta)
-    return meta
+    """Set `title`, `created_at` or `updated_at` on the matters row (None clears).
+    `owner` is never changed here. Only call for a matter that already exists."""
+    allowed = {"title", "created_at", "updated_at"}
+    unknown = set(fields) - allowed - {"owner"}
+    if unknown:
+        raise KeyError(f"unknown matter meta fields {sorted(unknown)}")
+    with connect() as conn:
+        for key, value in fields.items():
+            if key == "owner":
+                continue
+            conn.execute(
+                f"UPDATE matters SET {key} = %s WHERE matter_id = %s", (value or None, matter_id)
+            )
+    return get_matter_meta(matter_id)
 
 
 def set_matter_owner(matter_id: str, owner: str) -> None:

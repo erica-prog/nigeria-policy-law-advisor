@@ -13,6 +13,9 @@ Postgres database, using the pgvector extension for vector search.
 | `matters` (`tier`) | `matter` for a lawyer's case; `firm` and `authority` for shared collections such as the reference library |
 | `chat_exchanges` | Each lawyer's last five question-and-answer exchanges per matter |
 | `documents` | One row per retained original: blob-store key, sha256, size, content type, uploader |
+| `conversations` | One row per chat message per matter, in order |
+| `users` | Lawyer accounts: display name, bcrypt password hash |
+| `user_keys` | Each lawyer's Claude key as a Fernet token under a key derived from `AUTH_COOKIE_KEY` |
 | `index_meta` | Which embedding model produced the stored vectors |
 | `schema_migrations` | Which schema changes have been applied |
 

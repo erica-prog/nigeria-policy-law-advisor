@@ -200,7 +200,9 @@ def test_shared_library_first_message_is_a_question_and_is_not_persisted(api_wit
     assert body["mode"] == "question" and case.calls == []
     history = alice.get("/api/matters/phase1-demo/chat").json()
     assert history["messages"] == [] and history["title"] is None
-    assert not (api_with_llm.root / "matters" / "phase1-demo" / "conversation.json").exists()
+    from policy_advisor.api.conversations import load_messages
+
+    assert load_messages("phase1-demo") == []
 
 
 # ---- titles and history ----

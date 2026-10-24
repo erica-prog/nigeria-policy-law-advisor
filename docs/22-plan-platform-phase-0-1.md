@@ -84,5 +84,8 @@ in CI on the pull request. New tests are named after their criterion.
 |---|---|---|
 | P0-A mypy blocking | `80f61f2` | `policy_advisor/llm.py` factory; mypy 0 errors; CI step blocking; full suite 246 passed (AC-1) |
 | P1-A taxonomy and locator schemes | `0e92df3` | package data + loader; aliases `federal`/`lagos`; scheme-aware support; API accepts ids; prompt country-neutral; `jurisdictions/ng/` guides; suite 274 passed (AC-4, AC-5) |
-| P0-C docs consistency | see git log | product brief rewritten for the web client; architecture storage section; overview map complete (AC-3) |
-| P0-B retained originals | see git log | `storage.py` blob store, migration `0002_documents`, download route, deletion with document and matter; tests for owner-only download, hash, failed upload leaves nothing (AC-2) |
+| P0-C docs consistency | `ea2073c` | product brief rewritten for the web client; architecture storage section; overview map complete (AC-3) |
+| P0-B retained originals | `e2ad389` | `storage.py` blob store, migration `0002_documents`, download route, deletion with document and matter; tests for owner-only download, hash, failed upload leaves nothing (AC-2) |
+| P1-B corpus tiers | `648a2b1` | migration `0003`: matters.tier, chunk trust_kind, locator_scheme, provenance and structured jurisdiction; idempotent backfill tested on legacy rows; demo library is the first authority collection (AC-6) |
+| P1-C part 1: full-text search | `79f8588` | migration `0004`: tsvector + GIN, locator index, HNSW on the authority tier; size-based keyword backend; both backends agree on top results (AC-7) |
+| P1-C part 2: state into Postgres | see git log | migration `0005`: conversations, users, user_keys tables and matter title/updated_at columns; import script for credentials.yaml and user_keys.json; nothing but originals left on disk (AC-8) |

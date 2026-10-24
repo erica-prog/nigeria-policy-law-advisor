@@ -14,12 +14,12 @@ Browser (web/, plain HTML + CSS + ES modules)
    |  HTTPS, JSON, HttpOnly session cookie, multipart upload
    v
 FastAPI app  src/policy_advisor/api/          <- trust boundary: all secrets live here
-   |- auth: credentials.yaml (bcrypt) + signed cookie (itsdangerous)
+   |- auth: users table (bcrypt) + signed cookie (itsdangerous)
    |- permissions: get_matter() dependency (owner check before anything else)
    |- routers: auth, session, matters, documents, ask, analyze, chat, chat jobs,
    |           claude-key, health
    |- chat flow: routers/chat.py decides analysis / research / question (revision 2)
-   |- conversations: per-matter conversation.json log + title derivation
+   |- conversations: per-matter log in the conversations table + title derivation
    |- user_keys: per-user Claude keys, Fernet-encrypted at rest (revision 3)
    |- services: one shared HybridRetriever; RAGChain / CaseReasoningChain built per
    |            API key (small LRU keyed by key fingerprint)
@@ -38,11 +38,10 @@ Existing prototype modules (reused, not rewritten)
    v
 Storage: Supabase Postgres + pgvector (db.py, migrations/): matters (owner,
 content_version), chunks (text, metadata and embedding in one row), chat_exchanges,
-index_meta, and documents (retained originals: storage key, sha256, size). Originals
-live in the blob store (data/originals locally; object storage later). Still on disk
-until Phase 1 of ADR-001 moves them: meta.json (title, timestamps) and
-conversation.json under data/index/matters/<matter_id>/, credentials.yaml and the
-encrypted user_keys.json under data/auth/.
+index_meta, documents (retained originals: storage key, sha256, size), conversations
+(one row per chat message), users (bcrypt hashes) and user_keys (Fernet tokens).
+Matter titles and timestamps are columns on matters. Originals live in the blob store
+(data/originals locally; object storage later). Nothing else lives on disk.
 ```
 
 The API layer never opens the database or the blob store directly for retrieval.
@@ -55,10 +54,9 @@ change (and has: Chroma became Postgres) without changing the API.
   `ANTHROPIC_API_KEY`, `AUTH_COOKIE_KEY`, file paths or stack traces (rule 2).
 - **User Claude keys are user secrets and get the same care** (revision 3). A key
   travels browser -> server exactly once, in the `PUT /api/me/claude-key` body over
-  HTTPS. The server verifies it against Anthropic, then stores it in
-  `data/auth/user_keys.json` encrypted with Fernet under a key derived from
-  `AUTH_COOKIE_KEY` (HKDF-SHA256, fixed info string), file mode `0600`, written under a
-  `filelock` lock with an atomic replace. It is decrypted only in memory, per request,
+  HTTPS. The server verifies it against Anthropic, then stores it in the `user_keys`
+  table encrypted with Fernet under a key derived from `AUTH_COOKIE_KEY` (HKDF-SHA256,
+  fixed info string). It is decrypted only in memory, per request,
   to build that user's chain. No endpoint returns it (only `last4`), no log line
   contains it (the store logs `claude_key_stored` with the last four characters), and
   Anthropic's error text is never forwarded. The server refuses to store keys while
@@ -82,9 +80,9 @@ change (and has: Chroma became Postgres) without changing the API.
 
 ## Identity and permissions (rule 1)
 
-1. `POST /api/auth/login` verifies the username and password against the same
-   `data/auth/credentials.yaml` that `scripts/add_user.py` writes (bcrypt hashes; owned
-   by `api/credentials.py`). On success the server
+1. `POST /api/auth/login` verifies the username and password against the `users`
+   table that `scripts/add_user.py` writes (bcrypt hashes; owned by
+   `api/credentials.py`). On success the server
    sets a cookie containing `{"u": username}` signed with `AUTH_COOKIE_KEY`
    (`itsdangerous.URLSafeTimedSerializer`, 7-day max age, matching the prototype).
 2. `current_user` dependency: reads and verifies the cookie on every `/api/*` request
@@ -176,12 +174,12 @@ Each reply carries a one-sentence `bubble`, `avatar_state`, citations and follow
 `chips`; the full ask/analyze payload rides along unchanged so the transcript renders
 citations with the same chips and passage dialog as before.
 
-Conversations are persisted per owned matter in `conversation.json`
+Conversations are persisted per owned matter in the `conversations` table
 (`api/conversations.py`) so "Your cases" can reopen them and so the server can tell a
 first message from a follow-up. The shared library gets no log: several users talk to
 it and their transcripts must not mix, so the client keeps that one in memory. The
 first user message also derives the matter `title` (first ~60 characters, word
-boundary), stored in `meta.json` next to `owner`.
+boundary), stored on the matters row next to `owner`.
 
 The client creates matters behind the scenes (`POST /api/matters` with no id; the server
 generates `case-<hex>`), remembers the current one in `sessionStorage`, and never shows
