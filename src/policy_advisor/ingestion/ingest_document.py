@@ -12,9 +12,9 @@ from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES, chunk_uploaded_do
 from policy_advisor.ingestion.chunk_translation import translate_chunks
 from policy_advisor.ingestion import matter_store
 from policy_advisor.ingestion.matter_store import remove_document as remove_document_chunks
-from policy_advisor.ingestion.matter_store import upsert_chunks
+from policy_advisor.ingestion.matter_store import replace_document_chunks
 from policy_advisor.logging_utils import get_logger, log_event
-from policy_advisor.retrieval.vector_store import chunk_to_document, load_vector_store
+from policy_advisor.retrieval.vector_store import chunk_to_record
 
 logger = get_logger(__name__)
 
@@ -112,9 +112,8 @@ def add_document(
 
 
 def remove_document(matter_id: str, source_document: str) -> None:
-    """Removes one document's chunks from both the vector store and this
-    matter's BM25 source file - a deletion must clear both, not just the
-    vector store, or BM25 search would keep surfacing "deleted" text."""
+    """Removes one document's chunks. Text and vectors share a row now, so
+    keyword and vector search stop finding it at the same moment."""
     _reject_shared_demo_matter(matter_id)
     vector_store = load_vector_store()
     vector_store.delete(

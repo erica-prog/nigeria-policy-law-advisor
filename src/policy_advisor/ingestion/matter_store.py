@@ -72,12 +72,46 @@ def get_matter_owner(matter_id: str) -> str | None:
 
 def list_matters_for_user(username: str) -> list[str]:
     """Every matter this user owns, plus the shared Phase 1 demo matter
-    (visible to everyone, read-only - see app.py) - never the full
-    multi-tenant list `list_matters()` returns."""
-    owned = [m for m in list_matters() if get_matter_owner(m) == username]
-    if PHASE1_DEMO_MATTER_ID not in owned:
-        owned.append(PHASE1_DEMO_MATTER_ID)
-    return sorted(set(owned))
+    (visible to everyone, read-only - see app.py) - never the full multi-tenant
+    list `list_matters()` returns."""
+    with connect() as conn:
+        owned = {
+            row["matter_id"]
+            for row in conn.execute("SELECT matter_id FROM matters WHERE owner = %s", (username,))
+        }
+    owned.add(PHASE1_DEMO_MATTER_ID)
+    return sorted(owned)
+
+
+def matter_version(matter_id: str) -> int:
+    """Changes whenever this matter's chunks change. 0 for a matter that does
+    not exist yet, which is indistinguishable from an empty one - correctly, as
+    both have nothing to retrieve."""
+    with connect() as conn:
+        row = conn.execute("SELECT content_version FROM matters WHERE matter_id = %s", (matter_id,)).fetchone()
+    return row["content_version"] if row else 0
+
+
+def load_matter_snapshot(matter_id: str) -> tuple[int, list[dict]]:
+    """(version, records without embeddings) for one matter, from one snapshot.
+
+    What the in-memory keyword index is built from; embeddings stay in the
+    database, where vector search runs. One statement, so the version and the
+    rows can't come from two different moments - a cache keyed on the version
+    could otherwise label one state's rows with another state's number.
+    """
+    columns = ", ".join(f"c.{column}" for column in METADATA_COLUMNS)
+    with connect() as conn:
+        check_embedding_model(conn, get_settings().embedding_model)
+        rows = conn.execute(
+            f"SELECT m.content_version, {columns}, c.text FROM matters m "
+            "LEFT JOIN chunks c ON c.matter_id = m.matter_id "
+            "WHERE m.matter_id = %s ORDER BY c.inserted_seq",
+            (matter_id,),
+        ).fetchall()
+    if not rows:
+        return 0, []
+    return rows[0]["content_version"], [record_from_row(row) for row in rows if row["chunk_id"] is not None]
 
 
 def load_matter_chunks(matter_id: str) -> list[dict]:
@@ -120,4 +154,11 @@ def list_matters() -> list[str]:
 
 
 def list_documents(matter_id: str) -> list[str]:
-    return sorted({c["source_document"] for c in load_matter_chunks(matter_id)})
+    with connect() as conn:
+        return [
+            row["source_document"]
+            for row in conn.execute(
+                "SELECT DISTINCT source_document FROM chunks WHERE matter_id = %s ORDER BY source_document",
+                (matter_id,),
+            )
+        ]
