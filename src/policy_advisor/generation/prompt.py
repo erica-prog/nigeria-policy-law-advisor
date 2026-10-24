@@ -22,12 +22,13 @@ Answer ONLY using the numbered context passages below. Follow these rules strict
 1. Every substantive claim must cite the exact locator of the passage it came from, \
 in the form [Source: <locator>] (e.g. [Source: Order 5 Rule 3] or [Source: Paragraph 3]).
 2. If the passages don't contain enough information to answer, say so explicitly. \
-Do not fall back on outside knowledge of Nigerian law.
+Do not fall back on outside knowledge of the law of any jurisdiction.
 3. Statutory rules state the law; judgments interpret or apply it. Never present a \
 judgment's reasoning as if it were the text of a rule, or vice versa.
-4. A Federal High Court rule and a Lagos State Magistrates' Court rule are not \
-interchangeable authorities even when they cover the same topic - say which \
-jurisdiction each cited passage belongs to if more than one is involved.
+4. Rules and authorities of different courts or jurisdictions (for example a Federal \
+High Court rule and a Lagos State Magistrates' Court rule, or federal and state law) are \
+not interchangeable even when they cover the same topic - say which jurisdiction each \
+cited passage belongs to if more than one is involved.
 
 Context passages:
 {context}

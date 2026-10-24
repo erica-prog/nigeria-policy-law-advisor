@@ -19,6 +19,7 @@ import numpy as np
 from policy_advisor.db import connect
 from policy_advisor.ingestion.chunk import Chunk
 from policy_advisor.ingestion.matter_store import METADATA_COLUMNS, record_from_row
+from policy_advisor.jurisdictions import storage_values
 
 
 def search(
@@ -30,18 +31,22 @@ def search(
     The jurisdiction filter sits in the WHERE clause, so it applies before the
     LIMIT, as Chroma's metadata filter did - otherwise a Lagos question could
     spend its whole candidate pool on Federal High Court rules and find no Lagos
-    ones. Ties break on insertion order so results are reproducible.
+    ones. `jurisdiction` is a taxonomy id or legacy alias; rows may hold either,
+    so the filter matches every storage value of that jurisdiction. Ties break
+    on insertion order so results are reproducible.
     """
+    values = list(storage_values(jurisdiction))
     with connect() as conn:
         rows = conn.execute(
             f"SELECT {', '.join(METADATA_COLUMNS)}, text, embedding <=> %(query)s AS distance "
             "FROM chunks "
-            "WHERE matter_id = %(matter)s AND (%(jurisdiction)s::text IS NULL OR jurisdiction = %(jurisdiction)s) "
+            "WHERE matter_id = %(matter)s AND (%(all)s OR jurisdiction = ANY(%(values)s)) "
             "ORDER BY distance, inserted_seq LIMIT %(k)s",
             {
                 "query": np.asarray(query_vector, dtype=np.float32),
                 "matter": matter_id,
-                "jurisdiction": jurisdiction or None,
+                "all": not values,
+                "values": values,
                 "k": k,
             },
         ).fetchall()
@@ -109,9 +114,10 @@ class VectorIndex:
         if not self.metadatas:
             return []
         candidates = np.arange(len(self.metadatas))
-        if jurisdiction:
+        values = storage_values(jurisdiction)
+        if values:
             candidates = np.array(
-                [i for i in candidates if self.metadatas[i].get("jurisdiction") == jurisdiction],
+                [i for i in candidates if self.metadatas[i].get("jurisdiction") in values],
                 dtype=int,
             )
             if candidates.size == 0:

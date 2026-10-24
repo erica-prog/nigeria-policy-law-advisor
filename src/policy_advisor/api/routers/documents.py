@@ -1,7 +1,7 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, Response, UploadFile, status
 
@@ -14,6 +14,7 @@ from policy_advisor.config import get_settings
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES
 from policy_advisor.ingestion.ingest_document import remove_document
 from policy_advisor.ingestion.matter_store import list_documents, update_matter_meta
+from policy_advisor.jurisdictions import UnknownJurisdiction, load_taxonomy, normalize_jurisdiction
 from policy_advisor.logging_utils import log_event
 
 router = APIRouter(prefix="/api/matters/{matter_id}/documents", tags=["documents"])
@@ -64,9 +65,17 @@ async def upload_document(
     user: CurrentUser,
     background: BackgroundTasks,
     file: Annotated[UploadFile, File()],
-    jurisdiction: Annotated[Literal["federal", "lagos"] | None, Form()] = None,
+    jurisdiction: Annotated[str | None, Form()] = None,
 ) -> DocumentOut:
     name = safe_document_name(file.filename)
+    try:
+        jurisdiction = normalize_jurisdiction(jurisdiction)
+    except UnknownJurisdiction:
+        raise ApiError(
+            422,
+            "unknown_jurisdiction",
+            "Unknown jurisdiction. Accepted values: " + ", ".join(load_taxonomy().accepted_values()) + ".",
+        ) from None
     max_bytes = get_settings().max_upload_mb * 1024 * 1024
     temp_dir = Path(tempfile.mkdtemp(prefix="pa-upload-"))
     written = 0

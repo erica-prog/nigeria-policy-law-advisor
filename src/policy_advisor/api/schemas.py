@@ -1,9 +1,24 @@
 """Request and response models for docs/contracts/web-api.md. Field names and
 shapes are the contract; change the document first."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+
+from policy_advisor.jurisdictions import UnknownJurisdiction, load_taxonomy, normalize_jurisdiction
+
+
+def _jurisdiction_id(value: str | None) -> str | None:
+    """Requests may name a jurisdiction by taxonomy id or legacy alias; the API
+    works with the id. Unknown values fail validation with the accepted list."""
+    try:
+        return normalize_jurisdiction(value)
+    except UnknownJurisdiction:
+        accepted = ", ".join(load_taxonomy().accepted_values())
+        raise ValueError(f"unknown jurisdiction {value!r}; accepted: {accepted}") from None
+
+
+JurisdictionId = Annotated[str | None, BeforeValidator(_jurisdiction_id)]
 
 MATTER_ID_PATTERN = r"^[a-z0-9][a-z0-9-]{1,63}$"
 
@@ -111,7 +126,7 @@ class SourceReference(BaseModel):
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=4000)
     allow_web: bool = False
-    jurisdiction: Literal["federal", "lagos"] | None = None
+    jurisdiction: JurisdictionId = None
     language: Literal["en", "fr"] = "en"
 
 
@@ -128,7 +143,7 @@ class AskResponse(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     case_facts: str = Field(min_length=1, max_length=20000)
-    jurisdiction: Literal["federal", "lagos"] | None = None
+    jurisdiction: JurisdictionId = None
     language: Literal["en", "fr"] = "en"
 
 
@@ -179,7 +194,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=20000)
     allow_web: bool = False
     intent: ChatIntent = "auto"
-    jurisdiction: Literal["federal", "lagos"] | None = None
+    jurisdiction: JurisdictionId = None
     language: Literal["en", "fr"] = "en"
 
 

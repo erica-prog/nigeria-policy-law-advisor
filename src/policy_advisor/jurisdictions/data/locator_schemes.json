@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "schemes": [
+    {
+      "id": "ng_rules",
+      "description": "Nigerian rules of court: Order N Rule M, optionally with a lettered Part and sub-rule pinpoints",
+      "pattern": "^(?P<base>Order \\d+ Rule \\d+(?: \\(Part \\d+\\))?)(?P<pin>(?:\\(\\w+\\))*)$",
+      "example": "Order 5 Rule 3(6)",
+      "hierarchical": false
+    },
+    {
+      "id": "judgment_para",
+      "description": "Numbered paragraph of a judgment",
+      "pattern": "^(?P<base>Paragraph \\d+(?: \\(Part \\d+\\))?)(?P<pin>(?:\\(\\w+\\))*)$",
+      "example": "Paragraph 11",
+      "hierarchical": false
+    },
+    {
+      "id": "section",
+      "description": "Section of an Act or of a generically chunked document, with subsection pinpoints",
+      "pattern": "^(?P<base>Section \\d+[A-Z]?)(?P<pin>(?:\\(\\w+\\))*)$",
+      "example": "Section 37(1)",
+      "hierarchical": false
+    },
+    {
+      "id": "us_usc",
+      "description": "United States Code: title U.S.C. § section, with subsection pinpoints",
+      "pattern": "^(?P<base>\\d+ U\\.S\\.C\\. § ?\\d+[a-z]?)(?P<pin>(?:\\(\\w+\\))*)$",
+      "example": "8 U.S.C. § 1255(a)",
+      "hierarchical": false
+    },
+    {
+      "id": "us_cfr",
+      "description": "Code of Federal Regulations: title C.F.R. § part.section, with pinpoints",
+      "pattern": "^(?P<base>\\d+ C\\.F\\.R\\. § ?\\d+\\.\\d+)(?P<pin>(?:\\(\\w+\\))*)$",
+      "example": "8 C.F.R. § 245.1(b)",
+      "hierarchical": false
+    },
+    {
+      "id": "us_reporter",
+      "description": "Reported US case: volume reporter page, with a pinpoint page",
+      "pattern": "^(?P<base>\\d+ (?:[A-Za-z]+\\.? ?)+?(?:\\d+[a-z]+ )?\\d+)(?P<pin>, ?\\d+(?:-\\d+)?)?$",
+      "example": "123 F.3d 456, 460",
+      "hierarchical": false
+    },
+    {
+      "id": "uscis_pm",
+      "description": "USCIS Policy Manual volume, part and chapter, with section pinpoints",
+      "pattern": "^(?P<base>USCIS-PM Vol\\. \\d+, Pt\\. [A-Z], Ch\\. \\d+)(?P<pin>(?:\\.[A-Z0-9]+)*)$",
+      "example": "USCIS-PM Vol. 7, Pt. B, Ch. 2",
+      "hierarchical": false
+    },
+    {
+      "id": "contract_clause",
+      "description": "Contract article or clause numbering; deeper numbering is a pinpoint of its parent",
+      "pattern": "^(?P<base>(?:Article|Clause) \\d+(?:\\.\\d+)*)(?P<pin>(?:\\(\\w+\\))*)$",
+      "example": "Clause 12.3(a)",
+      "hierarchical": true
+    },
+    {
+      "id": "exhibit_bates",
+      "description": "Bates-numbered exhibit page",
+      "pattern": "^(?P<base>[A-Z]{2,}-\\d{4,})(?P<pin>)$",
+      "example": "ACME-0001234",
+      "hierarchical": false
+    }
+  ]
+}

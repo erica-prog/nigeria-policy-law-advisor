@@ -55,6 +55,15 @@ The server emits a citation only when the locator resolves to a chunk that was r
 for that request. Unresolved locators appear in `unsupported_citations` and set
 `faithful: false`.
 
+## Jurisdictions
+
+Every `jurisdiction` field (upload form, ask, analyze, chat, and on source references) is
+a taxonomy id from `src/policy_advisor/jurisdictions/data/taxonomy.json`: today
+`ng-federal`, `ng-lagos`, `us-federal`, `us-ny`. The prototype's values `federal` and
+`lagos` remain accepted as aliases of the first two and are returned as their ids. A
+value outside the taxonomy is rejected with `422` (`unknown_jurisdiction` on upload,
+`validation_error` elsewhere). `null` means no filter.
+
 ## Endpoints
 
 ### Health and identity
@@ -135,7 +144,8 @@ shows an id; it shows `title`.
 
 - `GET /api/matters/{id}/documents` -> `{ "documents": [Document] }`.
 - `POST /api/matters/{id}/documents` multipart `file` (`.pdf` or `.docx`, up to
-  `MAX_UPLOAD_MB`), optional form field `jurisdiction` (`federal`|`lagos`) ->
+  `MAX_UPLOAD_MB`), optional form field `jurisdiction` (a jurisdiction id, see
+  "Jurisdictions" above; unknown values -> `422 unknown_jurisdiction`) ->
   `202 Document` with status `queued`. Shared matter -> `403 matter_read_only`.
 - `GET /api/matters/{id}/documents/{name}` -> `Document` (poll for status).
 - `DELETE /api/matters/{id}/documents/{name}` -> `204`.

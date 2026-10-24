@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from policy_advisor.config import get_settings
 from policy_advisor.ingestion.embed import embed_query
 from policy_advisor.ingestion.matter_store import load_matter_snapshot, matter_version
+from policy_advisor.jurisdictions import storage_values
 from policy_advisor.retrieval import vector_store
 from policy_advisor.retrieval.bm25_index import BM25Index, build_bm25_index
 
@@ -119,8 +120,9 @@ class HybridRetriever:
             return []
         locator = f"Order {int(match.group(1))} Rule {int(match.group(2))}"
         candidates = index.locators.get(locator, [])
-        if jurisdiction:
-            jurisdiction_matches = [c for c in candidates if c[1].get("jurisdiction") == jurisdiction]
+        values = storage_values(jurisdiction)
+        if values:
+            jurisdiction_matches = [c for c in candidates if c[1].get("jurisdiction") in values]
             candidates = jurisdiction_matches or candidates
         return [RetrievedChunk(text=text, metadata=metadata, fused_score=1.0) for text, metadata in candidates]
 
@@ -171,8 +173,9 @@ class HybridRetriever:
                 self._bm25_weight * (candidate.bm25_score or 0.0)
             )
 
-        if jurisdiction:
-            filtered = [c for c in candidates if c.metadata.get("jurisdiction") == jurisdiction]
+        values = storage_values(jurisdiction)
+        if values:
+            filtered = [c for c in candidates if c.metadata.get("jurisdiction") in values]
             if filtered:
                 candidates = filtered
 

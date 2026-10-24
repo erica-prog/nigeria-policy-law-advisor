@@ -8,6 +8,10 @@ paths:
 
 - Every retrieval takes a `matter_id` the API has already authorised and filters by it;
   never add a "search everything" path.
+- Jurisdictions are taxonomy ids from `policy_advisor.jurisdictions` (`ng-federal`,
+  `ng-lagos`, ...); `federal` and `lagos` are legacy aliases. Filter with
+  `storage_values()`, never by string equality. Locator support is decided per scheme in
+  `jurisdictions/locators.py`; do not reintroduce prefix matching.
 - `RETRIEVAL_CERTAIN_DISTANCE` / `RETRIEVAL_MAX_DISTANCE` are calibrated by
   `eval/calibrate_relevance_floor.py`. Re-run it before changing them, the embedding
   model, the distance space or chunking, and quote its output in the handoff.

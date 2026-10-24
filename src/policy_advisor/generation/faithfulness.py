@@ -5,6 +5,8 @@ that was never retrieved) before a Claude-as-judge pass is worth the cost."""
 
 import re
 
+from policy_advisor.jurisdictions.locators import is_supported
+
 LOCATOR_RE = re.compile(r"\[Source:\s*([^\]]+)\]")
 
 
@@ -13,15 +15,11 @@ def extract_cited_locators(answer_text: str) -> list[str]:
 
 
 def is_supported_citation(cited_locator: str, available_locators: set[str]) -> bool:
-    """Claude may cite a sub-rule pinpoint within a retrieved chunk (e.g.
-    "Order 5 Rule 3(6)") that's more precise than the chunk-level locator
-    ("Order 5 Rule 3") - that's legitimate, not a fabrication, so a prefix
-    match counts as supported. Only a locator with no retrieved chunk behind
-    it at all is flagged."""
-    return any(
-        cited_locator == available or cited_locator.startswith(available)
-        for available in available_locators
-    )
+    """Claude may cite a pinpoint inside a retrieved chunk ("Order 5 Rule 3(6)"
+    when "Order 5 Rule 3" was retrieved): added precision, not a fabrication.
+    Support is decided per locator scheme (`jurisdictions/locators.py`), so a
+    different rule that merely shares a prefix ("Order 5 Rule 30") is flagged."""
+    return is_supported(cited_locator, available_locators)
 
 
 def check_faithfulness(answer_text: str, retrieved_chunks) -> tuple[bool, list[str]]:
