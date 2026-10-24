@@ -1,0 +1,67 @@
+{
+  "8-cfr-part-245.txt": {
+    "title": "8 CFR Part 245 \u2014 ADJUSTMENT OF STATUS TO THAT OF PERSON ADMITTED FOR PERMANENT RESIDENCE",
+    "source_id": "us-ecfr",
+    "source_url": "https://www.ecfr.gov/current/title-8/part-245",
+    "api_url": "https://www.ecfr.gov/api/versioner/v1/full/2026-10-01/title-8.xml?part=245",
+    "cfr_title": 8,
+    "version_date": "2026-10-01",
+    "retrieved_at": "2026-10-24T23:29:26Z",
+    "licence": "US government work, public domain (17 U.S.C. \u00a7 105)",
+    "raw_sha256": "5e9dfd8efa0ceef2977745ac8b2202d807afbd8b6bbc30e710910fbca71dfe59",
+    "raw_bytes": 205560
+  },
+  "uscis-pm-vol7-part-b-ch1.txt": {
+    "title": "USCIS Policy Manual, Volume 7, Part B, Chapter 1 - Purpose and Background",
+    "source_id": "us-uscis-policy-manual",
+    "source_url": "https://www.uscis.gov/policy-manual/volume-7-part-b-chapter-1",
+    "volume": 7,
+    "part": "B",
+    "chapter": 1,
+    "current_as_of": "October 23, 2026",
+    "retrieved_at": "2026-10-24T23:29:26Z",
+    "licence": "US government work, public domain (17 U.S.C. \u00a7 105)",
+    "raw_sha256": "2c107b6474a1f06e1a24c88135c70c544c238e3510d98f9f1214b34b515c79a1",
+    "raw_bytes": 116150
+  },
+  "uscis-pm-vol7-part-b-ch2.txt": {
+    "title": "USCIS Policy Manual, Volume 7, Part B, Chapter 2 - Eligibility Requirements",
+    "source_id": "us-uscis-policy-manual",
+    "source_url": "https://www.uscis.gov/policy-manual/volume-7-part-b-chapter-2",
+    "volume": 7,
+    "part": "B",
+    "chapter": 2,
+    "current_as_of": "October 23, 2026",
+    "retrieved_at": "2026-10-24T23:29:27Z",
+    "licence": "US government work, public domain (17 U.S.C. \u00a7 105)",
+    "raw_sha256": "eefc4ab9ca78393420e270919a859fa4e851c400d4d35a0f3868cdee6e14bbea",
+    "raw_bytes": 256876
+  },
+  "uscis-pm-vol7-part-b-ch3.txt": {
+    "title": "USCIS Policy Manual, Volume 7, Part B, Chapter 3 - Unlawful Immigration Status at Time of Filing (INA 245(c)(2))",
+    "source_id": "us-uscis-policy-manual",
+    "source_url": "https://www.uscis.gov/policy-manual/volume-7-part-b-chapter-3",
+    "volume": 7,
+    "part": "B",
+    "chapter": 3,
+    "current_as_of": "October 23, 2026",
+    "retrieved_at": "2026-10-24T23:29:28Z",
+    "licence": "US government work, public domain (17 U.S.C. \u00a7 105)",
+    "raw_sha256": "68dfb943702b9e44500f4c43f33392382eae5de8f01751312018bffa9893c39d",
+    "raw_bytes": 129708
+  },
+  "zadvydas-v-davis-533-us-678.txt": {
+    "title": "Zadvydas v. Davis, 533 U.S. 678 (2001)",
+    "source_id": "us-reports-loc",
+    "source_url": "https://www.loc.gov/item/usrep533678/",
+    "pdf_url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep533/usrep533678/usrep533678.pdf",
+    "citation": "533 U.S. 678",
+    "first_page": 678,
+    "last_page": 725,
+    "page_derivation": "PDF page n is reporter page first_page + n - 1 (the bound volume's running heads carry no page numbers in the text layer); checked against the syllabus cross-references",
+    "retrieved_at": "2026-10-24T23:29:29Z",
+    "licence": "US government work, public domain (17 U.S.C. \u00a7 105)",
+    "raw_sha256": "9c63c92250412a2777db25415fedcbfd3a147e155625c8407dd37dd4d3f94d37",
+    "raw_bytes": 1453670
+  }
+}

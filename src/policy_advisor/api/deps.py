@@ -15,7 +15,7 @@ from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.schemas import MATTER_ID_PATTERN
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.api.sessions import SESSION_COOKIE, read_session_token
-from policy_advisor.config import PHASE1_DEMO_MATTER_ID
+from policy_advisor.config import LIBRARY_MATTER_IDS
 from policy_advisor.ingestion.matter_store import get_matter_owner
 
 _MATTER_ID_RE = re.compile(MATTER_ID_PATTERN)
@@ -43,7 +43,7 @@ CurrentUser = Annotated[UserRecord, Depends(current_user)]
 def resolve_matter_access(matter_id: str, user: UserRecord) -> MatterAccess:
     if not _MATTER_ID_RE.match(matter_id):
         raise ApiError(404, "matter_not_found", "Matter not found.")
-    if matter_id == PHASE1_DEMO_MATTER_ID:
+    if matter_id in LIBRARY_MATTER_IDS:
         return MatterAccess(id=matter_id, owner=None, read_only=True)
     owner = get_matter_owner(matter_id)
     if owner is None or owner != user.username:

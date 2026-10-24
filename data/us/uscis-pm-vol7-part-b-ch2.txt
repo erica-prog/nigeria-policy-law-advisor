@@ -1,0 +1,382 @@
+# title: USCIS Policy Manual, Volume 7, Part B, Chapter 2 - Eligibility Requirements
+# source_id: us-uscis-policy-manual
+# source_url: https://www.uscis.gov/policy-manual/volume-7-part-b-chapter-2
+# volume: 7
+# part: B
+# chapter: 2
+# current_as_of: October 23, 2026
+# retrieved_at: 2026-10-24T23:29:27Z
+# licence: US government work, public domain (17 U.S.C. § 105)
+
+An alien must meet certain eligibility requirements to adjust status to that of a lawful permanent resident (LPR).
+INA 245(a) Adjustment of Status Eligibility Requirements
+The alien must have been:
+Inspected and admitted into the United States; or
+Inspected and paroled into the United States.
+The alien must properly file an adjustment of status application.
+The alien must be physically present in the United States.
+The alien must be eligible to receive an immigrant visa.
+An immigrant visa must be immediately available when the alien files the adjustment of status application[1] and at the time of final adjudication.[2]
+The alien must be admissible to the United States for lawful permanent residence or eligible for a waiver of inadmissibility or other form of relief.
+The alien merits the favorable exercise of discretion.[3]
+## A. “Inspected and Admitted” or “Inspected and Paroled”
+In 1960, Congress amended INA 245(a) and made adjustment of status available to any otherwise eligible alien who has been “inspected and admitted or paroled” into the United States.[4] Since 1960, the courts, legacy Immigration and Naturalization Service, and USCIS have read the statutory language “inspected and admitted or paroled” as:
+Inspected and admitted into the United States; or
+Inspected and paroled into the United States.
+This requirement must be satisfied before the alien applies for adjustment of status.[5] If an alien has not been inspected and admitted or inspected and paroled before filing an adjustment application, the officer must deny the adjustment application.[6]
+The inspected and admitted or inspected and paroled requirement does not apply to the following aliens seeking adjustment of status:
+INA 245(i) applicants; and
+Violence Against Women Act (VAWA) applicants.[7]
+Special immigrant juveniles (SIJ) and other special immigrants are not exempt from this requirement. However, statutory provisions expressly state that these special immigrants are considered paroled for adjustment eligibility purposes. Accordingly, the beneficiaries of approved SIJ petitions meet the inspected and admitted or inspected and paroled requirement, regardless of their manner of arrival in the United States.[8] Certain special immigrants also meet this requirement.[9]
+### 1. Inspection
+Authority
+Per delegation by the Secretary of Homeland Security, U.S. Customs and Border Protection (CBP) has jurisdiction over and exclusive inspection authority at ports-of-entry.[10]
+Definition and Scope
+Inspection is the formal process of determining whether an alien may lawfully enter the United States. Immigration laws as early as 1875 specified that inspection must occur prior to an alien’s landing in or entering the United States and that prohibited aliens were to be returned to the country from which they came at no cost or penalty to the conveyor or vessel.[11] Inspections for air, sea, and land arrivals are now codified in the Immigration and Nationality Act (INA), including criminal penalties for illegal entry.[12]
+To lawfully enter the United States, an alien must apply and present himself or herself in person to an immigration officer at a U.S. port of entry when the port is open for inspection.[13] An alien who arrives at a port of entry and presents himself or herself for inspection is an applicant for admission. Through the inspection process, an immigration officer determines whether the alien is admissible and may enter the United States under all the applicable provisions of immigration laws.
+As part of the inspection, the alien must:
+Present any and all required documentation, including fingerprints, photographs, other biometric identifiers, documentation of status in the United States, and any other requested evidence to determine the alien’s identity and admissibility; and
+Establish that he or she is not subject to removal under immigration laws, Executive Orders, or Presidential Proclamations.[14]
+In general, if the alien presents himself or herself for questioning in person, the inspection requirement is met.[15] Nonetheless, if the alien enters the United States by falsely claiming U.S. citizenship, the alien is not considered to have been inspected by an immigration officer. In addition, the entry is not considered an admission for immigration purposes.[16]
+Inspection Outcomes
+Upon inspection, the officer at the port of entry typically decides one of the following outcomes for the alien:
+The officer admits them;
+The officer paroles them;
+The officer allows them to withdraw his or her application for admission and depart immediately from the United States;[17]
+The officer denies them admission into the United States; or
+The officer defers the inspection to a later time at either the same or another CBP office or a port of entry.[18]
+### 2. Admission[19]
+An alien is admitted if the following conditions are met:[20]
+The alien applied for admission as an “alien” at a port of entry; and
+An immigration officer inspected the applicant for admission as an “alien” and authorized him or her to enter the United States in accordance with the procedures for admission.[21]
+An alien who meets these two requirements is admitted, even if the alien obtained the admission by fraud.[22] Likewise, the alien is admitted, even if the CBP officer performed a cursory inspection.
+As long as the alien meets the procedural requirements for admission, the alien meets the inspected and admitted requirement for adjustment of status.[23] Any type of admission can meet the inspected and admitted requirement, which includes, but is not limited to, admission as a nonimmigrant, an immigrant, or a refugee.[24]
+Notwithstanding, if the alien makes a false claim to U.S. citizenship or to U.S. nationality at the port of entry and an immigration officer permits the alien to enter the United States, the alien has not been admitted.[25] A U.S. citizen arriving at a port of entry is not subject to inspection; therefore, an alien who makes a false claim to U.S. citizenship is considered to have entered without inspection.[26]
+Similarly, an alien who entered the United States after falsely claiming to be a returning LPR is not considered to have been procedurally inspected and admitted because a returning LPR generally is not an applicant for admission.[27] An LPR returning from a temporary trip abroad would only be considered to be seeking admission or readmission to the United States if any of the following factors applies:
+The LPR has abandoned or relinquished his or her LPR status;
+The LPR has been absent from the United States for a continuous period in excess of 180 days;
+The LPR has engaged in illegal activity after having departed the United States;
+The LPR has departed from the United States while under legal process seeking his or her removal from the United States, including removal proceedings under the INA and extradition proceedings;
+The LPR has committed an offense described in the criminal-related inadmissibility grounds, unless the LPR has been granted relief for the offense;[28] or
+The LPR is attempting to enter at a time or place other than as designated by immigration officers or has not been admitted to the United States after inspection and authorization by an immigration officer.[29]
+Evidence of Admission
+An Arrival/Departure Record (Form I-94), including a replacement[30] when appropriate, is the most common document evidencing an alien's admission.[31] The following are other types of documentation that may be accepted as proof of admission into the United States:
+Admission stamp in passport, which may be verified using DHS systems;
+Employment Authorization Card (Form I-688A), for special agricultural worker applicants, provided it was valid during the last claimed date of entry on the adjustment application;
+Temporary Resident Card (Form I-688), for special agricultural workers or legalization applicants granted temporary residence, provided it was valid during the last claimed date of entry on the adjustment application; and
+Border Crossing Card (Form I-586 or Form DSP-150[32]), provided it was valid on the date of last claimed entry.
+When inspected and admitted to the United States, the following nonimmigrants are exempt from the issuance of an Arrival/Departure Record:[33]
+A Canadian citizen admitted as a visitor for business, visitor for pleasure, or who was permitted to directly transit through the United States;
+A nonimmigrant residing in the British Virgin Islands who was admitted only to the United States Virgin Islands as a visitor for business or pleasure;[34]
+A Mexican national admitted with a B-1/B-2 Visa and Border Crossing Card (Form DSP-150) at a land or sea port of entry as a visitor for business or pleasure for a period of 30 days to travel within 25 miles of the border; and
+A Mexican national in possession of a Mexican diplomatic or official passport.[35]
+In these situations, an applicant should submit alternate evidence to prove his or her inspection and admission to the United States. This may include a Border Crossing Card, plane tickets evidencing travel to the United States, or other corroborating evidence.
+### 3. Parole
+Authority
+The Secretary of Homeland Security delegated parole authority to USCIS, CBP, and U.S. Immigration and Customs Enforcement (ICE).[36]
+Definition and Scope
+An alien is paroled if the following conditions are met:
+They are seeking admission to the United States at a port of entry; and
+An immigration officer inspected them as an “alien” and permitted them to enter the United States without determining whether they may be admitted into the United States.[37]
+A grant of parole is a temporary and discretionary act exercised on a case-by-case basis. Parole, by definition, is not an admission.[38]
+Paroled for Deferred Inspection[39]
+On occasion, CBP grants deferred inspection to arriving aliens found inadmissible during a preliminary inspection at a port of entry. Deferred inspection is generally granted only after CBP:
+Verifies the alien’s identity and nationality;
+Determines that the alien would likely be able to overcome the identified inadmissibility by obtaining a waiver or additional evidence; and
+Determines that the alien does not present a national security risk to the United States.
+The decision to defer inspection is at the CBP officer’s discretion.
+If granted deferred inspection, CBP paroles the alien into the United States and defers completion of the inspection to a later time. An alien paroled for a deferred inspection typically reports for completion of inspection within 30 days of the deferral[40] to a CBP office with jurisdiction over the area where the alien will be staying or residing in the United States.[41]
+The grant of parole for a deferred inspection satisfies the “inspected and paroled” requirement for purposes of adjustment eligibility.[42]
+Urgent Humanitarian Reasons or Significant Public Benefit
+DHS may parole an alien based on urgent humanitarian or significant public benefit reasons.[43] DHS may grant urgent humanitarian or significant public benefit parole only on a case-by-case basis.[44] Any type of urgent humanitarian, significant public benefit, or deferred inspection-directed parole meets the “paroled into the United States” requirement.[45]
+Parole in Place: Parole of Certain Aliens Present Without Admission or Parole
+An alien who is present in the United States without inspection and admission or inspection and parole is an applicant for admission.[46] DHS can exercise its discretion to parole such an alien into the United States.[47] In general, USCIS grants parole in place only sparingly.
+The fact that an alien is a spouse, child, or parent of an active duty member of the U.S. armed forces, a member in the Selected Reserve of the Ready Reserve, or someone who previously served in the U.S. armed forces or the Selected Reserve of the Ready Reserve ordinarily weighs heavily in favor of parole in place. Absent a criminal conviction or other serious adverse factors, parole in place would generally be an appropriate exercise of discretion for such an alien.
+If DHS grants parole before an alien files an adjustment application, the applicant meets the “inspected and paroled” requirement for adjustment. Parole in place does not permit approval of an adjustment application that was filed before the grant of parole.[48]
+Parole in place does not relieve the applicant of the need to meet all other eligibility requirements for adjustment of status and the favorable exercise of discretion.[49] For example, except for immediate relatives and certain other immigrants, an applicant must have continuously maintained a lawful status since entry into the United States.[50]
+Conditional Parole
+Conditional parole is also known as release from custody. This is a separate and distinct process from parole and does not meet the “inspected and paroled” requirement for adjustment eligibility.[51]
+Evidence of Parole
+Evidence of parole includes:
+A parole stamp on an advance parole document;[52]
+A parole stamp in a passport; or
+An Arrival/Departure Record (Form I-94) endorsed with a parole stamp.[53]
+### 4. Commonwealth of the Northern Mariana Islands
+A Commonwealth of the Northern Mariana Islands (CNMI) applicant who is granted parole meets the inspected and paroled requirement. On May 8, 2008, the Consolidated Natural Resources Act was signed into law, which replaced the CNMI’s prior immigration laws and extended most U.S. immigration law provisions to the CNMI for the first time in history.[54] The transition period for implementation of U.S. immigration law in the CNMI began on November 28, 2009.
+As of that date, all aliens present in the CNMI (other than LPRs) became present in the United States by operation of law without admission or parole. In recognition of the unique situation caused by the extension of U.S. immigration laws to the CNMI, all aliens present in the CNMI on or after that date who apply for adjustment of status are considered applicants for admission[55] to the United States and are eligible for parole.
+Because of these unique circumstances, USCIS grants parole to applicants otherwise eligible to adjust status to serve as both an inspection and parole for purposes of meeting the requirements for adjustment. Under this policy, the USCIS Guam Field Office or the USCIS Saipan Application Support Center grants parole to an applicant otherwise eligible for parole and adjustment immediately prior to approving the adjustment of status application.
+### 5. Temporary Protected Status
+A grant of temporary protected status (TPS)[56] is not, in itself, an admission for purposes of adjustment under INA 245(a).[57]
+Therefore, an alien who entered the United States without having been inspected and admitted or inspected and paroled, and who is subsequently granted TPS, does not meet the inspected and admitted or inspected and paroled requirement under INA 245(a) for adjustment.[58] However, a grant of TPS does not prevent an alien from demonstrating eligibility for INA 245(a) adjustment if the alien was inspected and admitted or inspected and paroled when last entering the United States.
+For purposes of adjustment of status under INA 245, an alien with TPS is considered as being in and maintaining lawful status as a nonimmigrant only during the period that TPS is in effect.[59] TPS does not cure any previous failure to maintain continuously a lawful status in the United States.[60]
+Admission Following Travel Abroad with Prior Consent
+TPS beneficiaries may travel abroad temporarily with the prior consent of DHS under INA 244(f)(3).[61] When DHS provides prior consent to a TPS beneficiary to travel abroad, it documents that consent by issuing a TPS travel authorization document to the beneficiary.[62] Upon returning to the United States in accordance with the terms of DHS’s prior authorization, a TPS beneficiary must be inspected and admitted into TPS, with certain exceptions.[63] TPS beneficiaries whom DHS has inspected and admitted into TPS after such authorized travel are “inspected and admitted” for purposes of adjustment of status under INA 245(a).[64] This is true even if the TPS beneficiary was present without admission or parole when initially granted TPS.[65] However, travel with TPS authorization does not execute an outstanding removal order.[66]
+Past Treatment of Travel Abroad with Prior Consent
+Previously, USCIS issued TPS beneficiaries advance parole documents under 8 CFR 244.15, which references the advance parole provisions as the procedure to authorize travel. Upon returning from abroad, TPS beneficiaries with advance parole documents were inspected and, if eligible, paroled into the United States. The treatment of such parole for purposes of INA 245(a) varied over the years, as summarized in the table below.
+Effect of Authorized Travel on TPS Beneficiaries Under Applicable Policy
+Date of DepartureDid Parole or Admission Upon Return Satisfy INA 245(a)?
+From December 12, 1991, until February 25, 2016While there was no stated agency policy, aliens were generally considered paroled for the purpose of INA 245(a) (regardless of whether the beneficiary had been admitted or paroled before departing).
+From February 25, 2016, until August 20, 2020Yes, regardless of whether the alien had been admitted or paroled before departing.[67]
+After August 20, 2020, until July 1, 2022No, the alien’s status as admitted or paroled for INA 245(a) was unchanged by travel.[68]
+On or after July 1, 2022Yes, regardless of whether the alien had been admitted or paroled before departing.[69]
+Retroactive Application of Current Policy
+In some cases, explained below, USCIS applies the current policy retroactively and considers past travel to have resulted in an inspection and admission for purposes of INA 245(a), even if the policy or practice in place at the time the travel occurred instructed otherwise.
+Past travel must meet each of the following requirements to be considered for retroactive application of current guidance:
+The alien obtained prior authorization to travel abroad temporarily on the basis of being a TPS beneficiary;[70]
+The alien’s TPS was not withdrawn, or the designation for their foreign state (or part of a foreign state) was not terminated or did not expire during their travel;[71]
+The alien returned to the United States in accordance with the authorization to travel; and
+Upon return, the alien was inspected by INS or DHS at a designated port of entry and paroled or otherwise permitted to pass into the territorial boundaries of the United States in accordance with the TPS-based travel authorization.[72]
+If the past travel does not meet each of these requirements, USCIS applies the policy that was in effect at the time of departure.[73] If the past travel does meet each of these requirements, USCIS will consider retroactive application of the current guidance.
+In cases arising in the Fifth Circuit, USCIS treats the authorized reentry after any qualifying prior travel as an inspection and admission, regardless of the procedure used when the TPS beneficiary was permitted to reenter the United States and regardless of whether the travel documentation refers to advance parole.[74]
+Elsewhere, USCIS determines on a case-by-case basis whether an alien who was paroled or otherwise permitted to enter after TPS-authorized travel under prior guidance should be treated as inspected and admitted for purposes of a given adjudication. USCIS makes the determination to apply this guidance retroactively based on the circumstances of the individual case, with consideration of any reliance on the prior policy, applicable law, and any other factors relevant to the individual application.
+In cases arising outside of the Fifth Circuit, the officer first considers whether treating qualifying prior travel as an admission, rather than parole, is necessary for the approval of the application. In most cases, whether the prior entry is treated as an admission or a parole does not affect the outcome of an application for adjustment of status under INA 245(a).[75] If the distinction between admission and parole does not affect the outcome, the officer does not make a retroactivity determination.
+Where the distinction between admission and parole is critical to the outcome of the adjudication, the officer assesses the individual case to determine whether to consider a prior return from TPS-authorized travel as an admission. In most instances, when the officer determines that an applicant meets all other eligibility requirements and merits adjustment of status in the exercise of discretion, it would be appropriate for the officer, on a case-by-case basis, to deem the prior parole to be an admission under the Miscellaneous and Technical Immigration and Naturalization Amendments of 1991 (MTINA).[76]
+Five-Factor Test for Retroactivity Determination (Retail Union Test)
+The officer must apply the following five-factor test in any retroactivity determination for adjustment of status applications arising outside of the Fifth Circuit:[77]
+Factor 1: Whether the effect of TPS-authorized travel has previously been considered;
+Factor 2: Whether the new policy regarding the effect of TPS-authorized travel represents an abrupt departure from well-established practice or merely attempts to clarify an unsettled area of law;
+Factor 3: The extent to which the adjustment of status applicant to whom the new policy would apply relied on the former rule;[78]
+Factor 4: The burden (if any) that retroactive application of the policy would impose on the adjustment of status applicant; and
+Factor 5: The statutory interest in applying the new policy despite the applicant’s reliance on the old policy.[79]
+In the context of an adjustment of status application involving prior TPS-authorized travel, consideration of factors 1, 2, and 5 should be consistent across most cases:
+The effect of TPS-authorized travel under MTINA is not a question of first impression, as USCIS and INS had prior policy and practice on the question (factor 1);
+USCIS’ adoption of the interpretation described in this guidance is a change from USCIS’ prior practice and guidance (factor 2); and
+There is a strong statutory interest in applying the best interpretation of the statute (factor 5).
+While factors 1 and 2 may weigh against retroactive application of this policy change, factor 5 generally weighs in favor of retroactive application.
+The officer also considers whether a particular applicant relied on either Matter of Z-R-Z-C- or DHS’s prior use of advance parole to implement TPS travel (factor 3).[80] If the applicant did rely on past policy or practice, the officer considers whether retroactive application of the new policy would negatively affect or otherwise burden the applicant due to such reliance (factor 4).
+Accordingly, retroactivity determinations usually center on factors 3 and 4. In most cases the change in interpretation does not create a significant burden on the applicant but is instead favorable to the applicant, and the officer may deem a prior parole an admission for purposes of the adjustment of status application.
+In the rare event that a TPS beneficiary relied on being paroled into the United States, rather than being inspected and admitted, in a way that negatively impacts eligibility for adjustment of status, the officer weighs the negative impact against the other factors in the Retail Union test on a case-by-case basis.[81] In this assessment, the negative impact carries significant weight, and because factors 1 and 2 also weigh against retroactivity, officers should generally avoid retroactive application if the applicant would be harmed.[82] However, if the harm in a particular case is outweighed by the other factors, then the officer may deem a prior parole an admission in that case.
+USCIS expects that, under the Retail Union test, retroactive application of the current policy is appropriate in most adjustment of status applications and favorable to the applicants.
+### 6. Asylum[83]
+An asylee whose adjustment application is based on his or her asylee status adjusts under INA 209(b).[84] An asylee, however, may seek to adjust under INA 245(a) if the asylee prefers to adjust on a basis other than the asylee’s status. This may arise in cases where, for example, an asylee marries a U.S. citizen and subsequently seeks to adjust status as an immediate relative of a U.S. citizen rather than under the asylee provision. In order to adjust under INA 245(a), however, the asylee must meet the eligibility requirements that apply under that provision.
+There may be circumstances where asylees are not able to meet certain requirements for adjustment under INA 245(a). For instance, an alien who enters without inspection and is subsequently granted asylum does not satisfy the inspected and admitted or inspected and paroled requirement.[85] On the other hand, an asylee who departs the United States and is admitted or granted parole upon return to a port of entry meets the inspected and admitted or inspected and paroled requirement.
+### 7. Waved Through at Port-of-Entry
+In some cases, an alien may claim that he or she arrived at a port of entry and presented himself or herself for inspection as an alien, but the inspector waved (allowed to pass) him or her through the port of entry without asking any questions.
+Where an alien physically presents himself or herself for questioning and makes no knowing false claim to U.S. citizenship, the alien is considered to have been inspected even though he or she volunteers no information and is asked no questions by the immigration authorities. Such an alien satisfies the inspected and admitted requirement of INA 245(a) as long as the alien sufficiently proves that he or she was indeed waved through by an immigration official at a port of entry.[86]
+An officer may find that an adjustment applicant satisfies the inspected and admitted requirement based on a claim that he or she was waved through at a port of entry if:
+The applicant submits evidence to support the claim, such as third-party affidavits from those with personal knowledge of the facts stated in the affidavits and corroborating documentation; and
+The officer determines that the claim is credible.[87]
+The burden of proof is on the applicant to establish eligibility for adjustment of status.[88] Accordingly, the applicant must support and sufficiently establish the claim that he or she was admitted as an alien and not as a presumed U.S. citizen. For example, if the applicant was in a car with U.S. license plates and with U.S. citizens onboard, the applicant should submit persuasive evidence to establish he or she physically presented himself or herself to the inspector and was admitted as an alien.[89]
+## B. Properly Filing an Adjustment Application
+To adjust status, an alien must file an Application to Register Permanent Residence or Adjust Status (Form I-485) in accordance with the form instructions. The adjustment application must be properly signed and accompanied by the appropriate fee.[90] The application must be filed at the correct filing location, as specified in the form instructions. USCIS rejects adjustment applications if the application is:
+Filed at an incorrect location;
+Not filed with the correct fee, unless granted a fee waiver;
+Not properly signed; or
+Filed when an immigrant visa is unavailable.[91]
+## C. Eligible to Receive an Immigrant Visa
+### 1. General Eligibility for an Immigrant Visa
+An adjustment applicant must be eligible to receive an immigrant visa. An applicant typically establishes eligibility for an immigrant visa through an immigrant petition in one of the categories listed in the table below.
+Eligibility to Receive an Immigrant Visa
+Immigrant CategoryPetitionWho May Qualify
+Family-BasedPetition for Alien Relative (Form I-130)
+Immediate relatives of U.S. citizens[92]
+Unmarried sons and daughters of U.S. citizens (21 years of age and older)
+Spouses and unmarried children (under 21 years of age) of LPRs
+Unmarried sons and daughters of LPRs
+Married sons and daughters of U.S. citizens
+Brothers and sisters of U.S. citizens (if the U.S. citizen is 21 years of age or older)
+Family-BasedPetition for Alien Fiancé(e) (Form I-129F)
+Fiancé(e) of a U.S. citizen
+Family-BasedPetition for Amerasian, Widow(er), or Special Immigrant (Form I-360)
+Widow or widower of a U.S. citizen
+VAWA self-petitioners
+Employment-BasedImmigrant Petition for Alien Worker (Form I-140)
+Priority workers
+Members of the professions holding an advanced degree or persons of exceptional ability
+Skilled workers, professionals, and other workers
+Employment-BasedImmigrant Petition by Standalone Investor (Form I-526)
+Standalone Investors
+Employment-BasedImmigrant Petition by Regional Center Investor (Form I-526E)
+Regional Center Investors
+Special ImmigrantsPetition for Amerasian, Widow(er), or Special Immigrant (Form I-360)
+Religious workers
+Certain international employees
+Panama Canal Zone employees
+Certain physicians
+International organization officers and employees
+Special immigrant juveniles
+Certain U.S. armed forces members
+Certain broadcasters
+Certain Afghanistan and Iraq nationals
+Diversity Immigrant Visa[93]Not applicable (Diversity visas do not require a USCIS-filed petition)
+Diversity immigrants
+### 2. Dependents
+The spouse and children of certain family-based, employment-based, and Diversity Immigrant Visa adjustment applicants may also obtain LPR status through their relationship with the principal applicant. Because the spouse and children do not have an independent basis to adjust status apart from their relationship to the principal immigrant, they are “dependents” of the principal for purpose of eligibility for adjustment of status.
+Dependents do not have their own underlying immigrant petition and may only adjust based on the principal’s adjustment of status. In general, dependent applicants must have the requisite relationship to the principal both at the time of filing the adjustment application and at the time of final adjudication.[94]
+### 3. Concurrent Filing
+The immigrant petition establishing the underlying basis to adjust is typically filed before the alien files the adjustment application. In some instances, the applicant may file the adjustment application at the same time the immigrant petition is filed.[95]
+## D. Immigrant Visa Immediately Available at Time of Filing and at Time of Approval
+In general, an immigrant visa must be available before an alien can apply for adjustment of status.[96] An immigrant visa is always available to applicants seeking adjustment as immediate relatives. Visas are numerically limited for most other immigrant categories eligible to adjust; applicants in these numerically limited categories may need to wait until a visa is available before they can file an adjustment application. Furthermore, an immigrant visa must be available for issuance on the date USCIS approves any adjustment application.[97]
+## E. Admissible to the United States
+An adjustment of status applicant must be admissible to the United States.[98] An applicant who is inadmissible may apply for a waiver of the ground of inadmissibility, if a waiver is available, or another form of relief. The applicable grounds of inadmissibility and any available waivers depend on the immigrant category under which the applicant is applying.[99]
+## F. Bars to Adjustment of Status
+An applicant may not be eligible to apply for adjustment of status if one or more bars to adjustment applies.[100] The bars to adjustment of status may apply to applicants who either entered the United States in a particular status or manner, or committed a particular act or violation of immigration law.[101] The table below refers to aliens ineligible to apply for adjustment of status, unless otherwise exempt.[102]
+Aliens Barred from Adjustment of Status
+Alien
+INA
+Section
+Entries and Periods of Stay to Consider
+Exempt
+from Bar
+Alien Crewman[103] 245(c)(1)Only most recent permission to land, or admission prior to filing for adjustmentVAWA-based applicants
+In Unlawful Immigration Status on the Date the Adjustment Application is Filed
+OR
+Who Failed to Continuously Maintain Lawful Status Since Entry into United States[104]
+OR
+Who Continues in, or Accepts, Unauthorized Employment Prior to Filing for Adjustment
+245(c)(2)[105]All entries and time periods spent in the United States (departure and return does not remove the ineligibility)[106]
+VAWA-based applicants
+Immediate relatives[107]
+Certain special immigrants[108]
+245(k) eligible[109]
+Admitted in Transit Without a Visa (TWOV)245(c)(3)Only most recent admission prior to filing for adjustmentVAWA-based applicants
+Admitted as a Nonimmigrant Without a Visa under a Visa Waiver Program[110]245(c)(4)Only most recent admission prior to filing for adjustment
+VAWA-based applicants
+Immediate relatives
+Admitted as Witness or Informant[111]245(c)(5)Only most recent admission prior to filing for adjustmentVAWA-based applicants
+Who is Deportable Due to Involvement in Terrorist Activity or Group[112]245(c)(6)All entries and time periods spent in the United StatesVAWA-based applicant[113]
+Seeking Adjustment in an Employment-based Immigrant Category and Not in a Lawful Nonimmigrant Status245(c)(7)Only most recent admission prior to filing for adjustment
+VAWA-based applicants
+Immediate relatives and other family-based applicants
+Special immigrant juveniles[114]
+245(k) eligible[115]
+Who has Otherwise Violated the Terms of a Nonimmigrant Visa[116]
+OR
+Who has Ever Engaged in Unauthorized Employment[117]
+245(c)(8)[118]All entries and time periods spent in the United States (departure and return does not remove the ineligibility)[119]
+VAWA-based applicants
+Immediate relatives[120]
+Certain special immigrants
+245(k) eligible[121]
+In all cases, the applicant is subject to any and all applicable grounds of inadmissibility even if the applicant is not subject to any bar to adjustment, or is exempt from any or all the bars to adjustment.
+### 1. Overlapping Bars
+Some bars to adjustment may overlap in their application, despite their basis in separate sections of the law.[122] For example, an applicant admitted under the Visa Waiver Program who overstays the admission is barred by both INA 245(c)(2) and INA 245(c)(4). Because some bars overlap, more than one bar can apply to an applicant for the same act or violation. In such cases, the officer should address each applicable adjustment bar in the denial notice.
+### 2. Exemptions from the Bars[123]
+Congress has provided relief from particular adjustment bars to certain categories of immigrants such as VAWA-based adjustment applicants, immediate relatives, and designated special immigrants.
+Furthermore, INA 245(k) exempts eligible applicants under the employment-based 1st, 2nd, 3rd and certain 4th preference[124] categories from the INA 245(c)(2), INA 245(c)(7), and INA 245(c)(8) bars. Specifically, an eligible employment-based adjustment applicant may qualify for this exemption if the applicant failed to maintain a lawful status, engaged in unauthorized employment, or violated the terms of his or her nonimmigrant status (admission under a nonimmigrant visa) for 180 days or less since his or her most recent lawful admission.[125]
+## Footnotes
+[^ 1] See Part A, Adjustment of Status Policies and Procedures, Chapter 3, Filing Instructions, Section B, Definition of Properly Filed [7 USCIS-PM A.3(B)].
+[^ 2] See Part A, Adjustment of Status Policies and Procedures, Chapter 6, Adjudicative Review, Section C, Verify Visa Availability [7 USCIS-PM A.6(C)].
+[^ 3] See Part A, Adjustment of Status Policies and Procedures, Chapter 10, Legal Analysis and Use of Discretion [7 USCIS-PM A.10].
+[^ 4] As originally enacted, INA 245(a) made adjustment available only to an alien who “was lawfully admitted…as a bona fide nonimmigrant and who is continuing to maintain that status.” See Immigration and Nationality Act of 1952, Pub. L. 82-414 (PDF), 66 Stat. 163, 217 (June 27, 1952). Admission as a bona fide nonimmigrant remained a requirement until 1960. See Pub. L. 86-648 (PDF) (July 14, 1960). Congress amended that threshold requirement several times. The 1960 amendment removed the requirement of admission as a bona fide nonimmigrant.
+[^ 5] See 8 CFR 245.1(b)(3).
+[^ 6] See legacy Immigration and Naturalization Service (INS) General Counsel Opinion 94-28, 1994 WL 1753132 (“Congress enacted INA 245 in such a manner that persons who entered the U.S. without inspection are ineligible to adjust”). See S. Rep. 86-1651, 1960 U.S.C.C.A.N. 3124, 3136 (“This legislation will not benefit the alien who has entered the United States in violation of the law”) and 3137 (“The wording of the amendments is such as not to grant eligibility for adjustment of status to alien crewmen and to aliens who entered the United States surreptitiously”). See Matter of Robles (PDF), 15 I&N Dec. 734 (BIA 1976) (explaining that entry into the United States after intentionally evading inspection is a ground for deportation under (then) INA 241(a)(2)).
+[^ 7] See INA 245(a).
+[^ 8] See INA 245(h)(1), which states that SIJ-based applicants are considered paroled into the United States for purposes of INA 245(a).
+[^ 9] See INA 245(g), which holds that certain special immigrants, as defined under INA 101(a)(27)(k), are considered paroled into the United States for purposes of INA 245(a).
+[^ 10] See Delegation of Authority to the Commissioner of U.S. Customs and Border Protection, Department of Homeland Security (DHS) Delegation No. 7010.3.
+[^ 11] See Section 5 of the Act of March 3, 1875, 18 Stat. 477. See Sections 6, 8, 10, and 11 of the Act of March 3, 1891, 26 Stat. 1084. See Sections 8, 12, 16, and 18 of the Act of February 20, 1907, 34 Stat. 898. See Sections 10, 15, and 16 of the Immigration Act of 1917, Pub. L. 301 (February 5, 1917).
+[^ 12] See INA 231-235 and INA 275. See Matter of Robles (PDF), 15 I&N Dec. 734 (BIA 1976) (holding that entry into the United States after intentionally evading inspection is a ground for deportation under (then) INA 241(a)(2)).
+[^ 13] See 8 CFR 235.1(a). See Matter of S- (PDF), 9 I&N Dec. 599 (BIA 1962) (inspection is the process that determines an alien’s initial right to enter the United States upon presenting himself or herself for inspection at a port of entry). See Ex Parte Saadi, 23 F.2d 334 (S.D. Cal. 1927).
+[^ 14] See INA 235(d). See 8 CFR 235.1(f)(1).
+[^ 15] See Matter of Areguillin (PDF), 17 I&N Dec. 308 (BIA 1980), and Matter of Quilantan (PDF), 25 I&N Dec. 285 (BIA 2010), which held that an alien who had physically presented himself or herself for questioning and made no knowing false claim of citizenship had satisfied the inspected and admitted requirement of INA 245(a); alternatively, an alien who gains admission to the U.S. upon a knowing false claim to U.S. citizenship cannot be deemed to have been inspected and admitted. See Matter of Pinzon (PDF), 26 I&N Dec. 189 (BIA 2013).
+[^ 16] See Reid v. INS, 420 U.S. 619, 624 (1975) (an alien who enters the United States based on a false claim to U.S. citizenship is excludable under former INA 212(a)(19), or INA 212(a)(6)(C) today, and considered to have entered without inspection).
+[^ 17] See INA 235(a)(4).
+[^ 18] Deferred inspection is a form of parole. An alien who is deferred inspection is paroled into the United States for the period of time necessary to complete the inspection. See 8 CFR 235.2(c). For more information on deferred inspection, see Subsection 3, Parole [7 USCIS-PM B.2(A)(3)].
+[^ 19] See INA 101(a)(13)(A). The Illegal Immigration Reform and Immigrant Responsibility Act of 1996 (IIRIRA) amended the statute by changing the concept of “entry” to “admission” and “admitted.” See Section 301(a) of IIRIRA, Division C of Pub. L. 104-208 (PDF), 110 Stat. 3009, 3009-575 (September 30, 1996). INA 101(a)(13)(B) clarifies that parole is not admission.
+[^ 20] See INA 101(a)(13)(A) (“The terms ‘admission’ and ‘admitted’ mean, with respect to an alien, the lawful entry of the alien into the United States after inspection and authorization by an immigration officer.”). Legislative history does not elaborate on the meaning of “lawful.”
+[^ 21] See 8 CFR 235.1(f)(1).
+[^ 22] See Matter of Areguilin (PDF), 17 I&N Dec. 308 (BIA 1980). See INA 291 (burden of proof). See Emokah v. Mukasey, 523 F.3d 110 (2nd Cir 2008). While it is an “admission,” procuring admission by fraud or willful misrepresentation is illegal and has several consequences. For example, the alien may be inadmissible and removable. See INA 212(a)(6)(C) and INA 237(a)(1)(A).
+[^ 23] See Matter of Quilantan (PDF), 25 I&N Dec. 289, 290 (BIA 2010). See Matter of Areguilin (PDF), 17 I&N Dec. 308 (BIA 1980). See INA 245(a). The alien is not inadmissible as an illegal entrant under INA 212(a)(6)(A)(i). For more information on admissibility, see Volume 8, Admissibility [8 USCIS-PM].
+[^ 24] A grant of nonimmigrant status to an alien in the United States does not automatically constitute an “admission.” For example, an alien who is present in the United States without being inspected and admitted or paroled and who is subsequently granted U nonimmigrant status while in the United States is not “admitted” for purposes of INA 245(a). See Sanchez v. Mayorkas (PDF), 141 S.Ct. 1809, 1814-15 (2021). See Subsection 5, Temporary Protected Status [7 USCIS-PM B.2(A)(5)].
+[^ 25] See Matter of Pinzon (PDF), 26 I&N Dec. 189 (BIA 2013) (an alien who enters the United States by falsely claiming U.S. citizenship is not deemed to have been inspected by an immigration officer, so the entry is not an “admission” under INA 101(a)(13)(A)).
+[^ 26] See Reid v. INS, 420 U.S. 619, 624 (1975). See Matter of S- (PDF), 9 I&N Dec. 599 (BIA 1962). An alien who makes a false claim to U.S. citizenship is inadmissible for making the claim (INA 212(a)(6)(C)(ii)). The alien may also be inadmissible for presence without admission or parole (INA 212(a)(6)(A)(i)) and unlawful presence after previous immigration violations (INA 212(a)(9)(C)).
+[^ 27] Such aliens are inadmissible for presence without admission or parole and may be inadmissible for unlawful presence after previous immigration violations. See INA 212(a)(6)(A)(i) and INA 212(a)(9)(C).
+[^ 28] See INA 212(a)(2). See INA 212(h) and INA 240A(a).
+[^ 29] See INA 101(a)(13)(C). See generally Matter of Collado-Munoz, 21 I&N Dec. 1061 (BIA 1997). The alien who enters by making a false claim to LPR status at a port of entry and who is permitted to enter is inadmissible for presence without admission or parole (INA 212(a)(6)(A)(i)) and fraud and misrepresentation (INA 212(a)(6)(C)(i)). The alien may also be inadmissible for unlawful presence after previous immigration violations. See INA 212(a)(9)(C).
+[^ 30] This will typically be documented by an approved Application for Replacement/Initial Nonimmigrant Arrival-Departure Document (Form I-102).
+[^ 31] CBP or USCIS can issue an Arrival/Departure Record (Form I-94). If admitted to the United States by CBP at an airport or seaport after April 30, 2013, CBP may have issued an electronic Form I-94 to the applicant instead of a paper Form I-94. To obtain a paper version of an electronic Form I-94, visit the CBP website. Some travelers admitted to the United States at a land border, airport, or seaport, after April 30, 2013, with a passport or travel document and who were issued a paper Form I-94 by CBP may also be able to obtain a replacement Form I-94 from the CBP website. Applicants may also obtain Form I-94 by filing an Application for Replacement/Initial Nonimmigrant Arrival-Departure Record (Form I-102), with USCIS.
+[^ 32] U.S. Department of State Form DSP-150.
+[^ 33] See 8 CFR 235.1(h)(1)(i)-(v).
+[^ 34] See 8 CFR 212.1(b).
+[^ 35] See 8 CFR 212.1(c).
+[^ 36] See Delegation to the Bureau of Citizenship and Immigration Services, DHS Delegation No. 0150.1; Delegation of Authority to the Assistant Secretary for U.S. Immigration and Customs Enforcement, DHS Delegation No. 7030.2; Delegation of Authority to the Commissioner of U.S. Customs and Border Protection, DHS Delegation No. 7010.3.
+[^ 37] See INA 212(d)(5)(A).
+[^ 38] See INA 101(a)(13)(B) and 212(d)(5)(A).
+[^ 39] See 8 CFR 235.2.
+[^ 40] CBP generally issues a Notice to Appear 30 days after a person’s non-appearance for the deferred inspection, so an officer should review the relevant case and lookout systems for any entries related to CBP.
+[^ 41] CBP generally creates either an A-file or T-file to document the deferred inspection.
+[^ 42] See legacy Immigration and Naturalization Service (INS) General Counsel Opinion 94-28, 1994 WL 1753132 (whether deferred inspection constitutes parole for purposes of adjustment of status under INA 245).
+[^ 43] See INA 212(d)(5).
+[^ 44] See INA 212(d)(5).
+[^ 45] Only parole under INA 212(d)(5)(A) meets this requirement.
+[^ 46] See INA 235(a).
+[^ 47] See legacy INS General Counsel Opinion 98-10, 1998 WL 1806685.
+[^ 48] As with any immigration benefit request, eligibility for adjustment must exist when the application is filed and continue through adjudication. See 8 CFR 103.2(b)(1).
+[^ 49] For example, parole does not erase any periods of prior unlawful status. Therefore, an alien who entered without inspection will remain ineligible for adjustment of status, even after a grant of parole, unless he or she is an immediate relative or falls within one of the other designated exceptions to INA 245(c)(2) or INA 245(c)(8).
+[^ 50] See INA 245(c)(2). See Chapter 4, Status and Nonimmigrant Visa Violations (INA 245(c)(2) and INA 245(c)(8)) [7 USCIS-PM B.4].
+[^ 51] See INA 236(a)(2)(B). Neither the statute nor regulations deem a release on conditional parole equal to a parole under INA 212(d)(5)(A). Several circuits and the BIA have opined on this and rejected the argument that the two concepts are equivalent processes. See Ortega-Cervantes v. Gonzales (PDF), 501 F.3d 1111 (9th Cir. 2007). See Matter of Castillo-Padilla (PDF), 25 I&N Dec. 257 (BIA 2010). See Delgado-Sobalvarro v. Atty. Gen. (PDF), 625 F.3d 782 (3rd Cir. 2010). See Cruz Miguel v. Holder, 650 F.3d 189 (2nd Cir. 2011).
+[^ 52] See Authorization for Parole of an Alien into the United States (Form I-512 or I-512L).
+[^ 53] See 8 CFR 235.1(h)(2). If an alien was admitted to the United States by CBP at an airport or seaport after April 30, 2012, the alien may have been issued an electronic Form I-94 by CBP, instead of a paper Form I-94. For more information, see the CBP website.
+[^ 54] See Consolidated Natural Resources Act of 2008, Pub. L. 110-229 (PDF) (May 8, 2008).
+[^ 55] See INA 235(a)(1).
+[^ 56] See INA 244. See 8 CFR 244.
+[^ 57] On June 7, 2021, the Supreme Court held that a grant of TPS is not an admission, stating that where an alien was not lawfully admitted or paroled, “TPS does not alter that fact.” See Sanchez v. Mayorkas (PDF), 141 S.Ct. 1809 (2021). Before this decision, the U.S. Courts of Appeals in the Sixth Circuit, Eighth Circuit, and Ninth Circuit had ruled that an alien who enters the United States without inspection and who is subsequently granted TPS meets the inspected and admitted or inspected and paroled requirement under INA 245(a). USCIS applied these rulings only to applications for adjustment of status filed by applicants residing within these respective jurisdictions. The Supreme Court decision in Sanchez overrules the rulings of the Sixth, Eighth, and Ninth Circuits; therefore, on or after June 7, 2021, a grant of TPS is no longer an admission for adjustment of status purposes in any circuit. However, USCIS deems applicants who became lawful permanent residents under the Sixth, Eighth, or Ninth Circuit Court precedents before June 7, 2021, to have been lawfully admitted for permanent residence. See Flores v. USCIS (PDF), 718 F.3d 548 (6th Cir. 2013). See Velasquez v. Barr (PDF), 979 F.3d 572 (8th Cir. 2020). See Ramirez v. Brown (PDF), 852 F.3d 954 (9th Cir. 2017).
+[^ 58] See Sanchez v. Mayorkas (PDF), 141 S.Ct. 1809 (2021). See Matter of H-G-G-, 27 I&N Dec. 617 (AAO 2019).
+[^ 59] See INA 244(f)(4). See 8 CFR 244.10(f)(2)(iv).
+[^ 60] See Matter of H-G-G-, 27 I&N Dec. 617 (AAO 2019).
+[^ 61] See INA 244(f)(3). See 8 CFR 244.10(f)(2)(iii).
+[^ 62] See 8 CFR 244.15(a). Although 8 CFR 244.15 provides that permission to travel abroad is sought and provided “pursuant to the Service’s advance parole provisions,” the regulation was issued in 1991 before enactment of the Miscellaneous and Technical Immigration and Naturalization Amendments of 1991 (MTINA), Pub. L. 102-232 (PDF) (December 12, 1991), as amended, and, consequently, the reference in 8 CFR 244.15 to advance parole was overruled by Section 304(c) of that statute, which required that eligible TPS beneficiaries “shall be inspected and admitted” upon return from qualifying authorized travel. See DHS Office of General Counsel, Immigration Consequences of Authorized Travel and Return to the United States by Individuals Holding Temporary Protected Status, Attachment p. 28, issued April 6, 2022. Until 8 CFR 244.15 is amended in accordance with MTINA, and corresponding changes are made to related forms and other documentation, USCIS considers the reference to advance parole in 8 CFR 244.15 to encompass any advance discretionary authorization to travel under INA 244(f)(3). See Rescission of Matter of Z-R-Z-C- as an Adopted Decision; agency interpretation of authorized travel by TPS beneficiaries, PM-602-0188, issued July 1, 2022. Related forms and documentation include the Application for Temporary Protected Status (Form I-821) and Application for Travel Documents, Parole Documents, and Arrival/Departure Records (Form I-131).
+[^ 63] See Section 304(c) of MTINA, Pub. L. 102-232 (PDF), 105 Stat. 1733, 1749 (December 12, 1991), as amended. TPS beneficiaries subject to certain criminal, national security, and related grounds of inadmissibility as described in INA 244(c)(2)(A)(iii) may not be eligible for admission into TPS when returning from travel authorized under INA 244(f)(3).
+[^ 64] Inspection and admission after TPS-authorized travel also satisfies the admission requirement of INA 245(k). However, admission into TPS does not mean that the TPS beneficiary is “admissible” as required by INA 245(a)(2), as MTINA specifies that only certain inadmissibility grounds apply to beneficiaries returning to the United States after TPS-authorized travel. See Section 304(c) of MTINA, Pub. L. 102-232 (PDF), 105 Stat. 1733, 1749 (December 12, 1991), as amended.
+[^ 65] See DHS Office of General Counsel, Immigration Consequences of Authorized Travel and Return to the United States by Individuals Holding Temporary Protected Status, Attachment p. 28, issued April 6, 2022.
+[^ 66] See Duarte v. Mayorkas, 27 F.4th 1044 (5th Cir. 2022). For more information, see Part A, Adjustment of Status Policies and Procedures, Chapter 3, Filing Instructions, Section D, Jurisdiction [7 USCIS-PM A.3(D)]. Additionally, USCIS applies the holding of Matter of Arrabally and Yerrabelly (PDF), 25 I&N Dec. 771 (BIA 2012)—that an alien who leaves the United States temporarily with advance parole does not make a departure from the United States within the meaning of INA 212(a)(9)(B)(i)(II)—to aliens who leave the United States with authorization under INA 244(f)(3), as the Board’s reasoning is equally applicable to TPS-authorized travel and return under MTINA.
+[^ 67] See General Adjustment of Status Policies and Section 245(a) of the Immigration and Nationality Act, PA-2016-001, issued February 25, 2016.
+[^ 68] See Matter of Z-R-Z-C-, Adopted Decision 2020-02 (AAO Aug. 20, 2020), PM-602-0179, issued August 20, 2020, rescinded July 1, 2022.
+[^ 69] See Rescission of Matter of Z-R-Z-C- as an Adopted Decision; agency interpretation of authorized travel by TPS beneficiaries, PM-602-0188, issued July 1, 2022.
+[^ 70] TPS beneficiaries are aliens granted TPS in accordance with INA 244(a)(1)(A).
+[^ 71] See INA 244(c)(3). See INA 244(b)(3).
+[^ 72] See Section 304(c) of MTINA, Pub. L. 102-232 (PDF), 105 Stat. 1733, 1749 (December 12, 1991), as amended.
+[^ 73] These TPS beneficiaries do not meet the requirements specified in Section 304(c) of MTINA, Pub. L. 102-232 (PDF), 105 Stat. 1733, 1749 (December 12, 1991), as amended.
+[^ 74] See Duarte v. Mayorkas, 27 F.4th 1044, 1061 (5th Cir. 2022) (concluding that “USCIS was … not authorized to grant the Appellants the advance parole that the 512L form it issued them purported to allow” and that as a result they “were admitted and not paroled into the country”).
+[^ 75] Determining whether a prior entry was an admission or parole may be necessary, for example, in employment-based adjustment of status applications by aliens seeking an exception to the bars to adjustment in INA 245(c)(2), (7), and (8). The exception at INA 245(k) requires, in part, that the applicant be present in the United States “pursuant to a lawful admission.” In such cases, USCIS conducts the individualized assessment described above.
+[^ 76] See Pub. L. 102-232 (PDF) (December 12, 1991), as amended.
+[^ 77] The five-factor test formulated by the D.C. Circuit entails consideration of whether the particular case is one of first impression, whether the new rule represents an abrupt departure from well-established practice or merely attempts to fill a void in an unsettled area of law, the extent to which the party against whom the new rule is applied relied on the former rule, the degree of the burden which a retroactive order imposes on a party, and the statutory interest in applying a new rule despite the reliance of a party on the old standard. See Retail, Wholesale and Department Store Union AFL-CIO v. NLRB, 466 F.2d 380, 390 (D.C. Cir. 1972). See Montgomery Ward & Co. v. FTC, 691 F.2d 1322 (9th Cir. 1982). See Matter of Cordero-Garcia, 27 I&N Dec. 652, 657 (BIA 2019) (adopting the test in the immigration context).
+[^ 78] “The former rule” meaning prior USCIS or INS legal interpretation, policy, or practice regarding the effect of TPS-authorized travel.
+[^ 79] See Retail, Wholesale and Department Store Union AFL-CIO v. NLRB, 466 F.2d 380, 390 (D.C. Cir. 1972).
+[^ 80] See the table, Effect of Authorized Travel on TPS Beneficiaries Under Applicable Policy, above.
+[^ 81] See Retail, Wholesale and Department Store Union AFL-CIO v. NLRB, 466 F.2d 380, 390 (D.C. Cir. 1972). Because USCIS applies the holding of Matter of Arrabally and Yerrabelly (PDF), 25 I&N Dec. 771 (BIA 2012) to travel authorized under INA 244(f)(3) followed by admission to the United States into TPS, an alien who leaves the United States temporarily on TPS-authorized travel does not make a departure from the United States within the meaning of INA 212(a)(9)(B)(i)(II). Therefore, whether or not USCIS considers travel under MTINA as an admission after authorized travel or a parole after advance parole will not adversely affect aliens with respect to reliance upon Matter of Arrabally.
+[^ 82] See Retail, Wholesale and Department Store Union AFL-CIO v. NLRB, 466 F.2d 380, 390 (D.C. Cir. 1972) (citing SEC v. Chenery Corp., 332 U.S. 194 (1947)) (explaining that courts must assess whether retroactivity would produce more “mischief” than the ill effects of continuing to enforce a rule which is “contrary to statutory design or legal and equitable principles”).
+[^ 83] See 8 CFR 209.2. For more information on asylee adjustment, see Part M, Asylee Adjustment [7 USCIS-PM M].
+[^ 84] Due to the different statutory bases, different eligibility requirements, exceptions, and waivers apply to applicants seeking adjustment based on their asylum status compared to those seeking adjustment under INA 245(a).
+[^ 85] The grant of asylum is not an admission contemplated under INA 101(a)(13)(A). See Matter of V-X- (PDF), 26 I&N Dec. 147 (BIA 2013). See legacy INS General Counsel Opinion, expressed by INS Central Office, Deputy Asst. Commissioner, Adjudications, R. Michael Miller, in letter dated September 4, 1986, reprinted in Interpreter Releases, Vol. 63, No. 40, October 10, 1986, pp. 891-892.
+[^ 86] See Matter of Quilantan (PDF), 25 I&N Dec. 285, 291-92 (BIA 2010). See Matter of Areguillin (PDF), 17 I&N Dec. 308 (BIA 1980). See 8 CFR 103.2(b).
+[^ 87] Any documentary evidence of admission should be consistent with entry information provided in the adjustment application or in oral testimony and should not contradict any other admission or departure evidence in DHS records. For example, when there is no Arrival/Departure Record or passport with an admission stamp, an officer may rely on information in DHS records, information in the applicant’s file, and the applicant’s testimony to make a determination on whether the applicant was inspected and admitted or inspected and paroled into the United States.
+[^ 88] See 8 CFR 103.2(b). See Part A, Adjustment of Status Policies and Procedures, Chapter 10, Legal Analysis and Use of Discretion [7 USCIS-PM A.10].
+[^ 89] For more information, see Subsection 2, Admission [7 USCIS-PM B.2(A)(2)].
+[^ 90] See 8 CFR 103.2(a) and 8 CFR 103.2(b). See 8 CFR 103.2(a)(2). See Fee Schedule (Form G-1055). The applicant may submit a fee waiver request. See Request for Fee Waiver (Form I-912).
+[^ 91] See 8 CFR 103.2(a)(7) and 8 CFR 245.2(a)(2)(i). In addition, USCIS should process a fee refund when an adjustment application is accepted in error because a visa was unavailable at the time of filing and the error is recognized before interview or adjudication. For more information on the definition of “properly filed” and fee refunds, see Part A, Adjustment of Status Policies and Procedures, Chapter 3, Filing Instructions [7 USCIS-PM A.3] and Volume 1, General Policies and Procedures, Part B, Submission of Benefit Requests, Chapter 3, Fees [1 USCIS-PM B.3].
+[^ 92] See INA 201(b). Immediate relatives of a U.S. citizen include the U.S. citizen’s spouse, children (unmarried and under 21 years of age), and parents (if the U.S. citizen is 21 years of age or older). Widow(er)s of U.S. citizens and aliens admitted to the United States as a fiancé(e) or child of a fiancé(e) of a U.S. citizen may also be considered immediate relatives if they meet certain conditions.
+[^ 93] Diversity visas do not rely on a USCIS-filed petition to obtain a visa. The diversity visa lottery is conducted by the U.S. Department of State.
+[^ 94] See 8 CFR 103.2(b)(1).
+[^ 95] See Part A, Adjustment of Status Policies and Procedures, Chapter 3, Filing Instructions, Section C, Concurrent Filings [7 USCIS-PM A.3(C)].
+[^ 96] See Part A, Adjustment of Status Policies and Procedures, Chapter 3, Filing Instructions, Section B, Definition of “Properly Filed,” Subsection 4, Visa Availability Requirement [7 USCIS-PM A.3(B)(4)] and Part A, Adjustment of Status Policies and Procedures, Chapter 6, Adjudicative Review, Section C, Verify Visa Availability [7 USCIS-PM A.6(C)].
+[^ 97] See INA 245(a)(3). See 8 CFR 245.1(g)(1), 8 CFR 245.2(a)(5)(ii), and 8 CFR 103.2(b)(1). For more information, see Part A, Adjustment of Status Policies and Procedures, Chapter 6, Adjudicative Review, Section C, Verify Visa Availability [7 USCIS-PM A.6(C)].
+[^ 98] If one or more of the grounds listed in INA 212 applies to an applicant then the applicant may be inadmissible. For more information, see Volume 8, Admissibility [8 USCIS-PM] and Volume 9, Waivers and Other Forms of Relief [9 USCIS-PM].
+[^ 99] See Volume 9, Waivers and Other Forms of Relief [9 USCIS-PM].
+[^ 100] See INA 245(c).
+[^ 101] Even if aliens are barred from adjusting under INA 245(a), they may still adjust under another statutory basis as long as they meet the applicable eligibility requirements.
+[^ 102] An immigrant category may exempt an applicant or make an applicant eligible for a waiver of certain adjustment bars and grounds of inadmissibility. Even if an exemption applies to an applicant who would otherwise be barred from adjustment of status, the applicant may still be denied adjustment as a matter of discretion. For more information on discretion, see Part A, Adjustment of Status Policies and Procedures, Chapter 10, Legal Analysis and Use of Discretion [7 USCIS-PM A.10].
+[^ 103] It is service as a crewman that triggers the bar to adjustment, not the actual nonimmigrant status. This bar applies if the alien was actually permitted to land under the D-1 or D-2 visa category. The bar also applies if the alien was a crewman admitted as a C-1 to join a crew, or as a B-2 if serving on a crew.
+[^ 104] This does not apply to aliens who failed to maintain lawful status through no fault of their own or solely for technical reasons, as defined in 8 CFR 245.1(d)(2).
+[^ 105] The INA 245(c)(2) bar addresses three distinct types of immigration violations.
+[^ 106] See 8 CFR 245.1(d)(3).
+[^ 107] See INA 201(b). Immediate relatives of a U.S. citizen include the U.S. citizen’s spouse, children (unmarried and under 21 years of age), and parents (if the U.S. citizen is 21 years of age or older). Widow(er)s of U.S. citizens and aliens admitted to the United States as a fiancé(e) or child of a fiancé(e) of a U.S. citizen may also be considered immediate relatives if they meet certain conditions.
+[^ 108] See special immigrants described in INA 101(a)(27)(H)-(K).
+[^ 109] If an adjustment applicant is eligible for the 245(k) exemption, then he or she is exempted from the INA 245(c)(2) bar to adjustment. See Chapter 8, Inapplicability of Bars to Adjustment, Section E, Employment-Based Exemption under INA 245(k) [7 USCIS-PM B.8(E)].
+[^ 110] See INA 212(l) and INA 217.
+[^ 111] See INA 101(a)(15)(S) and INA 245(j). The applicants are beneficiaries of a request by a law enforcement agency to adjust status (Inter-Agency Alien Witness and Informant Record (Form I-854)).
+[^ 112] See INA 237(a)(4)(B).
+[^ 113] Although VAWA-based applicants are exempt from all INA 245(c) bars per statute, a VAWA-based applicant may still be determined to be removable (INA 237(a)(4)(B)) or inadmissible (INA 212(a)(3)) due to egregious public safety risk and on security and related grounds.
+[^ 114] INA 245(c)(7) does not apply to VAWA-based applicants, immediate relatives, family-based applicants, or special immigrant juveniles because these aliens are not seeking adjustment as employment-based applicants. See 8 CFR 245.1(b)(9).
+[^ 115] If an employment-based adjustment applicant is eligible for the INA 245(k) exemption, then he or she is exempted from the INA 245(c)(7) bar to adjustment. See Chapter 8, Inapplicability of Bars to Adjustment, Section E, Employment-Based Exemption under INA 245(k) [7 USCIS-PM B.8(E)].
+[^ 116] This is also referred to as an alien who has violated the terms of his or her nonimmigrant status.
+[^ 117] There are no time restrictions on when such a violation must have occurred while physically present in the United States. Violations either before or after the filing of Form I-485 will render an alien ineligible to adjust status under INA 245(a). An alien seeking employment during the pendency of his or her adjustment applicant must fully comply with the requirements of INA 274A and 8 CFR 274a. See 62 FR 39417 (PDF) (Jul. 23, 1997).
+[^ 118] The INA 245(c)(8) bar addresses two distinct types of immigration violations.
+[^ 119] See 8 CFR 245.1(d)(3).
+[^ 120] USCIS interprets the exemption listed in INA 245(c)(2) for immediate relatives and certain special immigrants as applying to the 245(c)(8) bar in addition to the 245(c)(2) bar. See 62 FR 39417 (PDF) (Jul. 23, 1997).
+[^ 121] If an adjustment applicant is eligible for the 245(k) exemption, then he or she is exempted from the INA 245(c)(8) bar to adjustment. See Chapter 8, Inapplicability of Bars to Adjustment, Section E, Employment-Based Exemption under INA 245(k) [7 USCIS-PM B.8(E)].
+[^ 122] See INA 245(c)(2), INA 245(c)(7), and INA 245(c)(8).
+[^ 123] See Chapter 8, Inapplicability of Bars to Adjustment [7 USCIS-PM B.8].
+[^ 124] This applies to religious workers only.
+[^ 125] Notwithstanding INA 245(c)(2), INA 245(c)(7), and INA 245(c)(8), the officer should treat an alien who meets the conditions set forth in INA 245(k) in the same manner as an applicant under INA 245(a).

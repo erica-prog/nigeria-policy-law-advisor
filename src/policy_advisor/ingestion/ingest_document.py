@@ -7,7 +7,7 @@ for the fixed Phase 1 demo seed."""
 import shutil
 from pathlib import Path
 
-from policy_advisor.config import MATTERS_DIR, PHASE1_DEMO_MATTER_ID
+from policy_advisor.config import LIBRARY_MATTER_IDS, MATTERS_DIR
 from policy_advisor.db import connect
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES, chunk_uploaded_document
 from policy_advisor.ingestion.chunk_translation import translate_chunks
@@ -33,9 +33,9 @@ def _reject_shared_demo_matter(matter_id: str) -> None:
     # cross-cutting concerns) - it must stay read-only at the function
     # level, not just have its UI controls hidden, or any caller bypassing
     # the API's read-only check could still mutate a matter every other user relies on.
-    if matter_id == PHASE1_DEMO_MATTER_ID:
+    if matter_id in LIBRARY_MATTER_IDS:
         raise SharedMatterReadOnlyError(
-            f"'{PHASE1_DEMO_MATTER_ID}' is a shared reference matter and is read-only."
+            f"'{matter_id}' is a shared reference library and is read-only."
         )
 
 

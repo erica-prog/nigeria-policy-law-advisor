@@ -76,7 +76,9 @@ def _extract_with_ocr(path: Path, dpi: int = 300) -> PdfText:
     for i, image in enumerate(images, start=1):
         parts.append(make_page_marker(i))
         raw_text = pytesseract.image_to_string(image)
-        cleaned_lines = [line for line in raw_text.splitlines() if _looks_like_real_text(line.strip())]
+        cleaned_lines = [
+            line for line in raw_text.splitlines() if _looks_like_real_text(line.strip())
+        ]
         parts.append(_drop_noise_lines("\n".join(cleaned_lines)))
     return PdfText(text="".join(parts))
 

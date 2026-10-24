@@ -97,6 +97,13 @@ jobs:
             exit "$code"
           fi
 
+      - name: US library retrieval eval
+        # Retrieval-only gate for the United States collection (docs/23 slice
+        # P2-B, AC-2). Generation and faithfulness on this set are run by hand
+        # and recorded in docs/23 until the agent loop (P2-E) gives them a
+        # cheaper home; the Nigerian set above already spends the key here.
+        run: uv run python -m eval.run_golden_set --golden-set eval/golden_set_us.json --skip-generation --fail-below 0.9
+
       - name: Relevance-floor calibration report
         # Advisory: prints where the answerable and off-corpus questions sit
         # relative to RETRIEVAL_CERTAIN_DISTANCE / RETRIEVAL_MAX_DISTANCE, so a

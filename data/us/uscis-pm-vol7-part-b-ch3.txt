@@ -1,0 +1,86 @@
+# title: USCIS Policy Manual, Volume 7, Part B, Chapter 3 - Unlawful Immigration Status at Time of Filing (INA 245(c)(2))
+# source_id: us-uscis-policy-manual
+# source_url: https://www.uscis.gov/policy-manual/volume-7-part-b-chapter-3
+# volume: 7
+# part: B
+# chapter: 3
+# current_as_of: October 23, 2026
+# retrieved_at: 2026-10-24T23:29:28Z
+# licence: US government work, public domain (17 U.S.C. § 105)
+
+An applicant is barred from adjustment of status if the applicant is in an unlawful immigration status on the date of filing the adjustment application.[1] This bar to adjustment does not apply to:
+Immediate relatives;[2]
+Violence Against Women Act (VAWA)-based applicants;
+Certain alien doctors and their accompanying spouse and children;[3]
+Certain G-4 international organization employees, NATO-6 employees, and their family members;[4]
+Special immigrant juveniles;[5]
+Certain members of the U.S. armed forces and their spouses and children;[6] or
+Employment-based applicants who meet the INA 245(k) exemption.
+## A. Lawful Immigration Status[7]
+Aliens in the United States who are considered to be in lawful immigration status generally include:
+Lawful permanent residents (LPR), including lawful temporary residents and conditional permanent residents;
+Nonimmigrants;[8]
+Refugees;[9]
+​Asylees;[10]
+Parolees;[11]
+Aliens in temporary protected status (TPS); and
+Aliens lawfully present in the Commonwealth of the Northern Mariana Islands (CNMI) between November 28, 2009 and November 27, 2011 based on a valid, unexpired, and lawfully obtained period of stay that was CNMI-authorized prior to November 28, 2009 that remains valid on the date of adjustment application.
+Simply filing an application for an immigration benefit or having a pending benefit application generally does not put an applicant in a lawful immigration status.[12] In general, once an immigrant benefit application is approved, an applicant is in lawful immigration status as of the date of the filing of the application.
+## B. Unlawful Immigration Status
+An alien is in unlawful immigration status if he or she is in the United States without lawful immigration status either because the alien never had lawful status or because the alien’s lawful status has ended.
+Aliens in unlawful immigration status generally include those:
+Who entered the United States without inspection and admission or parole;[13] and
+Whose lawful immigration status expired or was rescinded, revoked, or otherwise terminated.[14]
+## C. Time in Unlawful Immigration Status
+If in unlawful immigration status, the alien’s unlawful status generally begins:
+On the day the alien enters the United States without inspection;
+​On the day the alien violates the terms or conditions of his or her nonimmigrant status;[15] or
+​On the day after the alien’s authorized status has been violated, has expired, been rescinded, revoked, or otherwise terminated while he or she is physically present in the United States.[16]
+Unlawful immigration status generally ends when either of the following events occur, whichever is earlier:
+The alien obtains lawful immigration status, or
+​The alien departs the United States.
+## D. Difference between Lawful Immigration Status and Period of Authorized Stay
+Lawful immigration status is distinct from being in a period of authorized stay. Periods of authorized stay are only relevant when determining an alien’s accrual of unlawful presence for inadmissibility purposes.[17] Although an alien in a lawful immigration status is also in a period of authorized stay, the opposite is not necessarily true. Those in a period of authorized stay may or may not be in a lawful immigration status.
+Officers consider the difference between lawful immigration status and a period of authorized stay when determining whether an applicant is in lawful immigration status for purposes of the INA 245(c)(2) adjustment bar.
+## E. Effect of Pending Application or Petition
+A pending application to extend or change status (Form I-129 or Form I-539), a pending adjustment application, or a pending petition does not confer lawful immigration status on an applicant. In addition, a pending application or petition does not automatically afford protection against removal if the alien’s status expires after submission of the application. The alien may have no actual lawful status in the United States and may be subject to removal proceedings unless and until the extension of stay (EOS) application, change of status (COS) application, adjustment application, or petition is approved.
+### 1. Extension of Stay or Change of Status
+An alien may file an adjustment application after expiration of his or her nonimmigrant status while the alien's timely-filed EOS or COS application is pending.[18] In such cases, the officer should defer adjudication of the adjustment application until USCIS adjudicates the EOS or COS application so long as there are no other grounds for denial.
+If USCIS ultimately approves the EOS or COS application, then the alien is considered to be in lawful immigration status on the date the adjustment application is filed. If USCIS denies the EOS or COS application, then the alien is generally considered to be in unlawful immigration status as of the expiration of the alien's current nonimmigrant status and likewise on the date the adjustment application is filed. In this instance, the INA 245(c)(2) bar would apply, unless an exemption is available.
+The following scenario illustrates the distinction between lawful immigration status and a period of stay authorized by the Secretary of Homeland Security. The scenario provides an example of when an applicant may be considered to be in unlawful immigration status after filing multiple applications to extend and change status.
+Example: Effect of Multiple Applications to Extend or Change Status
+DateEvent
+September 28, 2007An alien is admitted to the United States as a B-2 nonimmigrant visitor.
+March 16, 2008An employer timely filed an L-1 petition (Petition for a Nonimmigrant Worker (Form I-129) for the B-2 nonimmigrant visitor, including a request on behalf of the nonimmigrant to change status to an L-1 nonimmigrant intracompany transferee nonimmigrant classification.
+March 28, 2008The B-2 nonimmigrant visitor’s authorized stay expires, as indicated on the Arrival/Departure Record (Form I-94).
+September 10, 2008The alien untimely filed an application to extend B-2 nonimmigrant visitor status after the employer receives a Request for Evidence (RFE) on the L-1 petition.
+December 7, 2008The RFE goes unanswered and USCIS denies the L-1 petition and the accompanying COS application.
+January 11, 2009The employer untimely files a second L-1 petition (Form I-129) for the alien.
+February 8, 2009USCIS denies the alien's application to extend B-2 nonimmigrant visitor status because it was filed after the expiration of his authorized stay.
+February 11, 2009USCIS approves the second L-1 petition (Form I-129) for the alien but denies the accompanying application to change status from B-2 nonimmigrant visitor to L-1 because the alien was out of status at the time the petition was filed.
+This example highlights that an alien seeking an EOS or COS cannot indefinitely avoid any time out of or in violation of lawful status just because of a pending application to extend or change status.
+When USCIS denied the first L-1 petition and COS application on December 7, 2008, the applicant was out of B-2 status as of March 29, 2008. Even though USCIS ultimately denied the first L-1 petition and COS request, the petition was timely filed. Accordingly, the petition provided the alien a period of authorized stay while the petition was pending from March 16, 2008 through final adjudication on December 7, 2008.
+Notwithstanding, the untimely filed application for extension of B-2 status did not provide the alien any period of authorized stay. In addition, the applications and petitions filed did not grant any lawful status to the alien or create a “bridge” of continuing lawful status stemming from the first timely filed petition.
+### 2. Adjustment
+A pending adjustment application does not put an applicant in a lawful immigration status. For example, if USCIS previously denied adjustment of status to an applicant and the applicant reapplies for adjustment, the period the first application was pending does not count as time spent in lawful immigration status.
+### 3. Petition
+A pending or approved petition does not confer lawful immigration status on the beneficiary. An immigrant petition merely classifies the beneficiary in a particular immigrant visa category, which forms the basis for the beneficiary’s adjustment application.
+## Footnotes
+[^ 1] See INA 245(c)(2). See 8 CFR 245.1(b)(5). This chapter only addresses one of the three immigration violations described in the INA 245(c)(2) bar. For more information on the other two immigration violations, see Chapter 4, Status and Nonimmigrant Visa Violations - INA 245(c)(2) and INA 245(c)(8) [7 USCIS-PM B.4] and Chapter 6, Unauthorized Employment – INA 245(c)(2) and INA 245(c)(8) [7 USCIS-PM B.6].
+[^ 2] See INA 201(b). Immediate relatives of a U.S. citizen include the U.S. citizen’s spouse, children (unmarried and under 21 years of age), and parents (if the U.S. citizen is 21 years of age or older). Widow(er)s of U.S. citizens and aliens admitted to the United States as a fiancé(e) or child of a fiancé(e) of a U.S. citizen may also be considered immediate relatives if they meet certain conditions.
+[^ 3] See INA 101(a)(27)(H).
+[^ 4] See INA 101(a)(27)(I).
+[^ 5] See INA 101(a)(27)(J).
+[^ 6] See INA 101(a)(27)(K).
+[^ 7] See 8 CFR 245.1(d).
+[^ 8] See INA 101(a)(15).
+[^ 9] See INA 207.
+[^ 10] See INA 208.
+[^ 11] See INA 212(d)(5)(A).
+[^ 12] For more information, see Section E, Effect of Pending Application or Petition [7 USCIS-PM B.3(E)].
+[^ 13] USCIS systems may indicate an entry without inspection as “EWI.”
+[^ 14] For example, an alien who was admitted as a nonimmigrant is in an unlawful status if the alien has violated any of the terms or conditions of the nonimmigrant status – such as by engaging in unauthorized employment, termination of the employment that was the basis for the nonimmigrant status, failing to maintain a full course of study, or engaging in conduct specified in 8 CFR 212.1(e)-(g). The alien’s status also becomes unlawful if the alien remains in the United States after DHS terminates the alien’s nonimmigrant status under 8 CFR 214.1(d).
+[^ 15] The relevant terms or conditions include those that apply to all nonimmigrants, such as 8 CFR 214.1(e)-(g), as well as those that apply to the specific nonimmigrant classification. For example, a B-2 visitor who worked without authorization and an F-1 student who failed to maintain a full course of study would both be out of status.
+[^ 16] Extension of stay or change of status applications, once approved, may retroactively confer lawful immigration status. For more information, see Section E, Effect of Pending Application or Petition [7 USCIS-PM B.3(E)].
+[^ 17] See INA 212(a)(9)(B) and INA 212(a)(9)(C). Those in a period of stay authorized are protected from accruing unlawful presence. For example, an alien whose adjustment of status application is pending is in a period of stay authorized and does not accrue unlawful presence. However, although an alien is in a period of stay authorized, it may be that the alien is in unlawful status. See Section E, Effect of a Pending Application or Petition [7 USCIS-PM B.3(E)].
+[^ 18] In some cases, USCIS may excuse untimely filing and approve an extension of stay or change of status request. For more information, see Chapter 4, Status and Nonimmigrant Visa Violations – INA 245(c)(2) and INA 245(c)(8), Section E, Exceptions, Subsection 3, Effect of Extension of Stay and Change of Status [7 USCIS-PM B.4(E)(3)].

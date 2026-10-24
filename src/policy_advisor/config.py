@@ -15,6 +15,13 @@ MATTERS_DIR = INDEX_DIR / "matters"
 AUTH_DIR = DATA_DIR / "auth"
 ORIGINALS_DIR = DATA_DIR / "originals"
 PHASE1_DEMO_MATTER_ID = "phase1-demo"
+# United States federal authority (docs/23 slice P2-B): public-domain texts
+# fetched by scripts/fetch_us_corpus.py into data/us/ and seeded by build_index.
+US_DATA_DIR = DATA_DIR / "us"
+US_LIBRARY_MATTER_ID = "us-library"
+# The shared, read-only authority collections every lawyer's question may
+# widen into (ADR-001 decision 4). Nothing is ever uploaded to them.
+LIBRARY_MATTER_IDS = frozenset({PHASE1_DEMO_MATTER_ID, US_LIBRARY_MATTER_ID})
 
 
 class Settings(BaseSettings):

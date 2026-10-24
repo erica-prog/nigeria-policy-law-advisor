@@ -18,7 +18,12 @@ from pathlib import Path
 
 import numpy as np
 
-from policy_advisor.config import MATTERS_DIR, PHASE1_DEMO_MATTER_ID, get_settings
+from policy_advisor.config import (
+    LIBRARY_MATTER_IDS,
+    MATTERS_DIR,
+    PHASE1_DEMO_MATTER_ID,
+    get_settings,
+)
 from policy_advisor.db import (
     DictConnection,
     check_embedding_model,
@@ -251,16 +256,24 @@ def list_matters() -> list[str]:
 
 
 def list_matters_for_user(username: str) -> list[str]:
-    """Every matter this user owns, plus the shared Phase 1 demo matter
-    (visible to everyone, read-only - see api/deps.py) - never the full multi-tenant
+    """Every matter this user owns, plus the shared libraries: the Phase 1 demo
+    matter always (visible to everyone, read-only - see api/deps.py) and any
+    other library collection that has been built. Never the full multi-tenant
     list `list_matters()` returns."""
     with connect() as conn:
         owned = {
             row["matter_id"]
             for row in conn.execute("SELECT matter_id FROM matters WHERE owner = %s", (username,))
         }
+        built = {
+            row["matter_id"]
+            for row in conn.execute(
+                "SELECT matter_id FROM matters WHERE matter_id = ANY(%s)",
+                (sorted(LIBRARY_MATTER_IDS),),
+            )
+        }
     owned.add(PHASE1_DEMO_MATTER_ID)
-    return sorted(owned)
+    return sorted(owned | built)
 
 
 def matter_version(matter_id: str) -> int:
