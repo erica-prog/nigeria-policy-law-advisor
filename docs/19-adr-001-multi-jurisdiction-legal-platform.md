@@ -381,7 +381,7 @@ looks like; use the SDK rather than copying that approach.
 Phase 0 — make `main` true again (days)
 1. [ ] Merge `fix-uv-lock-dangling` (lock, ingestion and matter-store `NameError`s, ownership into the `matters` table, no live key in unit tests). Confirm CI is green.
 2. [ ] Land this branch's `AGENTS.md`; rewrite `docs/product-brief.md` and the six Cursor agents to the web client and cookie auth; update `docs/architecture/web-mvp.md` storage section; complete the document map in `docs/00-overview.md`.
-3. [ ] Make `mypy` blocking (fix the 43 errors).
+3. [ ] Make `mypy` blocking (18 errors remain after the fix branch); decide whether `ruff format` becomes a CI step (51 files would change).
 4. [ ] Stop deleting uploads: add object storage for originals (migration `0002` adds `documents` with a storage key); keep the ingestion job otherwise unchanged.
 
 Phase 1 — data contract and storage (weeks)

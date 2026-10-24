@@ -28,7 +28,7 @@ both countries, and adds three platform capabilities:
 | Generation | `RAGChain` (one retrieval, relevance gate, one Claude call, deterministic citation check, restricted web fallback). `CaseReasoningChain` (issues → arguments per side → synthesis) with tiered faithfulness: regex locator check, one corrective retry, Claude-as-judge at step boundaries. `AdvisoryChain` (opt-in recommendation with computed, not generated, confidence). One retry/backoff policy for every Claude call. | `generation/`, `llm_retry.py` |
 | Web research | Anthropic `web_search` server tool, `allowed_domains` = `nass.gov.ng`, `ndpc.gov.ng`. | `generation/web_search.py` |
 | API / UI | FastAPI with cookie auth, per-matter ownership check, in-process job tables for uploads and chat, a chat router that picks analysis / research / question. Vanilla-JS browser client with the avatar. Streamlit prototype still the default container command. | `api/`, `web/`, `app.py` |
-| Eval / CI | Golden set over the 3-document demo matter gated at recall 0.9; a relevance-floor calibration report (advisory); a case-reasoning invariants job; both eval jobs start a pgvector container. 232 unit tests. `mypy` is advisory with 43 errors. | `eval/`, `.github/workflows/ci.yml` |
+| Eval / CI | Golden set over the 3-document demo matter gated at recall 0.9; a relevance-floor calibration report (advisory); a case-reasoning invariants job; both eval jobs start a pgvector container. 232 unit tests. `mypy` is advisory: 43 errors on `main`, 18 after the fix branch. | `eval/`, `.github/workflows/ci.yml` |
 | Agents / docs | Six Cursor role agents, a product brief, docs 15 to 17, web-MVP architecture and API contract. | `.cursor/agents/`, `docs/` |
 | MCP / TypeScript | Designed in docs 04 and 05; **nothing implemented**. No MCP server, no TypeScript beyond the browser client. | — |
 
@@ -77,7 +77,8 @@ all of `main`) repairs all three, moves matter ownership from `meta.json`
 into the `matters` table, keeps live Anthropic calls out of the unit-test
 job, and adds the workspace-id header. Its lock exports cleanly and ruff is
 clean on the repaired files. **Merge it before anything else.** Until then,
-no CI result on `main` means anything.
+no CI result on `main` means anything. Branch `2026-10-19-pozq` already carries
+this merge, so the pull request from it brings the repair with it.
 
 ### F1. Jurisdiction is a flat string with Nigerian values baked in
 `jurisdiction` is `"federal" | "lagos" | None` on every chunk, and the system
@@ -175,8 +176,10 @@ correctness risk, not a tidiness issue.
 - Auth is a YAML file plus a signed cookie; no password reset, no MFA, no
   firm/tenant concept, no roles (partner vs. associate vs. paralegal).
 - Rate limiting and key-attempt limiting are in-memory per process.
-- `mypy` runs with `continue-on-error` and reports 43 errors, including
-  the F0 `NameError`s it would have caught. On `main`, unit tests receive
+- `mypy` runs with `continue-on-error`: 43 errors on `main` (including the
+  F0 `NameError`s it would have caught), 18 after the fix branch. `ruff
+  format --check` would reformat 51 files; it is a documented convention
+  but not a CI step. On `main`, unit tests receive
   the real `ANTHROPIC_API_KEY`; the fix branch stops that.
 - Supabase has no African region (doc 16). Hosting client documents in
   London or Frankfurt is a decision under Nigeria's NDPA that a lawyer, not
