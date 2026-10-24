@@ -1,8 +1,9 @@
 """The same app serves the browser client and the avatar masters from
 assets/avatar (mounted, not copied)."""
 
-from policy_advisor.api.main import create_app
 from fastapi.testclient import TestClient
+
+from policy_advisor.api.main import create_app
 
 
 def test_client_and_avatar_frames_are_served(api):

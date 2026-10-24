@@ -15,6 +15,7 @@ from policy_advisor.api.deps import (
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.schemas import MatterCreate, MatterList, MatterOut
 from policy_advisor.config import PHASE1_DEMO_MATTER_ID
+from policy_advisor.ingestion.ingest_document import delete_matter as delete_matter_files
 from policy_advisor.ingestion.matter_store import (
     get_matter_meta,
     list_documents,
@@ -23,7 +24,6 @@ from policy_advisor.ingestion.matter_store import (
     set_matter_owner,
     update_matter_meta,
 )
-from policy_advisor.ingestion.ingest_document import delete_matter as delete_matter_files
 from policy_advisor.logging_utils import log_event
 
 router = APIRouter(prefix="/api/matters", tags=["matters"])

@@ -9,25 +9,20 @@ usable key gets `403 claude_key_required` before anything is retrieved."""
 
 from fastapi import APIRouter
 
-from policy_advisor.api.credentials import UserRecord
-from policy_advisor.api.deps import CurrentUser, MatterAccess
-from policy_advisor.api.services import AdvisorServices
-from policy_advisor.api.user_keys import resolve_anthropic_key
-from policy_advisor.progress import report_stage
-
 from policy_advisor.api.avatar import (
     NO_AUTHORITY_CONFIDENCE,
     avatar_state_for_analysis,
     avatar_state_for_answer,
 )
 from policy_advisor.api.citations import (
+    chunk_reference,
     citations_from_answer,
     find_chunk_for_locator,
-    chunk_reference,
     retrieved_references,
     web_reference,
 )
-from policy_advisor.api.deps import Matter, Services
+from policy_advisor.api.credentials import UserRecord
+from policy_advisor.api.deps import CurrentUser, Matter, MatterAccess, Services
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.schemas import (
     AnalyzeRequest,
@@ -41,9 +36,12 @@ from policy_advisor.api.schemas import (
     IssueOut,
     SourceReference,
 )
+from policy_advisor.api.services import AdvisorServices
+from policy_advisor.api.user_keys import resolve_anthropic_key
 from policy_advisor.config import get_settings
 from policy_advisor.generation.chain import LLM_UNAVAILABLE_MESSAGE
 from policy_advisor.logging_utils import log_event
+from policy_advisor.progress import report_stage
 
 router = APIRouter(prefix="/api/matters/{matter_id}", tags=["advice"])
 

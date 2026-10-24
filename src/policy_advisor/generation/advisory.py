@@ -26,7 +26,6 @@ against actual. Worth doing, and out of scope here.
 
 
 from policy_advisor.config import get_settings
-from policy_advisor.llm import as_model, chat_model
 from policy_advisor.generation.advisory_models import (
     OUTCOME_CONFIDENCE_LOW,
     AdvisoryOpinion,
@@ -39,6 +38,7 @@ from policy_advisor.generation.case_reasoning_models import CaseReasoningResult,
 from policy_advisor.generation.faithfulness import is_supported_citation
 from policy_advisor.generation.judge_check import judge_check
 from policy_advisor.generation.prompt import LANGUAGE_NAMES
+from policy_advisor.llm import as_model, chat_model
 from policy_advisor.llm_retry import call_with_retry
 from policy_advisor.logging_utils import get_logger, log_event
 from policy_advisor.retrieval.hybrid_retriever import RetrievedChunk

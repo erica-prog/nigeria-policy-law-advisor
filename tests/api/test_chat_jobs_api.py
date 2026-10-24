@@ -204,7 +204,7 @@ def test_job_is_only_visible_to_its_owner_on_its_matter(api_with_llm, fakes):
 
 
 def test_job_failure_is_reported_with_the_api_error_envelope_not_exception_text(api_with_llm):
-    from policy_advisor.generation.chain import AnswerResult, LLM_UNAVAILABLE_MESSAGE
+    from policy_advisor.generation.chain import LLM_UNAVAILABLE_MESSAGE, AnswerResult
 
     api_with_llm.services._rag_chain = FakeRagChain(
         result=AnswerResult(answer=LLM_UNAVAILABLE_MESSAGE, retrieved=[], faithful=True)

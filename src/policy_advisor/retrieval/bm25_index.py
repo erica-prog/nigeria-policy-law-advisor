@@ -19,7 +19,9 @@ from policy_advisor.ingestion.matter_store import load_matter_chunks
 class BM25Document:
     metadata: dict
     text: str
-    search_text: str = ""  # text + translated_text, so a query in either language can match by keyword
+    search_text: str = (
+        ""  # text + translated_text, so a query in either language can match by keyword
+    )
 
 
 def _tokenize(text: str) -> list[str]:
@@ -29,7 +31,11 @@ def _tokenize(text: str) -> list[str]:
 class BM25Index:
     def __init__(self, documents: list[BM25Document]):
         self.documents = documents
-        self._bm25 = BM25Okapi([_tokenize(doc.search_text or doc.text) for doc in documents]) if documents else None
+        self._bm25 = (
+            BM25Okapi([_tokenize(doc.search_text or doc.text) for doc in documents])
+            if documents
+            else None
+        )
 
     def search(self, query: str, top_k: int) -> list[tuple[BM25Document, float]]:
         if self._bm25 is None:

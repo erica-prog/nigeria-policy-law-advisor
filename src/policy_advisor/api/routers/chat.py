@@ -20,8 +20,8 @@ from policy_advisor.api.conversations import (
     now_iso,
 )
 from policy_advisor.api.deps import ChatJobs, CurrentUser, Jobs, Matter, MatterAccess, Services
-from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.errors import ApiError
+from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.routers.advice import require_key, run_analyze, run_ask
 from policy_advisor.api.schemas import (
     AnalyzeRequest,

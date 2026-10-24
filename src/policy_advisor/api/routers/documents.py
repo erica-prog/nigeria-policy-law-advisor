@@ -20,9 +20,9 @@ from policy_advisor.ingestion.matter_store import (
     list_documents,
     update_matter_meta,
 )
-from policy_advisor.storage import document_key
 from policy_advisor.jurisdictions import UnknownJurisdiction, load_taxonomy, normalize_jurisdiction
 from policy_advisor.logging_utils import log_event
+from policy_advisor.storage import document_key
 
 router = APIRouter(prefix="/api/matters/{matter_id}/documents", tags=["documents"])
 

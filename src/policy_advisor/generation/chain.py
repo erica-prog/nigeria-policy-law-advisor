@@ -6,12 +6,12 @@ the result before it's returned to the caller."""
 from dataclasses import dataclass, field
 
 from policy_advisor.config import get_settings
-from policy_advisor.llm import chat_model
-from policy_advisor.llm_retry import with_llm_retry
 from policy_advisor.generation.faithfulness import check_faithfulness
 from policy_advisor.generation.prompt import LANGUAGE_NAMES, PROMPT, format_context
 from policy_advisor.generation.relevance_check import judge_relevance
 from policy_advisor.generation.web_search import WebSearchCitation, search_official_sources
+from policy_advisor.llm import chat_model
+from policy_advisor.llm_retry import with_llm_retry
 from policy_advisor.logging_utils import get_logger, log_event, timed_request
 from policy_advisor.progress import report_stage
 from policy_advisor.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk

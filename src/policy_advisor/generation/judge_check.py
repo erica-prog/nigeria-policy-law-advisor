@@ -9,8 +9,8 @@ from langchain_anthropic import ChatAnthropic
 from pydantic import BaseModel, Field
 
 from policy_advisor.generation.case_reasoning_models import StepCheckOutcome
-from policy_advisor.llm import as_model
 from policy_advisor.generation.case_reasoning_prompt import JUDGE_PROMPT
+from policy_advisor.llm import as_model
 from policy_advisor.llm_retry import call_with_retry
 
 

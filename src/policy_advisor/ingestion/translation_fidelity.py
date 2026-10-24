@@ -16,8 +16,8 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
-from policy_advisor.llm_retry import call_with_retry
 from policy_advisor.llm import as_model
+from policy_advisor.llm_retry import call_with_retry
 
 MIN_LENGTH_RATIO = 0.4
 MAX_LENGTH_RATIO = 2.5
