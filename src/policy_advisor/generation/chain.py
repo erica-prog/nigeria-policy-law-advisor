@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from langchain_anthropic import ChatAnthropic
 
-from policy_advisor.config import get_settings
+from policy_advisor.config import get_settings, workspace_headers
 from policy_advisor.llm_retry import with_llm_retry
 from policy_advisor.generation.faithfulness import check_faithfulness
 from policy_advisor.generation.prompt import LANGUAGE_NAMES, PROMPT, format_context
@@ -65,6 +65,7 @@ class RAGChain:
             max_tokens=1024,
             default_request_timeout=30,
             max_retries=0,  # retried explicitly below, so each attempt is logged
+            default_headers=workspace_headers(settings, api_key) or None,
         )
 
     @with_llm_retry

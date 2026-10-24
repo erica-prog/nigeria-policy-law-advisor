@@ -7,10 +7,11 @@ for the fixed Phase 1 demo seed."""
 import shutil
 from pathlib import Path
 
-from policy_advisor.config import PHASE1_DEMO_MATTER_ID
+from policy_advisor.config import MATTERS_DIR, PHASE1_DEMO_MATTER_ID
+from policy_advisor.db import connect
 from policy_advisor.ingestion.chunk import SUPPORTED_SUFFIXES, chunk_uploaded_document
 from policy_advisor.ingestion.chunk_translation import translate_chunks
-from policy_advisor.ingestion import matter_store
+from policy_advisor.ingestion.embed import embed_texts
 from policy_advisor.ingestion.matter_store import remove_document as remove_document_chunks
 from policy_advisor.ingestion.matter_store import replace_document_chunks
 from policy_advisor.logging_utils import get_logger, log_event
@@ -66,39 +67,15 @@ def add_document(
         )
     chunks = translate_chunks(chunks, api_key=api_key, translate=translate)
 
-    vector_store = load_vector_store()
-    # Clear any prior chunks for this exact document before re-adding, so a
-    # re-upload that produces fewer/renumbered chunks doesn't leave stale
-    # vectors behind under the old chunk_ids.
-    vector_store.delete(
-        where={"$and": [{"matter_id": matter_id}, {"source_document": file_path.name}]}
-    )
-    vector_store.add_documents(
-        documents=[chunk_to_document(chunk) for chunk in chunks],
-        ids=[chunk.chunk_id for chunk in chunks],
-    )
-
-    upsert_chunks(
-        matter_id,
-        [
-            {
-                "chunk_id": c.chunk_id,
-                "source_document": c.source_document,
-                "doc_type": c.doc_type,
-                "matter_id": c.matter_id,
-                "jurisdiction": c.jurisdiction,
-                "locator": c.locator,
-                "page": c.page,
-                "heading": c.heading or "",
-                "text": c.text,
-                "language": c.language,
-                "translated_text": c.translated_text or "",
-                "translated_language": c.translated_language or "",
-                "translation_flagged": c.translation_flagged,
-                "translation_flag_reason": c.translation_flag_reason,
-            }
-            for c in chunks
-        ],
+    # Embedded before the transaction opens: it takes seconds, and holding the
+    # database's write lock that long would stall every other lawyer's writes.
+    embeddings = embed_texts([chunk.text for chunk in chunks])
+    # One transaction removes this document's previous chunks and inserts the
+    # new ones, text and vectors together. A re-upload that now splits into
+    # fewer or renumbered chunks can't leave stale ones behind, and there is no
+    # longer a second store for the write to miss.
+    replace_document_chunks(
+        matter_id, file_path.name, [chunk_to_record(c) for c in chunks], embeddings
     )
 
     log_event(
@@ -115,25 +92,14 @@ def remove_document(matter_id: str, source_document: str) -> None:
     """Removes one document's chunks. Text and vectors share a row now, so
     keyword and vector search stop finding it at the same moment."""
     _reject_shared_demo_matter(matter_id)
-    vector_store = load_vector_store()
-    vector_store.delete(
-        where={"$and": [{"matter_id": matter_id}, {"source_document": source_document}]}
-    )
     remove_document_chunks(matter_id, source_document)
     log_event(logger, "document_removed", matter_id=matter_id, document=source_document)
 
 
 def delete_matter(matter_id: str) -> None:
-    """Removes a case entirely: its vectors, its chunk file and its chat.
-    The shared demo matter is refused, same as a single-document removal."""
+    """Removes a case entirely: its rows (chunks and chats cascade) and the
+    local sidecar directory. The shared demo matter is refused."""
     _reject_shared_demo_matter(matter_id)
-    try:
-        load_vector_store().delete(where={"matter_id": matter_id})
-    except Exception:
-        # A case with no indexed chunks has nothing to delete. Anything else
-        # is logged; the files still go, so the case disappears for the user.
-        logger.warning(
-            "matter_vectors_not_removed", extra={"fields": {"matter_id": matter_id}}, exc_info=True
-        )
-    # Read the directory from the module so tests that relocate the store are honoured.
-    shutil.rmtree(matter_store.MATTERS_DIR / matter_id, ignore_errors=True)
+    with connect() as conn:
+        conn.execute("DELETE FROM matters WHERE matter_id = %s", (matter_id,))
+    shutil.rmtree(MATTERS_DIR / matter_id, ignore_errors=True)
