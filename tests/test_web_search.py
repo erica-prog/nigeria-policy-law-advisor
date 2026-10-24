@@ -9,6 +9,9 @@ from unittest.mock import MagicMock, patch
 from policy_advisor.generation.web_search import search_official_sources
 
 MODULE = "policy_advisor.generation.web_search"
+# The mocked tests pass the domains in so they never depend on the registry's
+# rows; tests/test_sources.py covers the registry side of the gate.
+DOMAINS = ["nass.gov.ng", "ndpc.gov.ng"]
 
 
 def _text_block(text: str, citations=None):
@@ -24,7 +27,7 @@ def _client_returning(blocks):
 def test_concatenates_text_blocks_into_the_answer():
     blocks = [_text_block("Part one. "), _text_block("Part two.")]
     with patch(f"{MODULE}.anthropic.Anthropic", return_value=_client_returning(blocks)):
-        result = search_official_sources("some question")
+        result = search_official_sources("some question", domains=DOMAINS)
 
     assert result.answer == "Part one. Part two."
 
@@ -37,7 +40,7 @@ def test_extracts_deduplicated_citations_across_text_blocks():
         _text_block("second", citations=[citation_a, citation_b]),  # citation_a repeated
     ]
     with patch(f"{MODULE}.anthropic.Anthropic", return_value=_client_returning(blocks)):
-        result = search_official_sources("some question")
+        result = search_official_sources("some question", domains=DOMAINS)
 
     urls = [c.url for c in result.citations]
     assert urls == ["https://nass.gov.ng/a", "https://nass.gov.ng/b"]
@@ -47,7 +50,7 @@ def test_extracts_deduplicated_citations_across_text_blocks():
 def test_no_citations_means_not_found():
     blocks = [_text_block("I couldn't find anything relevant.", citations=None)]
     with patch(f"{MODULE}.anthropic.Anthropic", return_value=_client_returning(blocks)):
-        result = search_official_sources("some question")
+        result = search_official_sources("some question", domains=DOMAINS)
 
     assert result.found is False
     assert result.citations == []
@@ -59,7 +62,7 @@ def test_ignores_non_text_blocks():
         _text_block("the answer"),
     ]
     with patch(f"{MODULE}.anthropic.Anthropic", return_value=_client_returning(blocks)):
-        result = search_official_sources("some question")
+        result = search_official_sources("some question", domains=DOMAINS)
 
     assert result.answer == "the answer"
 
