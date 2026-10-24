@@ -25,6 +25,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
+from policy_advisor.llm import as_model
 from policy_advisor.llm_retry import call_with_retry
 from policy_advisor.retrieval.hybrid_retriever import RetrievedChunk
 
@@ -70,4 +71,4 @@ def judge_relevance(llm: ChatAnthropic, question: str, chunks: list[RetrievedChu
 
     structured = llm.with_structured_output(RelevanceVerdict)
     messages = RELEVANCE_PROMPT.format_messages(question=question, passages=_format_passages(chunks))
-    return call_with_retry(lambda: structured.invoke(messages))
+    return as_model(call_with_retry(lambda: structured.invoke(messages)), RelevanceVerdict)

@@ -38,7 +38,7 @@ Claude. Keep both under 200 lines; when they overlap, `AGENTS.md` wins.
   `docker run -d -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=policy_advisor_test -p 5433:5432 pgvector/pgvector:pg16`
   then `TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/policy_advisor_test`),
   and `tests/conftest.py` refuses any non-local database host on purpose.
-- `uv run mypy src` is advisory in CI (18 known errors); do not add to them.
+- `uv run mypy src` is a blocking CI check; keep it at zero errors.
 - The only product surface is the browser client in `web/` served by FastAPI. The
   Streamlit prototype was removed on 2026-10-24; do not reintroduce it.
 - Accounts: `uv run python -m scripts.add_user <username> "<Display Name>"`. There is no

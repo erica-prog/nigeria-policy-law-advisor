@@ -24,9 +24,9 @@ decided cases with outcomes and metadata, plus an eval that scores predicted
 against actual. Worth doing, and out of scope here.
 """
 
-from langchain_anthropic import ChatAnthropic
 
-from policy_advisor.config import get_settings, workspace_headers
+from policy_advisor.config import get_settings
+from policy_advisor.llm import as_model, chat_model
 from policy_advisor.generation.advisory_models import (
     OUTCOME_CONFIDENCE_LOW,
     AdvisoryOpinion,
@@ -92,14 +92,9 @@ class AdvisoryChain:
         self._settings = settings
         self._case_chain = case_chain or CaseReasoningChain()
         self._logger = get_logger("policy_advisor.advisory", settings.log_level)
-        self._llm = ChatAnthropic(
-            model=settings.anthropic_model,
-            api_key=settings.anthropic_api_key.get_secret_value(),
-            max_tokens=2048,
-            default_request_timeout=45,
-            max_retries=0,  # retried explicitly via call_with_retry
-            default_headers=workspace_headers(settings, None) or None,
-        )
+        # Retried explicitly via call_with_retry. Always the server key: advisory
+        # mode is only reached from the eval harness today.
+        self._llm = chat_model(settings, None, max_tokens=2048, timeout=45)
 
     def advise(
         self,
@@ -137,7 +132,7 @@ class AdvisoryChain:
             response_language=response_language,
         )
         structured = self._llm.with_structured_output(AdvisoryOpinion)
-        opinion: AdvisoryOpinion = call_with_retry(lambda: structured.invoke(messages))
+        opinion = as_model(call_with_retry(lambda: structured.invoke(messages)), AdvisoryOpinion)
 
         # The advisory synthesises authorities the issue analyses already
         # grounded. Anything else appearing here came from the model's own

@@ -17,6 +17,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from policy_advisor.llm_retry import call_with_retry
+from policy_advisor.llm import as_model
 
 MIN_LENGTH_RATIO = 0.4
 MAX_LENGTH_RATIO = 2.5
@@ -61,7 +62,7 @@ def judge_translation_fidelity(
     messages = FIDELITY_JUDGE_PROMPT.format_messages(
         original=original, translated=translated, source_language=source_language, target_language=target_language
     )
-    result: FidelityVerdict = call_with_retry(lambda: structured.invoke(messages))
+    result = as_model(call_with_retry(lambda: structured.invoke(messages)), FidelityVerdict)
     flagged = result.verdict.strip().upper() == "FLAGGED"
     return FidelityResult(flagged=flagged, reason=result.reason)
 

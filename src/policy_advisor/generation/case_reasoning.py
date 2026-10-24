@@ -13,7 +13,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
-from policy_advisor.config import get_settings, workspace_headers
+from policy_advisor.config import get_settings
 from policy_advisor.generation.case_reasoning_models import (
     CONFIDENCE_FROM_WEB,
     CONFIDENCE_LIMITED,
@@ -34,6 +34,7 @@ from policy_advisor.generation.judge_check import judge_check
 from policy_advisor.generation.prompt import LANGUAGE_NAMES
 from policy_advisor.generation.relevance_check import judge_relevance
 from policy_advisor.generation.web_search import search_official_sources
+from policy_advisor.llm import as_model, chat_model
 from policy_advisor.llm_retry import OutputTruncated, call_with_retry, invoke_structured
 from policy_advisor.logging_utils import get_logger, log_event
 from policy_advisor.progress import report_stage
@@ -96,18 +97,8 @@ class CaseReasoningChain:
         self._settings = settings
         self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.case_reasoning", settings.log_level)
-        key = api_key or settings.anthropic_api_key.get_secret_value()
-        headers = workspace_headers(settings, api_key) or None
-
         def _client(max_tokens: int, timeout: float) -> ChatAnthropic:
-            return ChatAnthropic(
-                model=settings.anthropic_model,
-                api_key=key,
-                max_tokens=max_tokens,
-                default_request_timeout=timeout,
-                max_retries=0,
-                default_headers=headers,
-            )
+            return chat_model(settings, api_key, max_tokens=max_tokens, timeout=timeout)
 
         self._llm = _client(2048, 45)
         # Issue arguments need a larger budget than the shared client. The
@@ -129,7 +120,7 @@ class CaseReasoningChain:
         messages = ISSUE_IDENTIFICATION_PROMPT.format_messages(
             case_facts=case_facts, response_language=response_language
         )
-        result: IssueList = call_with_retry(lambda: structured.invoke(messages))
+        result = as_model(call_with_retry(lambda: structured.invoke(messages)), IssueList)
         return result.issues
 
     def _generate_issue_arguments(

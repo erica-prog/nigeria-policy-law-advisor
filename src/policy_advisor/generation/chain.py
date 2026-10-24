@@ -5,9 +5,8 @@ the result before it's returned to the caller."""
 
 from dataclasses import dataclass, field
 
-from langchain_anthropic import ChatAnthropic
-
-from policy_advisor.config import get_settings, workspace_headers
+from policy_advisor.config import get_settings
+from policy_advisor.llm import chat_model
 from policy_advisor.llm_retry import with_llm_retry
 from policy_advisor.generation.faithfulness import check_faithfulness
 from policy_advisor.generation.prompt import LANGUAGE_NAMES, PROMPT, format_context
@@ -59,14 +58,8 @@ class RAGChain:
         self._api_key = api_key or settings.anthropic_api_key.get_secret_value()
         self._retriever = retriever if retriever is not None else HybridRetriever()
         self._logger = get_logger("policy_advisor.chain", settings.log_level)
-        self._llm = ChatAnthropic(
-            model=settings.anthropic_model,
-            api_key=self._api_key,
-            max_tokens=1024,
-            default_request_timeout=30,
-            max_retries=0,  # retried explicitly below, so each attempt is logged
-            default_headers=workspace_headers(settings, api_key) or None,
-        )
+        # Retried explicitly below, so each attempt is logged.
+        self._llm = chat_model(settings, api_key, max_tokens=1024, timeout=30)
 
     @with_llm_retry
     def _call_llm(self, messages):
