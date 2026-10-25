@@ -27,6 +27,7 @@ const ACTIVATED = "Thank you, I'm ready. Tell me about your case, or add your do
 const STAGE_TEXT = {
   reading_documents: "Reading your documents…",
   searching_web: "Checking official websites…",
+  researching: "Researching across your documents, the library and official sources…",
   checking_citations: "Checking my citations against the sources…",
   writing: "Writing it up…",
 };

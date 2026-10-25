@@ -36,6 +36,8 @@ APP_TABLES = (
     "user_keys",
     "document_jobs",
     "sources",
+    "agent_runs",
+    "agent_tool_calls",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")

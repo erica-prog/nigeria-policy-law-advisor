@@ -376,7 +376,11 @@ def test_each_users_chain_is_built_with_their_own_key_never_anothers(api_byok):
         "the server key must never be used when sharing is off"
     )
     assert len(rag_by_key[ALICE_KEY].calls) == 2 and len(rag_by_key[BOB_KEY].calls) == 1
-    assert len(case_by_key[BOB_KEY].calls) == 1 and ALICE_KEY not in case_by_key
+    assert len(case_by_key[BOB_KEY].calls) == 1
+    # Alice's first chat message went to the research agent, whose tools are
+    # her chains: built with her key, and her case chain was never run.
+    assert set(case_by_key) <= {ALICE_KEY, BOB_KEY}
+    assert ALICE_KEY not in case_by_key or case_by_key[ALICE_KEY].calls == []
     # Chains are cached per key: a second request builds nothing new.
     before = len(built)
     assert (

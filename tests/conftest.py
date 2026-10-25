@@ -59,7 +59,7 @@ def fresh_db():
     with connect() as conn:
         conn.execute(
             "TRUNCATE chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
-            "index_meta RESTART IDENTITY CASCADE"
+            "index_meta, agent_tool_calls, agent_runs RESTART IDENTITY CASCADE"
         )
     return database_url()
     # `sources` is deliberately not truncated: migration 0007 seeds the Phase 1

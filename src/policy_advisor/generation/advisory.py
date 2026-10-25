@@ -24,7 +24,6 @@ decided cases with outcomes and metadata, plus an eval that scores predicted
 against actual. Worth doing, and out of scope here.
 """
 
-
 from policy_advisor.config import get_settings
 from policy_advisor.generation.advisory_models import (
     OUTCOME_CONFIDENCE_LOW,
@@ -58,14 +57,19 @@ def _format_issue_analyses(issues: list[IssueAnalysis]) -> str:
     for issue in issues:
         lines = [f"Issue: {issue.issue}", f"Confidence: {issue.confidence}"]
         if issue.unverified:
-            lines.append("WARNING: this issue failed its citation check - do not rely on it as settled.")
+            lines.append(
+                "WARNING: this issue failed its citation check - do not rely on it as settled."
+            )
         if issue.from_web:
             lines.append(
                 "WARNING: no authority in this matter covers this issue. It was answered from an "
                 "official website and has not been checked against the lawyer's documents."
             )
         for argument in issue.arguments:
-            cites = ", ".join(a.locator for a in argument.supporting_authorities) or "no authority cited"
+            cites = (
+                ", ".join(a.locator for a in argument.supporting_authorities)
+                or "no authority cited"
+            )
             lines.append(f"- [{argument.side}] {argument.summary} (cites: {cites})")
         lines.append(f"Assessment: {issue.assessment}")
         blocks.append("\n".join(lines))
@@ -87,14 +91,15 @@ def _opinion_as_text(opinion: AdvisoryOpinion) -> str:
 
 
 class AdvisoryChain:
-    def __init__(self, case_chain: CaseReasoningChain | None = None):
+    def __init__(self, case_chain: CaseReasoningChain | None = None, api_key: str | None = None):
         settings = get_settings()
         self._settings = settings
-        self._case_chain = case_chain or CaseReasoningChain()
+        self._case_chain = case_chain or CaseReasoningChain(api_key=api_key)
         self._logger = get_logger("policy_advisor.advisory", settings.log_level)
-        # Retried explicitly via call_with_retry. Always the server key: advisory
-        # mode is only reached from the eval harness today.
-        self._llm = chat_model(settings, None, max_tokens=2048, timeout=45)
+        # Retried explicitly via call_with_retry. `api_key` is the requesting
+        # user's key when the research agent calls this (docs/28); None is the
+        # server key, which the eval harness uses.
+        self._llm = chat_model(settings, api_key, max_tokens=2048, timeout=45)
 
     def advise(
         self,
@@ -111,7 +116,9 @@ class AdvisoryChain:
             conversation_language=conversation_language,
             allow_web_fallback=allow_web_fallback,
         )
-        return self.advise_on(analysis, matter_id=matter_id, conversation_language=conversation_language)
+        return self.advise_on(
+            analysis, matter_id=matter_id, conversation_language=conversation_language
+        )
 
     def advise_on(
         self,
@@ -123,7 +130,9 @@ class AdvisoryChain:
         without paying for it twice - and so tests can drive this layer with a
         constructed analysis instead of a live case run."""
         response_language = LANGUAGE_NAMES.get(conversation_language, "English")
-        log_event(self._logger, "advisory_started", matter_id=matter_id, issue_count=len(analysis.issues))
+        log_event(
+            self._logger, "advisory_started", matter_id=matter_id, issue_count=len(analysis.issues)
+        )
 
         messages = ADVISORY_PROMPT.format_messages(
             case_facts=analysis.case_facts,
@@ -145,7 +154,9 @@ class AdvisoryChain:
             if not is_supported_citation(authority.locator, available)
         ]
 
-        judge_outcome = judge_check(self._llm, _opinion_as_text(opinion), self._authority_chunks(analysis, matter_id))
+        judge_outcome = judge_check(
+            self._llm, _opinion_as_text(opinion), self._authority_chunks(analysis, matter_id)
+        )
 
         confidence, basis = assess_outcome_confidence(analysis.issues)
         if unsupported or judge_outcome.judge_flagged:
@@ -154,10 +165,14 @@ class AdvisoryChain:
             confidence = OUTCOME_CONFIDENCE_LOW
             extra = []
             if unsupported:
-                extra.append(f"cites authorities no issue analysis established ({', '.join(unsupported)})")
+                extra.append(
+                    f"cites authorities no issue analysis established ({', '.join(unsupported)})"
+                )
             if judge_outcome.judge_flagged:
                 extra.append("flagged by the faithfulness judge")
-            basis = (basis + " " if basis else "") + "The advice itself " + " and ".join(extra) + "."
+            basis = (
+                (basis + " " if basis else "") + "The advice itself " + " and ".join(extra) + "."
+            )
 
         log_event(
             self._logger,
@@ -184,7 +199,9 @@ class AdvisoryChain:
             judge_notes=judge_outcome.judge_notes,
         )
 
-    def _authority_chunks(self, analysis: CaseReasoningResult, matter_id: str) -> list[RetrievedChunk]:
+    def _authority_chunks(
+        self, analysis: CaseReasoningResult, matter_id: str
+    ) -> list[RetrievedChunk]:
         """The corpus passages behind this case, for the judge pass.
 
         Re-retrieved per issue, mirroring `CaseReasoningChain._synthesize`.

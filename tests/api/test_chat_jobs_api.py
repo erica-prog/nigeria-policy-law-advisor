@@ -9,6 +9,8 @@ import pytest
 
 from policy_advisor.progress import report_stage
 from tests.api.helpers import (
+    FakeResearchAgent,
+    research_result,
     FakeCaseChain,
     FakeRagChain,
     FakeRetriever,
@@ -70,6 +72,7 @@ def fakes(api_with_llm):
     api_with_llm.services._retriever = FakeRetriever(
         chunks=[chunk("Section 3", "Either party may terminate on ninety days written notice.")]
     )
+    api_with_llm.services._research_agent = FakeResearchAgent(result=research_result())
     return rag, case
 
 
@@ -212,7 +215,7 @@ def test_job_failure_is_reported_with_the_api_error_envelope_not_exception_text(
     api_with_llm.services._retriever = FakeRetriever(chunks=[])
     alice = api_with_llm.login("alice")
     matter = _new_case(alice)
-    done = _wait(alice, matter["id"], _start(alice, matter["id"], CASE))
+    done = _wait(alice, matter["id"], _start(alice, matter["id"], CASE, intent="ask"))
     assert done["status"] == "failed" and done["reply"] is None
     assert done["error"] == {
         "code": "llm_unavailable",
@@ -224,7 +227,7 @@ def test_job_failure_is_reported_with_the_api_error_envelope_not_exception_text(
             raise RuntimeError("secret path /srv/keys and token sk-ant-xyz")
 
     api_with_llm.services._rag_chain = Exploding(result=corpus_answer())
-    done = _wait(alice, matter["id"], _start(alice, matter["id"], "again"))
+    done = _wait(alice, matter["id"], _start(alice, matter["id"], "again", intent="ask"))
     assert done["status"] == "failed"
     assert done["error"]["code"] == "internal_error"
     assert "sk-ant" not in done["error"]["message"] and "/srv" not in done["error"]["message"]
@@ -236,3 +239,16 @@ def test_starting_a_job_without_a_usable_key_is_403_before_any_job_exists(api_by
     response = alice.post(f"/api/matters/{matter['id']}/chat/jobs", json={"message": CASE})
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "claude_key_required"
+
+
+def test_research_job_narrates_the_researching_stage(api_with_llm, fakes):
+    alice = api_with_llm.login("alice")
+    matter = _new_case(alice)
+    done = _wait(
+        alice,
+        matter["id"],
+        _start(alice, matter["id"], "Compare the limitation rules", intent="research"),
+    )
+    assert done["reply"]["mode"] == "research"
+    assert done["stages"] == ["researching", "writing"]
+    assert done["reply"]["answer"]["source"] == "research"

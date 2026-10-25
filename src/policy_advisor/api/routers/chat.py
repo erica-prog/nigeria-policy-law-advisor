@@ -1,8 +1,9 @@
 """Chat: one endpoint behind the chat-first client. The server decides
 whether a message is a case description (case analysis), a question about
-the documents (RAG answer), or, when the matter has no documents, general
-legal research from official web sources that is labelled as such and never
-presented as evidence (AGENTS.md rules 4 and 5).
+the documents (RAG answer), or research: the research agent (docs/28) over
+the matter, the libraries, the connectors and, when allowed, the web, chosen
+when the lawyer asks for it or when the matter has no documents. Research is
+labelled as such and never presented as evidence (AGENTS.md rules 4 and 5).
 
 Depends on `Matter`, so ownership is verified before any document listing,
 retrieval or generation (rule 1). The ask/analyze endpoints in advice.py stay
@@ -10,6 +11,9 @@ as they are; this module composes them."""
 
 from fastapi import APIRouter, status
 
+from policy_advisor.agents.research import AgentUnavailable
+from policy_advisor.api.avatar import avatar_state_for_research
+from policy_advisor.api.citations import retrieved_references
 from policy_advisor.api.conversations import (
     append_messages,
     derive_title,
@@ -48,9 +52,10 @@ from policy_advisor.logging_utils import log_event
 router = APIRouter(prefix="/api/matters/{matter_id}", tags=["chat"])
 
 RESEARCH_NOTICE = (
-    "This is general legal research from official web sources and the model, not evidence "
-    "from your documents. Nothing here proves a fact of your case. Add your documents with + "
-    "for an analysis based on them."
+    "This is legal research across your documents, the reference library, official sources "
+    "and (when allowed) official websites. Each citation says where it came from; only "
+    "passages from your documents are evidence. Nothing from an outside source proves a fact "
+    "of your case."
 )
 WEB_NOTICE = (
     "Your documents do not cover this, so the answer comes from official websites. It is "
@@ -69,6 +74,8 @@ def decide_mode(
     """Analysis when the user asked for it, or for the first message of a
     conversation that has not been analysed yet. The shared read-only library
     is not anyone's case, so its first message is treated as a question."""
+    if intent == "research":
+        return "research"
     wants_analysis = intent == "analyze" or (
         intent == "auto"
         and not read_only
@@ -84,22 +91,39 @@ def _plural(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
+def bubble_for_research(answer: AskResponse) -> tuple[str, list[Chip]]:
+    kinds = {c.kind for c in answer.citations}
+    if not answer.citations:
+        text = "I researched this but found nothing I can cite. "
+        if answer.budget_exhausted:
+            text += "I ran out of tool calls before finishing. "
+        return (
+            text + "Add your documents with + or narrow the question.",
+            [CHIP_ADD_DOCS, CHIP_ASK],
+        )
+    parts = []
+    if "evidence" in kinds:
+        parts.append("your documents")
+    if "authority" in kinds:
+        parts.append("legal authority")
+    if "web" in kinds:
+        parts.append("official websites")
+    text = (
+        f"Here is my research, with {_plural(len(answer.citations), 'citation')} from "
+        f"{', '.join(parts)}; each one says which."
+    )
+    if not answer.faithful:
+        text += f" {_plural(len(answer.unsupported_citations), 'citation')} did not check out; read with care."
+    if answer.budget_exhausted:
+        text += " I reached the tool-call limit, so parts may be incomplete."
+    return text, [CHIP_ASK]
+
+
 def bubble_for_answer(
     answer: AskResponse, mode: ChatMode, allow_web: bool
 ) -> tuple[str, list[Chip]]:
     if mode == "research":
-        if answer.source == "web":
-            return (
-                "There are no documents in this case yet, so this is general legal research "
-                "from official web sources, not evidence from your case. Add your documents "
-                "with + and I will analyse them.",
-                [CHIP_ADD_DOCS],
-            )
-        return (
-            "There are no documents in this case yet, and I did not find anything relevant on "
-            "the official web sources either. Add your documents with + and I will analyse them.",
-            [CHIP_ADD_DOCS],
-        )
+        return bubble_for_research(answer)
     if answer.source == "web":
         return (
             "Your documents do not cover this, so this comes from official websites. It is legal "
@@ -169,7 +193,7 @@ def chat(
 ) -> ChatReply:
     """Synchronous form: the reply in one response. The client uses the job
     form below so it can narrate progress; this stays for scripts and tests."""
-    return run_chat(body, matter, services, require_key(user), jobs)
+    return run_chat(body, matter, services, require_key(user), jobs, username=user.username)
 
 
 @router.post("/chat/jobs", response_model=ChatJobOut, status_code=status.HTTP_202_ACCEPTED)
@@ -187,7 +211,7 @@ def start_chat_job(
     job = chat_jobs.submit(
         matter.id,
         user.username,
-        lambda: run_chat(body, matter, services, api_key, jobs),
+        lambda: run_chat(body, matter, services, api_key, jobs, username=user.username),
         logger=services.logger,
     )
     return job.to_out()
@@ -229,12 +253,54 @@ def _still_reading_reply(names: list[str]) -> tuple[AskResponse, str]:
     return answer, f"I'm still reading {shown}."
 
 
+def run_research(
+    body: ChatRequest,
+    matter: MatterAccess,
+    services: AdvisorServices,
+    api_key: str,
+    username: str | None,
+) -> AskResponse:
+    """The research agent as an `AskResponse` with `source == "research"`."""
+    try:
+        result = services.research_agent_for(api_key).run(
+            body.message,
+            matter_id=matter.id,
+            username=username,
+            jurisdiction=body.jurisdiction,
+            conversation_language=body.language,
+            allow_web=body.allow_web,
+        )
+    except AgentUnavailable as exc:
+        # The cause (a model error, a request id) goes to the log, never to
+        # the client, which gets the same envelope the ask pipeline uses.
+        log_event(services.logger, "research_unavailable", matter_id=matter.id, error=str(exc))
+        raise ApiError(
+            503, "llm_unavailable", "The advisor model did not respond. Try again shortly."
+        ) from exc
+    kinds = [c.kind for c in result.citations]
+    usage = {k: int(v) for k, v in (result.usage or {}).items() if isinstance(v, int | float)}
+    return AskResponse(
+        answer=result.answer,
+        source="research",
+        faithful=result.faithful,
+        unsupported_citations=list(result.unsupported_citations),
+        citations=result.citations,
+        retrieved=retrieved_references(result.retrieved),
+        avatar_state=avatar_state_for_research(kinds, result.faithful),
+        usage=usage,
+        run_id=result.run_id,
+        tool_calls=result.tool_calls,
+        budget_exhausted=result.budget_exhausted,
+    )
+
+
 def run_chat(
     body: ChatRequest,
     matter: MatterAccess,
     services: AdvisorServices,
     api_key: str,
     jobs: JobTable | None = None,
+    username: str | None = None,
 ) -> ChatReply:
     persist = not matter.read_only
     history = load_messages(matter.id) if persist else []
@@ -267,14 +333,20 @@ def run_chat(
         bubble, chips = bubble_for_analysis(analysis)
         avatar_state = analysis.avatar_state
         citations = analysis.citations
+    elif mode == "research":
+        # The agent (docs/28): the matter, the libraries, the connectors and,
+        # when the lawyer allows it, the web. Labelled as research, never as
+        # evidence.
+        answer = run_research(body, matter, services, api_key, username)
+        bubble, chips = bubble_for_research(answer)
+        avatar_state = answer.avatar_state
+        citations = answer.citations
+        notice = RESEARCH_NOTICE
     else:
-        # Research mode has no documents to retrieve from, so the web fallback is
-        # forced on; the reply is labelled as research, never as evidence.
-        allow_web = True if mode == "research" else body.allow_web
         answer = run_ask(
             AskRequest(
                 question=body.message,
-                allow_web=allow_web,
+                allow_web=body.allow_web,
                 jurisdiction=body.jurisdiction,
                 language=body.language,
             ),
@@ -282,12 +354,10 @@ def run_chat(
             services,
             api_key,
         )
-        bubble, chips = bubble_for_answer(answer, mode, allow_web)
+        bubble, chips = bubble_for_answer(answer, mode, body.allow_web)
         avatar_state = answer.avatar_state
         citations = answer.citations
-        if mode == "research":
-            notice = RESEARCH_NOTICE
-        elif answer.source == "web":
+        if answer.source == "web":
             notice = WEB_NOTICE
 
     reply = ChatReply(

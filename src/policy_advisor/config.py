@@ -127,6 +127,10 @@ class Settings(BaseSettings):
     connector_timeout_seconds: float = 45.0
     connector_result_max_chars: int = 12_000
     agent_max_tool_calls: int = 12
+    # The research agent (docs/28). Empty AGENT_MODEL means ANTHROPIC_MODEL, so
+    # one key and one bill; the per-turn output cap bounds a runaway answer.
+    agent_model: str = ""
+    agent_max_tokens: int = 16_000
 
     def llm_configured(self) -> bool:
         return bool(self.anthropic_api_key.get_secret_value().strip())

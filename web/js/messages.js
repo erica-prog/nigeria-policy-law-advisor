@@ -30,12 +30,14 @@ export function renderAnswer(result, openPassage, { label } = {}) {
       ? "⚠ From an official website, not verified against your documents"
       : result.source === "library"
         ? "From the reference library: legal authority, not evidence from your case"
-        : result.source === "none"
+        : result.source === "research"
+          ? "Research across your documents, the library and official sources; each citation says which"
+          : result.source === "none"
           ? "Nothing relevant found"
           : "From your documents");
   card.append(el("div", { class: "msg__label", text: heading }));
   card.append(renderAnswerText(result.answer, result.citations, result.unsupported_citations, openPassage));
-  if (!result.faithful && (result.source === "corpus" || result.source === "library")) {
+  if (!result.faithful && ["corpus", "library", "research"].includes(result.source)) {
     card.append(
       el("div", { class: "msg__warning" }, [
         "Citation check failed. These locators were not among the retrieved passages: ",
@@ -136,7 +138,7 @@ export function renderReply(reply, openPassage) {
     wrap.append(renderAnalysis(reply.analysis, openPassage));
   } else if (reply.answer) {
     const label =
-      reply.mode === "research"
+      reply.mode === "research" && reply.answer.source !== "research"
         ? reply.answer.source === "web"
           ? "General legal research from official websites, not evidence from your case"
           : "General legal research: nothing relevant found"

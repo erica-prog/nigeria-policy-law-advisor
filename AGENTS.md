@@ -102,6 +102,7 @@ rewriting it.
 | Source registry (licence terms, lawyer sign-off, web allow-list) | `src/policy_advisor/sources/`, `scripts/manage_sources.py`, `docs/24-source-registry.md` |
 | Connectors and tool policy (MCP client, deny-list, result wrapper) | `src/policy_advisor/tools/`, `connectors/legal-ai-skills/` (vendored, see its `UPSTREAM.md`), `docs/26-connectors-and-tool-policy.md` |
 | Nigeria connector (TypeScript MCP server) | `connectors/ng-sources/`, `docs/27-nigeria-connector.md`, TypeScript notes in `docs/05-typescript-guide.md` |
+| Research agent (tool runner, audit tables)  | `src/policy_advisor/agents/`, `docs/28-research-agent.md` |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |

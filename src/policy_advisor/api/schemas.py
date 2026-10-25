@@ -29,7 +29,9 @@ SourceKind = Literal["evidence", "authority", "web"]
 # The four corpus trust labels (ADR-001). `kind` above stays for the client;
 # `firm` renders as authority there until the client learns the fourth label.
 TrustKind = Literal["evidence", "firm", "authority", "web"]
-AnswerSource = Literal["corpus", "library", "web", "none"]
+# `research`: the research agent (docs/28) answered from a mix of the matter, the
+# library, connectors and the web; every citation says which.
+AnswerSource = Literal["corpus", "library", "web", "research", "none"]
 DocumentStatus = Literal["queued", "processing", "ready", "failed"]
 
 
@@ -144,6 +146,10 @@ class AskResponse(BaseModel):
     retrieved: list[SourceReference] = Field(default_factory=list)
     avatar_state: AvatarState
     usage: dict[str, int] = Field(default_factory=dict)
+    # Research agent runs only (docs/28): the audit row and how the run ended.
+    run_id: str | None = None
+    tool_calls: int | None = None
+    budget_exhausted: bool = False
 
 
 class AnalyzeRequest(BaseModel):
@@ -190,7 +196,7 @@ class AnalyzeResponse(BaseModel):
 
 # ---- Chat (revision 2, docs/contracts/web-api.md "Chat") ----
 
-ChatIntent = Literal["auto", "analyze", "ask"]
+ChatIntent = Literal["auto", "analyze", "ask", "research"]
 ChatMode = Literal["analysis", "research", "question"]
 ChipAction = Literal["analyze", "add_documents", "ask_web", "ask"]
 
@@ -243,7 +249,9 @@ class ChatHistory(BaseModel):
 # the client can narrate progress while the server works. ----
 
 ChatJobStatus = Literal["queued", "running", "done", "failed"]
-ChatStage = Literal["reading_documents", "searching_web", "checking_citations", "writing"]
+ChatStage = Literal[
+    "reading_documents", "searching_web", "researching", "checking_citations", "writing"
+]
 
 
 class ChatJobError(BaseModel):
