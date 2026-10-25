@@ -433,3 +433,20 @@ code for a failed model call.
   /api/matters/{id}/artefacts/{artefact_id}` -> `Artefact`.
 - `GET /api/matters/{id}/artefacts/{artefact_id}/file?format=docx|pptx` -> the file as an
   attachment; `404 not_found` when the artefact has no file of that format.
+
+
+## Review (docs/36)
+
+- `POST /api/matters/{id}/artefacts/{artefact_id}/review` `{ "action": "review" | "approve" |
+  "reject" | "reopen", "note": null | "..." }` -> `200 Artefact` with the new `status`;
+  `403 role_forbidden`, `409 wrong_state`, `409 immutable` (approved artefacts never change).
+- `POST /api/matters/{id}/bulk/findings/{finding_id}/review` `{ "action": "review" |
+  "dismiss" | "reopen", "note" }` -> `200 Finding`; same refusals.
+- `GET /api/matters/{id}/artefacts/{artefact_id}/events` and `GET
+  /api/matters/{id}/bulk/findings/{finding_id}/events` -> `{ "events": [{ "id",
+  "subject_kind", "subject_id", "action", "from_status", "to_status", "username", "role",
+  "note", "created_at" }] }`.
+- `GET /api/matters/{id}/review-queue` -> `{ "artefacts": [Artefact], "findings": [Finding] }`:
+  artefacts in `draft` or `reviewed`, findings in `open` or `reviewed`, oldest first.
+- Roles: `review` needs access; `approve`, `reject` and `dismiss` need `reviewer` or
+  `admin`; `reopen` needs write access.

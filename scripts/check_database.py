@@ -47,6 +47,7 @@ APP_TABLES = (
     "findings",
     "templates",
     "artefacts",
+    "review_events",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")

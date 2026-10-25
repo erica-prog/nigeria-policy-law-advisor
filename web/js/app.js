@@ -10,6 +10,7 @@
 
 import { api, ApiError } from "./api.js";
 import { createActivateDialog } from "./activate.js";
+import { createArtefactViewer, createReviewPanel } from "./review.js";
 import { createAvatar } from "./avatar.js";
 import { createBubble } from "./bubble.js";
 import { createPassageDialog, el } from "./citations.js";
@@ -59,6 +60,22 @@ const advisor = createAvatar($("#advisor"));
 const bubble = createBubble($("#bubble"));
 const openPassage = createPassageDialog($("#passage-dialog"));
 const activate = createActivateDialog($("#activate-dialog"), { onActivated: onKeyActivated });
+// Review queue and artefact viewer (docs/36); the server decides every transition.
+const artefactViewer = createArtefactViewer({
+  api,
+  dialog: $("#artefact-dialog"),
+  getMatter: () => state.matter,
+  onError: (error) => setError($("#composer-error"), error),
+});
+const reviewPanel = createReviewPanel({
+  api,
+  dialog: $("#review-dialog"),
+  viewer: artefactViewer,
+  getMatter: () => state.matter,
+  getUser: () => state.user || {},
+  onError: (error) => setError($("#composer-error"), error),
+});
+$("#review-open").addEventListener("click", () => reviewPanel.open());
 
 function showView(name) {
   for (const [key, node] of Object.entries(views)) node.hidden = key !== name;
@@ -301,6 +318,7 @@ async function openCase(id, { silent = false } = {}) {
     const [history, docs] = await Promise.all([api.chatHistory(id), api.documents(id)]);
     resetConversation();
     state.matter = matter;
+    $("#review-open").hidden = false;
     state.messages = history.messages;
     sessionStorage.setItem(CURRENT_CASE_KEY, matter.id);
     // Restored history appears at once: the class stays on each node, so

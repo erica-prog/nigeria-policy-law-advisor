@@ -405,3 +405,28 @@ details.passages summary { cursor: pointer; color: var(--violet); font-weight: 6
 
 /* The playbook that shaped a reply (docs/29). */
 .playbook { font-size: 0.8rem; color: #555; margin: 0 0 0.25rem; }
+
+/* Review queue and artefact viewer (docs/36) */
+.review, .artefact { border: 0; border-radius: var(--radius); padding: 0; width: calc(100% - 2rem); max-width: 760px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+.review::backdrop, .artefact::backdrop { background: rgba(22, 20, 28, 0.45); }
+.review__inner, .artefact__inner { padding: 1.2rem 1.3rem; max-height: 85vh; overflow: auto; }
+.review__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+.review-list { list-style: none; padding: 0; margin: 0; }
+.review-row { border-top: 1px solid var(--line); padding: 0.7rem 0; display: grid; gap: 0.3rem; }
+.review-row__head { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.review-row__actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.badge--draft, .badge--open { background: #eef1f6; }
+.badge--reviewed { background: #fff3cd; }
+.badge--approved, .badge--verified { background: #d8f3dc; }
+.badge--rejected, .badge--dismissed, .badge--rejected_evidence, .badge--high { background: #f8d7da; }
+.badge--unverified, .badge--review { background: #ffe8cc; }
+.artefact__body h3 { margin: 1rem 0 0.3rem; }
+.artefact__instruction { color: var(--ink-soft); font-style: italic; }
+.artefact__rejected { color: #842029; background: #f8d7da; padding: 0.4rem 0.6rem; border-radius: 6px; }
+.artefact__unverified { color: #842029; font-weight: 600; font-size: 0.8rem; }
+.judge { font-size: 0.85rem; padding: 0.2rem 0.5rem; border-radius: 6px; background: #eef1f6; }
+.judge--flagged { background: #f8d7da; }
+.manifest { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.manifest th, .manifest td { text-align: left; padding: 0.3rem 0.4rem; border-top: 1px solid var(--line); vertical-align: top; }
+.artefact__links { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+.events { list-style: none; padding: 0; margin: 0.5rem 0 0; width: 100%; }

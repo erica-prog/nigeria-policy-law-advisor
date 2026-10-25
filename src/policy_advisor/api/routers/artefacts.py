@@ -6,6 +6,7 @@ access. Nothing here sends or files anything."""
 from fastapi import APIRouter, status
 from fastapi.responses import StreamingResponse
 
+from policy_advisor import review
 from policy_advisor.api.deps import CurrentUser, Matter, Services, WritableMatter
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.routers.advice import require_key
@@ -13,6 +14,10 @@ from policy_advisor.api.schemas import (
     ArtefactList,
     ArtefactOut,
     DraftRequest,
+    ReviewEventList,
+    ReviewEventOut,
+    ReviewQueueOut,
+    ReviewRequest,
     TemplateList,
     TemplateOut,
 )
@@ -24,6 +29,7 @@ from policy_advisor.artefacts.store import (
     list_artefacts,
     list_templates,
 )
+from policy_advisor.api.routers.bulk import finding_out
 from policy_advisor.logging_utils import log_event
 
 router = APIRouter(prefix="/api", tags=["artefacts"])
@@ -136,4 +142,66 @@ def download_artefact(
         handle,
         media_type=MEDIA[format],
         headers={"Content-Disposition": f'attachment; filename="{safe}.{format}"'},
+    )
+
+
+def _refused(exc: review.ReviewRefused) -> ApiError:
+    status_code = {"role_forbidden": 403, "wrong_state": 409, "immutable": 409}.get(exc.code, 409)
+    return ApiError(status_code, exc.code, str(exc))
+
+
+def event_out(event: review.ReviewEvent) -> ReviewEventOut:
+    return ReviewEventOut(
+        id=event.id,
+        subject_kind=event.subject_kind,  # type: ignore[arg-type]
+        subject_id=event.subject_id,
+        action=event.action,
+        from_status=event.from_status,
+        to_status=event.to_status,
+        username=event.username,
+        role=event.role,
+        note=event.note,
+        created_at=event.created_at.isoformat() if event.created_at else None,
+    )
+
+
+@router.post("/matters/{matter_id}/artefacts/{artefact_id}/review", response_model=ArtefactOut)
+def review_artefact(
+    artefact_id: str, body: ReviewRequest, matter: Matter, user: CurrentUser, services: Services
+) -> ArtefactOut:
+    """A review transition (docs/36). Reviewers act on read-only matters;
+    the role rules are in `review.py`, the trail in `review_events`."""
+    try:
+        record = review.transition_artefact(
+            artefact_id, body.action, user=user, access=matter, note=body.note
+        )
+    except KeyError:
+        raise ApiError(404, "not_found", "Not found.") from None
+    except review.ReviewRefused as exc:
+        raise _refused(exc) from exc
+    log_event(
+        services.logger,
+        "artefact_reviewed",
+        artefact_id=artefact_id,
+        action=body.action,
+        status=record.status,
+        username=user.username,
+    )
+    return artefact_out(record)
+
+
+@router.get("/matters/{matter_id}/artefacts/{artefact_id}/events", response_model=ReviewEventList)
+def artefact_events(artefact_id: str, matter: Matter) -> ReviewEventList:
+    _owned(artefact_id, matter.id)
+    return ReviewEventList(
+        events=[event_out(e) for e in review.events_for("artefact", artefact_id)]
+    )
+
+
+@router.get("/matters/{matter_id}/review-queue", response_model=ReviewQueueOut)
+def matter_review_queue(matter: Matter) -> ReviewQueueOut:
+    queue = review.review_queue(matter.id)
+    return ReviewQueueOut(
+        artefacts=[artefact_out(a) for a in queue["artefacts"]],
+        findings=[finding_out(f) for f in queue["findings"]],
     )

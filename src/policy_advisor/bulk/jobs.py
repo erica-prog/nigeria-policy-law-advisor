@@ -320,3 +320,25 @@ def list_findings(matter_id: str, *, status: str | None = None) -> list[dict[str
             params,
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_finding(finding_id: int) -> dict[str, Any] | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT id, matter_id, job_id, kind, severity, summary, documents, evidence, status, created_at "
+            "FROM findings WHERE id = %s",
+            (finding_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def set_finding_status(finding_id: int, status: str) -> dict[str, Any]:
+    with connect() as conn:
+        row = conn.execute(
+            "UPDATE findings SET status = %s WHERE id = %s "
+            "RETURNING id, matter_id, job_id, kind, severity, summary, documents, evidence, status, created_at",
+            (status, finding_id),
+        ).fetchone()
+    if row is None:
+        raise KeyError(str(finding_id))
+    return dict(row)

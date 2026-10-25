@@ -429,3 +429,35 @@ class TemplateOut(BaseModel):
 
 class TemplateList(BaseModel):
     templates: list[TemplateOut]
+
+
+# ---- Review (docs/36) ----
+
+ReviewAction = Literal["review", "approve", "reject", "dismiss", "reopen"]
+
+
+class ReviewRequest(BaseModel):
+    action: ReviewAction
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class ReviewEventOut(BaseModel):
+    id: int
+    subject_kind: Literal["artefact", "finding"]
+    subject_id: str
+    action: str
+    from_status: str
+    to_status: str
+    username: str | None = None
+    role: str | None = None
+    note: str | None = None
+    created_at: str | None = None
+
+
+class ReviewEventList(BaseModel):
+    events: list[ReviewEventOut]
+
+
+class ReviewQueueOut(BaseModel):
+    artefacts: list[ArtefactOut] = Field(default_factory=list)
+    findings: list[FindingOut] = Field(default_factory=list)
