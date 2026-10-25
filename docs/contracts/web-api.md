@@ -395,3 +395,25 @@ code for a failed model call.
   until the deployment configures `MODEL_PRICES`. `scope=tenant` needs the `admin` role
   (`403 role_forbidden` otherwise); the database policies bound the rows to the caller's
   firm in either case.
+
+
+## Bulk analysis (docs/33)
+
+- `POST /api/matters/{id}/bulk` `{ "schema_id": "contract", "documents": null | [...],
+  "ceiling_tokens": null | 2000000, "backend": null | "sync" | "batch" }` -> `202 BulkJob`
+  = `{ "job_id", "matter_id", "schema_id", "schema_version", "documents", "status":
+  "queued" | "running" | "waiting_batch" | "paused_ceiling" | "done" | "failed" | "cancelled",
+  "backend", "triage_model", "escalation_model", "ceiling_tokens", "spent_tokens",
+  "done_documents", "flagged_documents", "error", "created_at", "finished_at" }`. Writable
+  matter and the caller's key required; `400 unknown_schema | unknown_documents | no_documents`.
+- `GET /api/matters/{id}/bulk` -> `{ "jobs": [BulkJob] }`; `GET /api/matters/{id}/bulk/{job_id}`
+  -> `BulkJob`.
+- `POST /api/matters/{id}/bulk/{job_id}/resume` `{ "ceiling_tokens": 4000000 }` -> `202 BulkJob`
+  (`409 cannot_resume` unless the job is paused or failed and the ceiling exceeds the spend);
+  `POST .../cancel` -> `200 BulkJob`.
+- `GET /api/matters/{id}/bulk/records/{schema_id}?document=` -> `{ "records": [{ "document",
+  "schema_id", "schema_version", "job_id", "record", "evidence_spans", "confidence", "model",
+  "flagged", "created_at" }] }`.
+- `GET /api/matters/{id}/bulk/findings/all?status_filter=open` -> `{ "findings": [{ "id",
+  "job_id", "kind", "severity": "info" | "review" | "high", "summary", "documents",
+  "evidence", "status": "open" | "reviewed" | "dismissed", "created_at" }] }`.

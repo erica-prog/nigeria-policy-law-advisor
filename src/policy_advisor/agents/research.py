@@ -28,6 +28,7 @@ drive the tools with a scripted loop and no model.
 """
 
 import asyncio
+import json
 import re
 import time
 from fnmatch import fnmatchcase
@@ -50,6 +51,7 @@ from policy_advisor.llm import message_text
 from policy_advisor.logging_utils import get_logger, log_event
 from policy_advisor.playbooks import Playbook
 from policy_advisor.progress import report_stage
+from policy_advisor.retrieval.hybrid_retriever import RetrievedChunk
 from policy_advisor.sources import Source, list_sources
 from policy_advisor.telemetry import attributed, record_cost, span
 from policy_advisor.tools import (
@@ -496,7 +498,65 @@ class ResearchAgent:
             )
             return text
 
-        tools = [beta_async_tool(search_case_documents), beta_async_tool(analyze_case)]
+        async def query_extractions(field: str, contains: str = "", document: str = "") -> str:
+            """Query the structured records bulk analysis extracted from this matter's documents (docs/33): field is one of parties, obligations, key_dates, defined_terms, risk_clauses, governing_law, gaps; contains filters by words; document narrows to one file. Returns matching items with their document and clause locators, which you may cite as [Source: locator]."""
+            arguments = {"field": field, "contains": contains, "document": document}
+            refusal = agent._spend(state, CHAIN_CONNECTOR, "query_extractions", arguments)
+            if refusal:
+                return refusal
+            started = time.perf_counter()
+            from policy_advisor.bulk.jobs import query_extractions as run_query
+            from policy_advisor.retrieval.vector_store import locator_matches
+
+            try:
+                rows = await asyncio.to_thread(
+                    run_query,
+                    matter_id,
+                    field=field,
+                    contains=contains or None,
+                    source_document=document or None,
+                )
+            except Exception as exc:
+                agent._record(
+                    state,
+                    connector=CHAIN_CONNECTOR,
+                    tool="query_extractions",
+                    status="error",
+                    arguments=arguments,
+                    started=started,
+                    error=str(exc),
+                )
+                return f"query_extractions failed: {exc}"
+            cited: set[str] = set()
+            for row in rows:
+                for locator in row.get("locators", []):
+                    if locator not in cited:
+                        cited.add(locator)
+                        for text, metadata in locator_matches(matter_id, locator):
+                            if metadata.get("source_document") == row["document"]:
+                                state.chunks.append(RetrievedChunk(text=text, metadata=metadata))
+            lines = [f"{len(rows)} matching item(s)."]
+            for row in rows[:40]:
+                lines.append(
+                    f"- {row['document']} | {row['field']}: {json.dumps(row['item'], ensure_ascii=False)[:400]} | locators: {', '.join(row['locators']) or 'none'} | confidence {row['confidence']}"
+                )
+            text = "\n".join(lines)
+            agent._record(
+                state,
+                connector=CHAIN_CONNECTOR,
+                tool="query_extractions",
+                status="ok",
+                arguments=arguments,
+                result_chars=len(text),
+                started=started,
+            )
+            return text
+
+        tools = [
+            beta_async_tool(search_case_documents),
+            beta_async_tool(analyze_case),
+            beta_async_tool(query_extractions),
+        ]
 
         if agent._advisory_chain is not None:
 

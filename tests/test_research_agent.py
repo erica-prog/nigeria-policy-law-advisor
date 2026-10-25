@@ -269,3 +269,57 @@ def test_long_arguments_are_truncated_in_the_audit_table(fresh_db):
     result = _agent(script).run("q", matter_id="case-1")
     stored = audit.list_calls(result.run_id)[0].arguments["case_facts"]
     assert len(stored) < 600 and "more characters" in stored
+
+
+def test_query_extractions_tool_loads_the_cited_chunks(fresh_db):
+    import numpy as np
+
+    from policy_advisor.bulk.jobs import save_extraction
+    from policy_advisor.ingestion import matter_store
+
+    matter_store.set_matter_owner("case-1", "alice")
+    records = [
+        {
+            "chunk_id": "c4",
+            "text": "The Buyer shall pay within sixty days.",
+            "source_document": "amendment.docx",
+            "locator": "Clause 4",
+            "doc_type": "generic",
+            "matter_id": "case-1",
+            "jurisdiction": None,
+            "page": 1,
+        }
+    ]
+    matter_store.replace_document_chunks(
+        "case-1", "amendment.docx", records, np.ones((1, 384), dtype=np.float32) / np.sqrt(384)
+    )
+    save_extraction(
+        matter_id="case-1",
+        source_document="amendment.docx",
+        schema_id="contract",
+        schema_version=1,
+        job_id=None,
+        record={
+            "obligations": [
+                {
+                    "obligor": "the Buyer",
+                    "obligation": "pay",
+                    "deadline": "sixty days",
+                    "evidence": [{"locator": "Clause 4", "quote": "pay within sixty days"}],
+                }
+            ]
+        },
+        evidence_spans=[],
+        confidence=1.0,
+        model="m",
+        flagged=False,
+    )
+
+    async def script(tools, system, prompt):
+        found = await tools["query_extractions"].call({"field": "obligations", "contains": "sixty"})
+        assert "amendment.docx" in found and "Clause 4" in found
+        return "The amendment moved payment to sixty days [Source: Clause 4].", {}
+
+    result = _agent(script).run("payment terms", matter_id="case-1")
+    assert [c.cited_as for c in result.citations] == ["Clause 4"] and result.faithful
+    assert [c.tool for c in audit.list_calls(result.run_id)] == ["query_extractions"]

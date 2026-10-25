@@ -52,7 +52,8 @@ os.environ["OTEL_EXPORTER"] = "memory"
 
 TENANT_TABLES = (
     "chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
-    "index_meta, agent_tool_calls, agent_runs, matter_shares, tenant_users, tenants, cost_ledger"
+    "index_meta, agent_tool_calls, agent_runs, matter_shares, tenant_users, tenants, cost_ledger, "
+    "findings, extractions, bulk_jobs"
 )
 
 

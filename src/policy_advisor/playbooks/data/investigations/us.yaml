@@ -30,6 +30,7 @@ allowed_tools:
   - search_case_documents
   - analyze_case
   - assess_case_position
+  - query_extractions
   - search_official_web
   - search_us_ecfr
   - get_us_ecfr_text

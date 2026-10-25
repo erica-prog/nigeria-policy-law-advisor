@@ -42,6 +42,9 @@ APP_TABLES = (
     "tenant_users",
     "matter_shares",
     "cost_ledger",
+    "bulk_jobs",
+    "extractions",
+    "findings",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")

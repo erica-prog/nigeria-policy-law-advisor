@@ -12,6 +12,7 @@ import argparse
 import time
 
 from policy_advisor.api.jobs import JobTable
+from policy_advisor.bulk.extract import run_pending as run_pending_bulk
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.config import get_settings
 from policy_advisor.logging_utils import log_event
@@ -35,6 +36,7 @@ def main() -> None:
         while True:
             jobs.requeue_stale()
             ran = jobs.run_pending(services, limit=50)
+            ran += run_pending_bulk(services, limit=5)
             if args.once:
                 log_event(services.logger, "worker_drained", ran=ran)
                 return

@@ -20,7 +20,12 @@ M = TypeVar("M", bound=BaseModel)
 
 
 def chat_model(
-    settings: Settings, api_key: str | None, *, max_tokens: int, timeout: float
+    settings: Settings,
+    api_key: str | None,
+    *,
+    max_tokens: int,
+    timeout: float,
+    model: str | None = None,
 ) -> ChatAnthropic:
     """A Claude client for `api_key` (a user's own key) or, when None, the
     server key. Retries are off here: every caller applies the one policy in
@@ -32,13 +37,14 @@ def chat_model(
     checker derives from them does not match what the class accepts at runtime.
     Validation is the same either way."""
     key = api_key or settings.anthropic_api_key.get_secret_value()
+    chosen = model or settings.anthropic_model
     return ChatAnthropic.model_validate(
         {
-            "model": settings.anthropic_model,
+            "model": chosen,
             "anthropic_api_key": SecretStr(key),
             "max_tokens": max_tokens,
             # Every call this model makes becomes a span and a ledger row (docs/32).
-            "callbacks": [make_usage_callback(settings.anthropic_model)],
+            "callbacks": [make_usage_callback(chosen)],
             "default_request_timeout": timeout,
             "max_retries": 0,
             "default_headers": workspace_headers(settings, api_key) or None,
