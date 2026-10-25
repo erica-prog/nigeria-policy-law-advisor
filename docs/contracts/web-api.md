@@ -450,3 +450,16 @@ code for a failed model call.
   artefacts in `draft` or `reviewed`, findings in `open` or `reviewed`, oldest first.
 - Roles: `review` needs access; `approve`, `reject` and `dismiss` need `reviewer` or
   `admin`; `reopen` needs write access.
+
+
+## Tenant settings, holds and retention (docs/37)
+
+- `GET /api/tenant` -> `{ "tenant_id", "name", "residency": null | "ng" | "us",
+  "retention_days_matter", "retention_days_firm", "deployment_residency", "retention_min_days" }`.
+- `PUT /api/tenant` (admin) `{ "name"?, "residency"?, "retention_days_matter"?,
+  "retention_days_firm"? }` -> `200 Tenant`; `400 residency_not_honoured` when the deployment's
+  database is not where the firm asks; `400 retention_too_short` below the floor.
+- `POST /api/matters/{id}/hold` `{ "on": true, "reason": "..." }` -> `200 Matter` with `hold`
+  and `hold_reason`; owner or admin (`403 not_owner`); the shared libraries refuse.
+- `GET /api/tenant/retention-events` (admin or lawyer) -> `{ "events": [{ "id", "matter_id",
+  "action": "deleted" | "would_delete" | "skipped_hold", "reason", "counts", "actor", "created_at" }] }`.

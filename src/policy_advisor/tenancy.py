@@ -17,7 +17,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from policy_advisor.config import LIBRARY_MATTER_IDS
 from policy_advisor.db import connect
@@ -38,6 +38,23 @@ _current: ContextVar[str | None] = ContextVar("policy_advisor_tenant", default=N
 
 class TenantRequired(RuntimeError):
     """A write that needs a tenant ran with none set."""
+
+
+class ResidencyNotHonoured(ValueError):
+    """The deployment's database is not where the tenant needs its data."""
+
+
+class RetentionTooShort(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class TenantSettings:
+    tenant_id: str
+    name: str
+    residency: str | None
+    retention_days_matter: int | None
+    retention_days_firm: int | None
 
 
 @dataclass(frozen=True)
@@ -104,17 +121,98 @@ def add_user_to_tenant(
         )
 
 
+def check_residency(residency: str | None) -> None:
+    """A tenant may ask for a residency only when the deployment's database
+    is there (`DATABASE_RESIDENCY`). No cloud region is in Nigeria today, so
+    an `ng` request is refused unless the operator has set it deliberately."""
+    from policy_advisor.config import get_settings
+
+    if residency is None:
+        return
+    if residency not in ("ng", "us"):
+        raise ValueError("residency must be 'ng', 'us' or None")
+    honoured = get_settings().database_residency.strip().lower()
+    if honoured != residency:
+        raise ResidencyNotHonoured(
+            f"this deployment's database honours residency {honoured or 'none'!r}, not {residency!r}; "
+            "the firm must be told where its data lives"
+        )
+
+
+def check_retention(days: int | None) -> None:
+    from policy_advisor.config import get_settings
+
+    if days is None:
+        return
+    minimum = get_settings().retention_min_days
+    if days < minimum:
+        raise RetentionTooShort(f"retention cannot be below {minimum} days")
+
+
 def create_tenant(tenant_id: str, name: str, *, residency: str | None = None) -> None:
     if tenant_id != tenant_id.strip().lower() or not tenant_id:
         raise ValueError("tenant_id must be a non-empty lower-case slug")
-    if residency not in (None, "ng", "us"):
-        raise ValueError("residency must be 'ng', 'us' or None")
+    check_residency(residency)
     with connect() as conn:
         conn.execute(
             "INSERT INTO tenants (tenant_id, name, residency) VALUES (%s, %s, %s) "
             "ON CONFLICT (tenant_id) DO UPDATE SET name = EXCLUDED.name, residency = EXCLUDED.residency",
             (tenant_id, name, residency),
         )
+
+
+def get_tenant(tenant_id: str) -> TenantSettings | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT tenant_id, name, residency, retention_days_matter, retention_days_firm FROM tenants WHERE tenant_id = %s",
+            (tenant_id,),
+        ).fetchone()
+    return TenantSettings(**dict(row)) if row else None
+
+
+_UNSET: Any = object()
+
+
+def update_tenant(
+    tenant_id: str,
+    *,
+    name: str | None = None,
+    residency: Any = _UNSET,
+    retention_days_matter: Any = _UNSET,
+    retention_days_firm: Any = _UNSET,
+) -> TenantSettings:
+    """Change a firm's settings; every value is checked before any write."""
+    sets: list[str] = []
+    params: list[Any] = []
+    if name is not None:
+        sets.append("name = %s")
+        params.append(name)
+    if residency is not _UNSET:
+        check_residency(residency)
+        sets.append("residency = %s")
+        params.append(residency)
+    for column, value in (
+        ("retention_days_matter", retention_days_matter),
+        ("retention_days_firm", retention_days_firm),
+    ):
+        if value is not _UNSET:
+            check_retention(value)
+            sets.append(f"{column} = %s")
+            params.append(value)
+    if not sets:
+        current = get_tenant(tenant_id)
+        if current is None:
+            raise KeyError(tenant_id)
+        return current
+    with connect() as conn:
+        row = conn.execute(
+            f"UPDATE tenants SET {', '.join(sets)} WHERE tenant_id = %s "
+            "RETURNING tenant_id, name, residency, retention_days_matter, retention_days_firm",
+            (*params, tenant_id),
+        ).fetchone()
+    if row is None:
+        raise KeyError(tenant_id)
+    return TenantSettings(**dict(row))
 
 
 def list_tenants() -> list[str]:

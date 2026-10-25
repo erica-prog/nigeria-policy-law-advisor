@@ -216,7 +216,7 @@ def get_matter_meta(matter_id: str) -> dict:
     plus `owner`, from the matters row. Empty dict when the matter does not exist."""
     with connect() as conn:
         row = conn.execute(
-            "SELECT owner, title, created_at, updated_at FROM matters WHERE matter_id = %s",
+            "SELECT owner, title, created_at, updated_at, hold, hold_reason FROM matters WHERE matter_id = %s",
             (matter_id,),
         ).fetchone()
     if row is None:
@@ -228,7 +228,21 @@ def get_matter_meta(matter_id: str) -> dict:
     for key in ("created_at", "updated_at"):
         if row[key] is not None:
             meta[key] = _iso(row[key])
+    meta["hold"] = bool(row["hold"])
+    if row["hold_reason"]:
+        meta["hold_reason"] = row["hold_reason"]
     return meta
+
+
+def set_hold(matter_id: str, on: bool, *, reason: str | None, by: str | None) -> dict:
+    """A legal hold (docs/37): the retention job never deletes a matter on hold."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE matters SET hold = %s, hold_reason = %s, hold_set_by = %s, "
+            "hold_set_at = CASE WHEN %s THEN now() ELSE NULL END WHERE matter_id = %s",
+            (on, (reason or None) if on else None, by if on else None, on, matter_id),
+        )
+    return get_matter_meta(matter_id)
 
 
 def update_matter_meta(matter_id: str, **fields: str | None) -> dict:

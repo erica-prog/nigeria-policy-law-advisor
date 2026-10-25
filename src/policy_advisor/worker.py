@@ -13,6 +13,7 @@ import time
 
 from policy_advisor.api.jobs import JobTable
 from policy_advisor.bulk.extract import run_pending as run_pending_bulk
+from policy_advisor.retention import run_retention
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.config import get_settings
 from policy_advisor.logging_utils import log_event
@@ -32,11 +33,18 @@ def main() -> None:
     )
     # The worker claims from every firm's queue, then runs each job as its
     # own tenant (JobTable.run). The API never uses this view.
+    next_retention = time.monotonic()
     with tenant_context(ALL_TENANTS):
         while True:
             jobs.requeue_stale()
             ran = jobs.run_pending(services, limit=50)
             ran += run_pending_bulk(services, limit=5)
+            if time.monotonic() >= next_retention:
+                # Daily; a dry run unless the operator opted in (docs/37).
+                run_retention(
+                    services.blob_store, apply=settings.retention_auto_apply, actor="worker"
+                )
+                next_retention = time.monotonic() + settings.retention_run_hours * 3600
             if args.once:
                 log_event(services.logger, "worker_drained", ran=ran)
                 return
