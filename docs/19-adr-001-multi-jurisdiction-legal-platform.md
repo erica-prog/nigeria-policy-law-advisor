@@ -392,11 +392,11 @@ Phase 1 — data contract and storage (weeks)
 8. [x] Reranker, per-tier gate overrides and the scope ladder with golden-set case `g_widen_01` (`519c957`); measured in docs/22.
 
 Phase 2 — sources, agent loop, playbooks (weeks)
-9. [ ] Source registry table and admin view; register the plugin's US connectors (pinned version) and the `web_search` allow-list.
-10. [ ] Nigeria connector as a TypeScript MCP server; NigeriaLII and nass.gov.ng first; curated mirror job.
-11. [ ] Add US locator parsers (`us_usc`, `us_cfr`, `us_reporter`, `uscis_pm`) and a US golden set; make the faithfulness check scheme-aware.
-12. [ ] Agent loop with Claude tool use over MCP tools, the three chains exposed as tools, the tool-policy layer, per-run caps, audit log.
-13. [ ] Playbook registry; investigations playbooks for NG and US adapted from the plugin's skills; immigration playbooks written new; behavioural routing evals.
+9. [x] Source registry table and admin view; register the plugin's US connectors (pinned version) and the `web_search` allow-list. *(done: docs/24, commit 38c6a8c)*
+10. [x] Nigeria connector as a TypeScript MCP server; NigeriaLII and nass.gov.ng first; curated mirror job. *(done: docs/27, commit c662cfe; NigeriaLII excluded, WordPress sites instead)*
+11. [x] Add US locator parsers (`us_usc`, `us_cfr`, `us_reporter`, `uscis_pm`) and a US golden set; make the faithfulness check scheme-aware. *(done: docs/25, commit bc41394)*
+12. [x] Agent loop with Claude tool use over MCP tools, the three chains exposed as tools, the tool-policy layer, per-run caps, audit log. *(done: docs/26 and docs/28, commits 0a7eeb1 and 13af231)*
+13. [x] Playbook registry; investigations playbooks for NG and US adapted from the plugin's skills; immigration playbooks written new; behavioural routing evals. *(done: docs/29, slice P2-F)*
 
 Phase 3 — bulk analysis (weeks)
 14. [ ] Extraction schemas per document type with evidence spans; batch workers; cross-document checks; review queue; cost ceilings; extraction F1 eval on a labelled set.

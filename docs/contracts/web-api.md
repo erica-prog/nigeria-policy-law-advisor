@@ -250,6 +250,10 @@ analyze above remain available and unchanged.
      shared read-only library, whose first message is a question).
   2. Analysis wanted **and the matter has documents** -> `mode: "analysis"` via the
      analyze pipeline with `case_facts = message`.
+  0. A playbook selector (docs/29) runs first: when the message and the jurisdiction
+     match a playbook, the reply carries its id in `playbook`, its notice replaces the
+     generic one, and the research agent runs under its tool allow-list and checklist.
+     A matched playbook may choose the mode (analysis needs documents).
   3. `intent: "research"`, or analysis wanted **and the matter has no documents** ->
      `mode: "research"`: the research agent (docs/28) over the matter, the shared
      libraries, the registry's connectors and, when `allow_web` is true, official
@@ -265,6 +269,7 @@ Response `200 ChatReply`:
 {
   "id": "5f1c...", "role": "assistant", "created_at": "2026-09-29T22:10:00+00:00",
   "mode": "analysis" | "research" | "question",
+  "playbook": null | "investigations-ng" | "investigations-us" | "immigration-ng" | "immigration-us",
   "bubble": "I have analysed your case: 2 issues, 1 without support in your documents. The details are below.",
   "notice": null | "This is legal research across your documents, the reference library, official sources and (when allowed) official websites. ...",
   "avatar_state": "verified_source",

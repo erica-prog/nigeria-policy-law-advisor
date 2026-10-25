@@ -1,0 +1,51 @@
+version: 1
+cases:
+  - id: ng-overstay-regularisation
+    prompt: "My client overstayed her visa in Lagos; can she regularise and what does the Nigeria Immigration Service need?"
+    jurisdiction: ng-federal
+    has_documents: false
+    expected_skill: immigration-ng
+    expected_behavior: research
+    must_include: ["Nigeria Immigration Service", "retrieval date", "may change", "overstay"]
+    must_not_include: ["decision of the Nigeria Immigration Service is"]
+  - id: ng-cerpac-with-documents-stays-research
+    prompt: "Here is the client's passport and current CERPAC; what does renewal require?"
+    jurisdiction: ng-federal
+    has_documents: true
+    expected_skill: immigration-ng
+    expected_behavior: research
+    must_include: ["documents the application needs", "official"]
+    must_not_include: []
+  - id: us-adjustment-of-status
+    prompt: "Client entered on a B-2, married a US citizen, and wants to adjust status; is she eligible under 8 CFR 245?"
+    jurisdiction: us-federal
+    has_documents: true
+    expected_skill: immigration-us
+    expected_behavior: research
+    must_include: ["version dates", "eligibility", "bars", "USCIS"]
+    must_not_include: ["guaranteed approval"]
+  - id: us-detention-zadvydas
+    prompt: "How long can ICE detain my client after a final removal order? Zadvydas?"
+    jurisdiction: us-federal
+    has_documents: false
+    expected_skill: immigration-us
+    expected_behavior: research
+    must_include: ["detention", "immigration court"]
+    must_not_include: []
+  - id: us-explicit-analysis-with-documents
+    prompt: "Analyse the client's unlawful presence history from the uploaded I-94 records."
+    jurisdiction: us-federal
+    has_documents: true
+    intent: analyze
+    expected_skill: immigration-us
+    expected_behavior: analysis
+    must_include: ["unlawful presence"]
+    must_not_include: []
+  - id: wrong-country-no-playbook
+    prompt: "Can my client get a visa on arrival?"
+    jurisdiction: us-federal
+    has_documents: false
+    expected_skill: immigration-us
+    expected_behavior: research
+    must_include: ["official"]
+    must_not_include: ["Nigeria Immigration Service"]

@@ -131,6 +131,9 @@ export function renderAnalysis(result, openPassage) {
 // research versus evidence is the same everywhere.
 export function renderReply(reply, openPassage) {
   const wrap = el("div", { class: `reply reply--${reply.mode}` });
+  if (reply.playbook) {
+    wrap.append(el("div", { class: "playbook", text: `Playbook: ${reply.playbook}` }));
+  }
   if (reply.notice) {
     wrap.append(el("div", { class: "notice", role: "note" }, ["⚠ ", reply.notice]));
   }

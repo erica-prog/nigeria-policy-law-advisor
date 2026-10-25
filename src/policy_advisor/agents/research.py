@@ -30,6 +30,7 @@ drive the tools with a scripted loop and no model.
 import asyncio
 import re
 import time
+from fnmatch import fnmatchcase
 from collections.abc import Awaitable, Callable, Iterable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
@@ -47,6 +48,7 @@ from policy_advisor.generation.prompt import LANGUAGE_NAMES
 from policy_advisor.generation.web_search import search_official_sources
 from policy_advisor.llm import message_text
 from policy_advisor.logging_utils import get_logger, log_event
+from policy_advisor.playbooks import Playbook
 from policy_advisor.progress import report_stage
 from policy_advisor.sources import Source, list_sources
 from policy_advisor.tools import (
@@ -162,6 +164,7 @@ class ResearchAgent:
         conversation_language: str = "en",
         allow_web: bool = False,
         playbook_allow: Iterable[str] | None = None,
+        playbook: Playbook | None = None,
     ) -> ResearchResult:
         """Synchronous form for the chat job thread."""
         return asyncio.run(
@@ -173,6 +176,7 @@ class ResearchAgent:
                 conversation_language=conversation_language,
                 allow_web=allow_web,
                 playbook_allow=playbook_allow,
+                playbook=playbook,
             )
         )
 
@@ -186,15 +190,24 @@ class ResearchAgent:
         conversation_language: str = "en",
         allow_web: bool = False,
         playbook_allow: Iterable[str] | None = None,
+        playbook: Playbook | None = None,
     ) -> ResearchResult:
         sources = self._sources if self._sources is not None else list_sources()
+        # A playbook narrows the tools (its allow-list) and extends the brief
+        # (its checklist); an explicit allow-list wins over the playbook's.
+        if playbook_allow is None and playbook is not None:
+            playbook_allow = playbook.allowed_tools
         policy = ToolPolicy(
             sources=sources,
             allow=tuple(playbook_allow) if playbook_allow is not None else None,
             max_calls=self._settings.agent_max_tool_calls,
         )
         run_id = audit.start_run(
-            matter_id=matter_id, username=username, question=question, model=self.model
+            matter_id=matter_id,
+            username=username,
+            question=question,
+            model=self.model,
+            mode=f"research:{playbook.id}" if playbook else "research",
         )
         state = _RunState(run_id=run_id, policy=policy)
         log_event(self._logger, "research_started", run_id=run_id, matter_id=matter_id)
@@ -208,6 +221,8 @@ class ResearchAgent:
                 tools.extend(await self._connector_tools(state, stack))
                 language = LANGUAGE_NAMES.get(conversation_language, "English")
                 system = SYSTEM_PROMPT.replace("{language}", language)
+                if playbook is not None:
+                    system += "\n\n" + playbook.instructions()
                 prompt = self._prompt(question, matter_id, jurisdiction)
                 answer, usage = await self._run_loop(tools, system, prompt)
         except AgentUnavailable as exc:
@@ -323,6 +338,18 @@ class ResearchAgent:
         self, state: _RunState, connector: str, tool: str, arguments: dict[str, Any]
     ) -> str | None:
         """None when the call may proceed; otherwise the message the model gets."""
+        allow = state.policy.allow
+        if allow is not None and connector in (CHAIN_CONNECTOR, WEB_CONNECTOR):
+            if not any(fnmatchcase(tool, pattern) for pattern in allow):
+                self._record(
+                    state,
+                    connector=connector,
+                    tool=tool,
+                    status="denied",
+                    arguments=arguments,
+                    error="not in the playbook's allow-list",
+                )
+                return f"Tool refused by policy: {tool} is not in this playbook's allow-list."
         try:
             state.policy.spend()
         except ToolBudgetExceeded as exc:

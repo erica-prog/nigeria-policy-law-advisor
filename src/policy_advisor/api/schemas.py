@@ -226,6 +226,8 @@ class ChatReply(BaseModel):
     role: Literal["assistant"] = "assistant"
     created_at: str
     mode: ChatMode
+    # The playbook that shaped this reply (docs/29), by id; None when none matched.
+    playbook: str | None = None
     # Short sentence for the speech bubble. The full result is in `answer`
     # (question/research) or `analysis` (analysis); exactly one is set.
     bubble: str

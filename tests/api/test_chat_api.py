@@ -357,3 +357,31 @@ def test_chat_validation_error_shape(api_with_llm, fakes):
         ("body", "message"),
         ("body", "intent"),
     }
+
+
+def test_playbook_shapes_the_reply_and_reaches_the_agent(api_with_llm, fakes):
+    # docs/29: an immigration question on a US matter routes to the US immigration
+    # playbook; the reply names it, carries its notice, and the agent receives it.
+    agent = api_with_llm.services._research_agent
+    alice = api_with_llm.login("alice")
+    matter = _new_case(alice)
+    body = _chat(
+        alice,
+        matter["id"],
+        "Can my client adjust status after a B-2 entry?",
+        jurisdiction="us-federal",
+    ).json()
+    assert body["mode"] == "research" and body["playbook"] == "immigration-us"
+    assert body["notice"].startswith("Immigration playbook (United States)")
+    assert agent.calls[-1]["playbook"].id == "immigration-us"
+
+    # The same words on a Nigerian matter pick the Nigerian playbook.
+    body = _chat(
+        alice, matter["id"], "Can my client get a visa on arrival?", jurisdiction="ng-federal"
+    ).json()
+    assert body["playbook"] == "immigration-ng"
+
+    # An ordinary question matches nothing and the reply says so.
+    _upload_ready(alice, matter["id"])
+    body = _chat(alice, matter["id"], "When are invoices due?", intent="ask").json()
+    assert body["playbook"] is None and body["mode"] == "question"

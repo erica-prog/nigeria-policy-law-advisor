@@ -48,6 +48,8 @@ from policy_advisor.ingestion.matter_store import (
     update_matter_meta,
 )
 from policy_advisor.logging_utils import log_event
+from policy_advisor.playbooks import Playbook
+from policy_advisor.playbooks.selector import Selection, select_route
 
 router = APIRouter(prefix="/api/matters/{matter_id}", tags=["chat"])
 
@@ -68,23 +70,36 @@ CHIP_ASK_WEB = Chip(label="Also search official web sources", action="ask_web")
 CHIP_ASK = Chip(label="Ask a follow-up question", action="ask")
 
 
+def decide_route(
+    message: str,
+    intent: ChatIntent,
+    history: list,
+    has_documents: bool,
+    read_only: bool,
+    jurisdiction: str | None,
+) -> Selection:
+    """The playbook selector (docs/29) over the Phase 2 rules: analysis when
+    the user asked for it, or for the first message of a conversation that
+    has not been analysed yet; research when the lawyer asks for it or there
+    are no documents; a matched playbook may choose its own mode. The shared
+    read-only library is not anyone's case, so its first message is a question."""
+    return select_route(
+        message,
+        intent=intent,
+        has_documents=has_documents,
+        read_only=read_only,
+        conversation_started=first_user_message(history) is not None,
+        analysed=has_analysis(history),
+        jurisdiction=jurisdiction,
+    )
+
+
 def decide_mode(
     intent: ChatIntent, history: list, has_documents: bool, read_only: bool
 ) -> ChatMode:
-    """Analysis when the user asked for it, or for the first message of a
-    conversation that has not been analysed yet. The shared read-only library
-    is not anyone's case, so its first message is treated as a question."""
-    if intent == "research":
-        return "research"
-    wants_analysis = intent == "analyze" or (
-        intent == "auto"
-        and not read_only
-        and not has_analysis(history)
-        and first_user_message(history) is None
-    )
-    if not wants_analysis:
-        return "question"
-    return "analysis" if has_documents else "research"
+    """The mode alone, for callers that do not route by playbook."""
+    selection = decide_route("", intent, history, has_documents, read_only, None)
+    return selection.mode  # type: ignore[return-value]
 
 
 def _plural(count: int, noun: str) -> str:
@@ -259,6 +274,7 @@ def run_research(
     services: AdvisorServices,
     api_key: str,
     username: str | None,
+    playbook: Playbook | None = None,
 ) -> AskResponse:
     """The research agent as an `AskResponse` with `source == "research"`."""
     try:
@@ -269,6 +285,7 @@ def run_research(
             jurisdiction=body.jurisdiction,
             conversation_language=body.language,
             allow_web=body.allow_web,
+            playbook=playbook,
         )
     except AgentUnavailable as exc:
         # The cause (a model error, a request id) goes to the log, never to
@@ -306,7 +323,11 @@ def run_chat(
     history = load_messages(matter.id) if persist else []
     documents = list_documents(matter.id)
     pending = _documents_still_being_read(jobs, matter.id)
-    mode = decide_mode(body.intent, history, bool(documents), matter.read_only)
+    selection = decide_route(
+        body.message, body.intent, history, bool(documents), matter.read_only, body.jurisdiction
+    )
+    mode: ChatMode = selection.mode  # type: ignore[assignment]
+    playbook = selection.playbook
 
     user_message = UserMessage(id=new_message_id(), text=body.message, created_at=now_iso())
     answer: AskResponse | None = None
@@ -333,15 +354,17 @@ def run_chat(
         bubble, chips = bubble_for_analysis(analysis)
         avatar_state = analysis.avatar_state
         citations = analysis.citations
+        if playbook is not None:
+            notice = playbook.notice
     elif mode == "research":
         # The agent (docs/28): the matter, the libraries, the connectors and,
         # when the lawyer allows it, the web. Labelled as research, never as
         # evidence.
-        answer = run_research(body, matter, services, api_key, username)
+        answer = run_research(body, matter, services, api_key, username, playbook)
         bubble, chips = bubble_for_research(answer)
         avatar_state = answer.avatar_state
         citations = answer.citations
-        notice = RESEARCH_NOTICE
+        notice = playbook.notice if playbook else RESEARCH_NOTICE
     else:
         answer = run_ask(
             AskRequest(
@@ -364,6 +387,7 @@ def run_chat(
         id=new_message_id(),
         created_at=now_iso(),
         mode=mode,
+        playbook=playbook.id if playbook else None,
         bubble=bubble,
         notice=notice,
         avatar_state=avatar_state,
@@ -386,6 +410,8 @@ def run_chat(
         "chat_replied",
         matter_id=matter.id,
         mode=mode,
+        playbook=playbook.id if playbook else None,
+        route_reason=selection.reason,
         intent=body.intent,
         avatar_state=avatar_state,
         document_count=len(documents),

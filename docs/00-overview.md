@@ -72,6 +72,7 @@ Not "it runs on my machine." Specifically:
 - [26-connectors-and-tool-policy.md](26-connectors-and-tool-policy.md) — external sources as MCP tools: the vendored US research server, hosted CourtListener and GovInfo, the one client, and the tool policy every call passes
 - [27-nigeria-connector.md](27-nigeria-connector.md) — the TypeScript MCP server over official Nigerian sites (NDPC, Immigration Service, Federal High Court), why NigeriaLII is excluded, and what a lawyer must confirm
 - [28-research-agent.md](28-research-agent.md) — the research agent: Claude tool use over the chains, the web and the connectors, under the policy and budget, with audited runs and citations that resolve only to what the run saw
+- [29-playbooks-and-routing.md](29-playbooks-and-routing.md) — playbooks per practice area and country (investigations, immigration; NG, US), the selector that replaced decide_mode, and the routing evals
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase

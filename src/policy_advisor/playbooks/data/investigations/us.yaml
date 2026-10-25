@@ -1,0 +1,79 @@
+id: investigations-us
+name: Investigations (United States)
+practice_area: investigations
+country: US
+jurisdictions: [us-federal, us-ny]
+description: >-
+  An internal, regulatory, workplace or fraud investigation under United States federal law:
+  allegation matrix and chronology from the matter's evidence, tested against the Federal Rules
+  of Evidence, agency rules and the relevant statutes, with privilege and preservation handled
+  from the first step. Evidence comes only from the matter's documents; authority from the
+  library and official sources.
+triggers:
+  - investigation
+  - investigate
+  - whistleblower
+  - whistle-blower
+  - misconduct
+  - fraud
+  - forensic
+  - allegation
+  - litigation hold
+  - subpoena
+  - sec
+  - doj
+  - false claims act
+  - sarbanes
+  - upjohn
+mode: analysis
+allowed_tools:
+  - search_case_documents
+  - analyze_case
+  - assess_case_position
+  - search_official_web
+  - search_us_ecfr
+  - get_us_ecfr_text
+  - search_us_federal_register
+  - get_us_federal_register_document
+  - search
+  - search_document
+  - read_document
+  - get_endpoint_item
+  - searchGovInfo
+  - describePackageOrGranule
+checklist:
+  - State the mandate, scope, standard of proof and who decides; record the Upjohn position and who holds privilege, without guaranteeing privilege by label.
+  - Identify preservation duties and whether a litigation hold is in place; flag spoliation risk as a question for the lawyer.
+  - Turn each allegation into propositions to test and link every item of supporting and contrary evidence to a locator in the matter's documents.
+  - Build a sourced chronology before any narrative conclusion.
+  - Assess reliability by provenance, contemporaneity, consistency and corroboration; never by demeanour, delay or presentation style.
+  - Label established fact, reported account, inference and unknown; make one bounded finding per allegation.
+  - Identify self-reporting and whistleblower-protection issues (SEC, DOJ, Sarbanes-Oxley, the False Claims Act) as questions for the lawyer, not as decisions.
+  - Separate recommendations from findings; leave sanction to the authorised decision-maker.
+  - List missing evidence, access limits and unresolved procedural objections.
+extraction_schema:
+  mandate: who commissioned the investigation and its scope
+  privilege_position: who holds privilege and the Upjohn warnings given
+  preservation: holds in place and their dates
+  allegations: each allegation as a testable proposition
+  evidence_index: locators of the documents relied on, with dates
+  reporting_duties: self-reporting or regulatory questions the facts raise
+  gaps: evidence that is missing or could not be accessed
+output_sections:
+  - Mandate, privilege and preservation
+  - Chronology
+  - Allegation-by-allegation analysis
+  - Findings
+  - Reporting questions for counsel
+  - Gaps and limitations
+  - Recommendations
+notice: >-
+  Investigations playbook (United States): findings rest only on the documents in this matter;
+  legal authority comes from the library and official sources and never proves a fact. The
+  advisor does not decide guilt, sanction or whether to self-report.
+attribution: >-
+  Checklist adapted from the MIT-licensed legal-ai-skills plugin (Rohas Nagpal, commit ad5df19):
+  investigation-report-drafter, evidence-organizer, fraud-pattern-analyst,
+  whistleblower-report-analyst.
+eval_file: eval/routing/investigations.yaml
+source_ids: [us-ecfr, us-federal-register, us-courtlistener, us-govinfo]

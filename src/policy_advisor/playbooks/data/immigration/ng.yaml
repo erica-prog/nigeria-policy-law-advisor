@@ -1,0 +1,60 @@
+id: immigration-ng
+name: Immigration (Nigeria)
+practice_area: immigration
+country: NG
+jurisdictions: [ng-federal]
+description: >-
+  Entry, residence, work and status questions under the Immigration Act 2015 and the Nigeria
+  Immigration Service's published requirements: visas and visa on arrival, the Combined
+  Expatriate Residence Permit and Aliens Card (CERPAC), expatriate quota, regularisation of
+  overstays, and the documents each application needs. Authority comes from official sources;
+  a client's documents are evidence of their own status.
+triggers:
+  - immigration
+  - visa
+  - visa on arrival
+  - cerpac
+  - residence permit
+  - expatriate quota
+  - work permit
+  - overstay
+  - overstayer
+  - regularise
+  - regularize
+  - deportation
+  - nigeria immigration service
+  - temporary work permit
+  - business permit
+mode: research
+allowed_tools:
+  - search_case_documents
+  - search_official_web
+  - search_ng_official
+  - fetch_ng_official
+  - cite_ng_official
+checklist:
+  - Identify the status sought (visit, business, temporary work, residence, regularisation) and the applicant's current status from the matter's documents.
+  - Find the current requirement on the Nigeria Immigration Service site and cite the page and its date; say when a page may be out of date.
+  - List the documents the application needs and which of them the matter already holds.
+  - Note fees, processing times and validity only when an official page states them, with the date.
+  - Flag deadlines and consequences of overstay or breach as questions for the lawyer.
+  - Say plainly what no official source answered.
+extraction_schema:
+  status_sought: the category of visa, permit or regularisation
+  current_status: the applicant's present status and its expiry, from the documents
+  requirements: documents and conditions the official source lists
+  deadlines: dates that matter and where they come from
+  gaps: what no source answered
+output_sections:
+  - Status sought and current position
+  - Requirements from official sources
+  - Documents held and missing
+  - Deadlines and risks
+  - What was not answered
+notice: >-
+  Immigration playbook (Nigeria): requirements come from official government pages as published
+  on the retrieval date and may change; nothing here is a decision of the Nigeria Immigration
+  Service. A client's documents are evidence of their status; official pages are authority.
+attribution: Written for this project.
+eval_file: eval/routing/immigration.yaml
+source_ids: [web-official-ng, ng-nis]

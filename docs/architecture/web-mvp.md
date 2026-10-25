@@ -156,7 +156,7 @@ derives trust from answer text.
 ## Chat flow (revision 2)
 
 The chat-first client sends every message to `POST .../chat` and the server decides
-what to run (`routers/chat.py`, `decide_mode`). The rules are deliberately small so a
+what to run (`routers/chat.py`, `decide_route`: the playbook selector of docs/29). The rules are deliberately small so a
 non-technical user never has to pick a mode:
 
 | Situation                                                                      | Mode       | Pipeline                                   |
