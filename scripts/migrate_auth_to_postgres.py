@@ -17,6 +17,7 @@ from pathlib import Path
 import yaml
 
 from policy_advisor import config
+from policy_advisor import tenancy
 from policy_advisor.api.credentials import import_user
 from policy_advisor.api.user_keys import import_user_key
 
@@ -58,6 +59,7 @@ def migrate(auth_dir: Path, dry_run: bool) -> tuple[int, int]:
             str(entry.get("email") or ""),
         ):
             users_added += 1
+            tenancy.add_user_to_tenant(username)  # the default tenant, as a lawyer (docs/31)
     for username, entry in sorted(keys.items()):
         if username not in accounts:
             print(f"key for {username}: skipped, no account in credentials.yaml")

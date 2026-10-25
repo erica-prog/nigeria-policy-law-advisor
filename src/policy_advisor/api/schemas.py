@@ -43,12 +43,23 @@ class LoginRequest(BaseModel):
 KeySource = Literal["user", "shared"]
 
 
+TenantRole = Literal["admin", "lawyer", "reviewer"]
+
+
 class UserOut(BaseModel):
     username: str
     display_name: str
     # Revision 3 (BYOK): can THIS user think, and with whose key?
     advisor_ready: bool = False
     key_source: KeySource | None = None
+    # Tenancy (docs/31): the firm this user works in and what they may do.
+    tenant_id: str | None = None
+    role: TenantRole | None = None
+
+
+class ShareRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=128)
+    can_write: bool = False
 
 
 class SessionOut(BaseModel):
@@ -97,6 +108,8 @@ class MatterOut(BaseModel):
     title: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
+    # Users of the same firm this matter is shared with (docs/31).
+    shared_with: list[str] = Field(default_factory=list)
 
 
 class MatterList(BaseModel):
@@ -270,3 +283,101 @@ class ChatJobOut(BaseModel):
     stages: list[ChatStage] = Field(default_factory=list)
     reply: ChatReply | None = None
     error: ChatJobError | None = None
+
+
+# ---- Usage (docs/32): what a user, or a firm's admin, has spent ----
+
+
+class UsageRow(BaseModel):
+    kind: str | None = None
+    matter_id: str | None = None
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    estimated_usd: float | None = None
+
+
+class UsageOut(BaseModel):
+    scope: Literal["me", "tenant"]
+    days: int
+    by_kind: list[UsageRow] = Field(default_factory=list)
+    by_matter: list[UsageRow] = Field(default_factory=list)
+
+
+# ---- Bulk analysis (docs/33) ----
+
+BulkJobStatus = Literal[
+    "queued", "running", "waiting_batch", "paused_ceiling", "done", "failed", "cancelled"
+]
+BulkBackend = Literal["sync", "batch"]
+
+
+class BulkJobCreate(BaseModel):
+    schema_id: str = Field(default="contract", min_length=1, max_length=64)
+    documents: list[str] | None = None  # None: every indexed document of the matter
+    ceiling_tokens: int | None = Field(default=None, ge=10_000, le=200_000_000)
+    backend: BulkBackend | None = None  # None: by size against BULK_BATCH_THRESHOLD
+
+
+class BulkResumeRequest(BaseModel):
+    ceiling_tokens: int = Field(ge=10_000, le=200_000_000)
+
+
+class BulkJobOut(BaseModel):
+    job_id: str
+    matter_id: str
+    schema_id: str
+    schema_version: int
+    documents: list[str]
+    status: BulkJobStatus
+    backend: BulkBackend
+    triage_model: str
+    escalation_model: str
+    ceiling_tokens: int
+    spent_tokens: int
+    done_documents: int
+    flagged_documents: int
+    error: str | None = None
+    created_at: str | None = None
+    finished_at: str | None = None
+
+
+class BulkJobList(BaseModel):
+    jobs: list[BulkJobOut]
+
+
+class ExtractionOut(BaseModel):
+    document: str
+    schema_id: str
+    schema_version: int
+    job_id: str | None
+    record: dict
+    evidence_spans: list[dict]
+    confidence: float
+    model: str
+    flagged: bool
+    created_at: str | None = None
+
+
+class ExtractionList(BaseModel):
+    records: list[ExtractionOut]
+
+
+FindingSeverity = Literal["info", "review", "high"]
+FindingStatus = Literal["open", "reviewed", "dismissed"]
+
+
+class FindingOut(BaseModel):
+    id: int
+    job_id: str | None
+    kind: str
+    severity: FindingSeverity
+    summary: str
+    documents: list[str]
+    evidence: list[dict]
+    status: FindingStatus
+    created_at: str | None = None
+
+
+class FindingList(BaseModel):
+    findings: list[FindingOut]

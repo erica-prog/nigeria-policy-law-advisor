@@ -74,7 +74,7 @@ value outside the taxonomy is rejected with `422` (`unknown_jurisdiction` on upl
   No auth. `llm_configured` is the server-level view (is a key in `.env` at all);
   `shared_key_allowed` mirrors `ALLOW_SHARED_ANTHROPIC_KEY`. Whether a particular user
   can get answers is on `/api/me`.
-- `GET /api/me` -> `User = { "username": "jdoe", "display_name": "Jane Doe",
+- `GET /api/me` -> `User = { "username": "jdoe", "display_name": "Jane Doe", "tenant_id": "default", "role": "lawyer",
   "advisor_ready": true, "key_source": "user" | "shared" | null }`. `advisor_ready` is
   true when a key can be resolved for this user (revision 3); `key_source` says whose.
 - `GET /api/session` -> `{ "user": User | null }`. Always `200`, with or without a valid
@@ -370,3 +370,50 @@ and `key_source`, `Health.shared_key_allowed`, `GET /api/session`, the
 is deliberate and flagged: ask, analyze and chat now answer `403 claude_key_required`
 instead of `503 llm_unavailable` when the caller has no usable key; `503` remains the
 code for a failed model call.
+
+
+## Tenancy (docs/31)
+
+- `User` carries `tenant_id` and `role` (`admin` | `lawyer` | `reviewer`). Login fails
+  with `403 no_tenant` for an account that is in no firm.
+- A matter outside the caller's firm is `404 matter_not_found` everywhere, enforced by
+  the database policies, not only by the handlers.
+- `Matter.shared_with` lists the users of the same firm the matter is shared with.
+- `POST /api/matters/{id}/share` `{ "username": "kemi", "can_write": false }` -> `200
+  Matter`; owner only (`403 not_owner`); a user outside the firm is `404 user_not_found`.
+  `DELETE /api/matters/{id}/share/{username}` -> `204`.
+- A `reviewer` gets `403 role_forbidden` on `POST /api/matters` and `403
+  matter_read_only` on uploads and deletes; a share with `can_write` does not change
+  that.
+
+
+## Usage (docs/32)
+
+- `GET /api/usage?days=30&scope=me` -> `{ "scope": "me", "days": 30, "by_kind": [{ "kind":
+  "model", "calls": 12, "input_tokens": 48210, "output_tokens": 9120, "estimated_usd": null }],
+  "by_matter": [{ "matter_id": "case-...", "calls": 7, ... }] }`. `estimated_usd` is null
+  until the deployment configures `MODEL_PRICES`. `scope=tenant` needs the `admin` role
+  (`403 role_forbidden` otherwise); the database policies bound the rows to the caller's
+  firm in either case.
+
+
+## Bulk analysis (docs/33)
+
+- `POST /api/matters/{id}/bulk` `{ "schema_id": "contract", "documents": null | [...],
+  "ceiling_tokens": null | 2000000, "backend": null | "sync" | "batch" }` -> `202 BulkJob`
+  = `{ "job_id", "matter_id", "schema_id", "schema_version", "documents", "status":
+  "queued" | "running" | "waiting_batch" | "paused_ceiling" | "done" | "failed" | "cancelled",
+  "backend", "triage_model", "escalation_model", "ceiling_tokens", "spent_tokens",
+  "done_documents", "flagged_documents", "error", "created_at", "finished_at" }`. Writable
+  matter and the caller's key required; `400 unknown_schema | unknown_documents | no_documents`.
+- `GET /api/matters/{id}/bulk` -> `{ "jobs": [BulkJob] }`; `GET /api/matters/{id}/bulk/{job_id}`
+  -> `BulkJob`.
+- `POST /api/matters/{id}/bulk/{job_id}/resume` `{ "ceiling_tokens": 4000000 }` -> `202 BulkJob`
+  (`409 cannot_resume` unless the job is paused or failed and the ceiling exceeds the spend);
+  `POST .../cancel` -> `200 BulkJob`.
+- `GET /api/matters/{id}/bulk/records/{schema_id}?document=` -> `{ "records": [{ "document",
+  "schema_id", "schema_version", "job_id", "record", "evidence_spans", "confidence", "model",
+  "flagged", "created_at" }] }`.
+- `GET /api/matters/{id}/bulk/findings/all?status_filter=open` -> `{ "findings": [{ "id",
+  "job_id", "kind", "severity": "info" | "review" | "high", "summary", "documents",
+  "evidence", "status": "open" | "reviewed" | "dismissed", "created_at" }] }`.

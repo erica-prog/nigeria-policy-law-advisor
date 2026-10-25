@@ -57,7 +57,7 @@ grounded drafting and bulk contract analysis (ADR-001).
 | Backend             | Python 3.12, FastAPI, managed with `uv`                              |
 | Reasoning           | Claude API via one client factory (`policy_advisor/llm.py`); LangChain for prompts and structured output |
 | Embeddings          | Hugging Face sentence-transformers, local                            |
-| Database            | Supabase PostgreSQL + pgvector (`db.py`, numbered migrations)        |
+| Database            | Postgres + pgvector, Netlify DB (Neon) in production (`db.py`, numbered migrations) |
 | Files               | Local blob store under `data/originals` now; S3-compatible object storage later |
 | Auth                | Credential file (bcrypt) + signed session cookie                     |
 | Document processing | In-process background jobs now; a Postgres-backed queue in Phase 1   |

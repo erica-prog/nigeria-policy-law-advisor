@@ -6,7 +6,11 @@ def _issue_args(locators: list[str]) -> IssueArguments:
     return IssueArguments(
         issue="some issue",
         arguments=[
-            Argument(side="claimant", summary="s", supporting_authorities=[Authority(locator=loc, relevance="r")])
+            Argument(
+                side="claimant",
+                summary="s",
+                supporting_authorities=[Authority(locator=loc, relevance="r")],
+            )
             for loc in locators
         ],
         assessment="z",
@@ -18,7 +22,9 @@ def test_cited_locators_flattens_across_all_arguments():
 
 
 def test_unsupported_citations_detects_missing_locator():
-    assert _unsupported_citations(_issue_args(["Order 99 Rule 1"]), {"Order 1 Rule 1"}) == ["Order 99 Rule 1"]
+    assert _unsupported_citations(_issue_args(["Order 99 Rule 1"]), {"Order 1 Rule 1"}) == [
+        "Order 99 Rule 1"
+    ]
 
 
 def test_unsupported_citations_empty_when_all_supported():

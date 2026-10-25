@@ -54,7 +54,7 @@ marked as such.
 | `docker-compose.yml` | `app` service (Streamlit, 8501) and `api` service (uvicorn, 8000). | Remove `app`. |
 | `.github/workflows/docker-publish.yml` | Builds and pushes the image on `main`; does not reference the command or port. | No change; the published image's default behaviour changes. |
 | CI (`ci.yml`) | No Streamlit step. | No change. |
-| Docs that instruct running Streamlit | `docs/16-supabase-setup.md` §5, `docs/17-web-app-mvp.md` (three bullets), `AGENTS.md` (one row, one sentence). | Edit. |
+| Docs that instruct running Streamlit | `docs/16-database-setup.md` §5 (then the Supabase guide), `docs/17-web-app-mvp.md` (three bullets), `AGENTS.md` (one row, one sentence). | Edit. |
 | Docs whose subject is Streamlit | `docs/07-demo-ui.md`, `docs/10-self-service-signup.md`, `docs/09-devops-review.md` §3. | Mark superseded; keep for history. |
 | Docs that cite `app.py` line numbers as design rationale | `docs/11`, `12`, `13`, `14`. | Leave; they describe trust-state rendering the web client inherited. |
 | Source comments naming Streamlit or `app.py` | `chain.py`, `prompt.py`, `web_search.py`, `services.py`, `progress.py`, `matter_store.py`, `ingest_document.py`, `config.py`, `credentials.py`, `sessions.py`. | Reword in passing; no behaviour. |

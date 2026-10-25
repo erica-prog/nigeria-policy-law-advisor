@@ -11,6 +11,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
+import contextvars
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
@@ -60,7 +61,8 @@ class ChatJobTable:
         with self._lock:
             self._prune()
             self._jobs[job.job_id] = job
-        self._executor.submit(self._run, job, work, logger)
+        # Copy the request's context (the tenant, docs/31) into the worker thread.
+        self._executor.submit(contextvars.copy_context().run, self._run, job, work, logger)
         return job
 
     def get(self, job_id: str, matter_id: str, username: str) -> ChatJob | None:

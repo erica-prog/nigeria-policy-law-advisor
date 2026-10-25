@@ -25,6 +25,7 @@ from policy_advisor.ingestion.matter_store import load_matter_snapshot, matter_s
 from policy_advisor.jurisdictions import storage_values
 from policy_advisor.retrieval import vector_store
 from policy_advisor.retrieval.bm25_index import BM25Index, build_bm25_index
+from policy_advisor.telemetry import span
 from policy_advisor.retrieval.rerank import Scorer, default_scorer, rerank
 
 _LOCATOR_RE = re.compile(r"order\s+(\d+)\D{1,5}?rule\s+(\d+)", re.IGNORECASE)
@@ -180,6 +181,16 @@ class HybridRetriever:
         ]
 
     def retrieve(
+        self, query: str, top_k: int, matter_id: str, jurisdiction: str | None = None
+    ) -> list[RetrievedChunk]:
+        with span(
+            "retrieval", matter_id=matter_id, top_k=top_k, jurisdiction=jurisdiction
+        ) as current:
+            chunks = self._retrieve(query, top_k, matter_id, jurisdiction)
+            current.set_attribute("results", len(chunks))
+            return chunks
+
+    def _retrieve(
         self, query: str, top_k: int, matter_id: str, jurisdiction: str | None = None
     ) -> list[RetrievedChunk]:
         index = self._index_for_matter(matter_id)

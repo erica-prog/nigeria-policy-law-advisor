@@ -20,7 +20,7 @@ Read, in this order:
    schemas). If a contract you
    need does not exist, ask `lead-architect` for it before coding.
 4. The existing prototype: `src/policy_advisor/config.py`, `ingestion/`, `retrieval/`,
-   `generation/`, plus any database layer, migrations and Supabase setup notes present in
+   `generation/`, plus any database layer, migrations and database setup notes present in
    `src/policy_advisor/` and `docs/` (check open PRs). Reuse these modules; do not fork
    their logic.
 

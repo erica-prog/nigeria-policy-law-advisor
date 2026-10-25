@@ -49,7 +49,7 @@ COPY pyproject.toml ./
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Lawyer credentials and the source PDFs live under data/ (matters, chunks and
-# chat history live in Supabase) - this directory is a mount point at
+# chat history live in the Postgres database) - this directory is a mount point at
 # runtime (see docker-compose.yml), not baked into the image.
 RUN mkdir -p data && chown -R appuser:appuser /app
 USER appuser

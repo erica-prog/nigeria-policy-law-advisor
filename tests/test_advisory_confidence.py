@@ -50,7 +50,9 @@ def _strong(locator: str = "Order 5 Rule 3") -> IssueAnalysis:
 
 
 def _unverified() -> IssueAnalysis:
-    return IssueAnalysis(issue="i", arguments=[], assessment="a", confidence=CONFIDENCE_STRONG, unverified=True)
+    return IssueAnalysis(
+        issue="i", arguments=[], assessment="a", confidence=CONFIDENCE_STRONG, unverified=True
+    )
 
 
 def _from_web() -> IssueAnalysis:
@@ -131,7 +133,9 @@ def _advise(chain: AdvisoryChain, analysis, opinion, judge_flagged=False):
     chain._llm.with_structured_output.return_value = structured
     with patch(
         JUDGE_CHECK_PATH,
-        return_value=StepCheckOutcome(faithful=not judge_flagged, judge_flagged=judge_flagged, judge_notes="n"),
+        return_value=StepCheckOutcome(
+            faithful=not judge_flagged, judge_flagged=judge_flagged, judge_notes="n"
+        ),
     ):
         return chain.advise_on(analysis, matter_id="m")
 
@@ -158,7 +162,9 @@ def test_advice_reusing_an_established_authority_keeps_its_earned_confidence():
 
 def test_a_flagged_judge_verdict_caps_confidence():
     chain = _advisory_chain()
-    result = _advise(chain, _analysis([_strong()]), _opinion(["Order 5 Rule 3"]), judge_flagged=True)
+    result = _advise(
+        chain, _analysis([_strong()]), _opinion(["Order 5 Rule 3"]), judge_flagged=True
+    )
 
     assert result.judge_flagged is True
     assert result.outcome_confidence == OUTCOME_CONFIDENCE_LOW
@@ -177,7 +183,9 @@ def test_sub_rule_pinpoints_count_as_supported():
 def test_web_backed_issues_are_not_offered_to_the_judge_as_authority():
     chain = _advisory_chain()
     analysis = _analysis([_strong(), _from_web()])
-    chain._case_chain.retriever.retrieve.return_value = [MagicMock(metadata={"locator": "Order 5 Rule 3"})]
+    chain._case_chain.retriever.retrieve.return_value = [
+        MagicMock(metadata={"locator": "Order 5 Rule 3"})
+    ]
 
     _advise(chain, analysis, _opinion(["Order 5 Rule 3"]))
 

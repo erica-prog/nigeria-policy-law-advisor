@@ -3,10 +3,7 @@ from policy_advisor.ingestion.pdf_text import PdfText
 
 
 def test_classifies_statute_from_repeated_order_headings():
-    text = (
-        "ORDER 1 \nGENERAL\n1. First rule.\n"
-        "ORDER 2 \nSERVICE\n1. Second rule.\n"
-    )
+    text = "ORDER 1 \nGENERAL\n1. First rule.\nORDER 2 \nSERVICE\n1. Second rule.\n"
     assert classify_document_type(PdfText(text=text)) == "statute"
 
 

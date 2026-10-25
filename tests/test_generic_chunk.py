@@ -23,7 +23,12 @@ def test_assigns_page_numbers_across_a_page_break():
     # Each page's content is well over chunk_size + overlap, so some chunks
     # land fully within page 1 and others fully within page 2 regardless of
     # exactly where the splitter draws chunk boundaries.
-    text = "\x01PAGE:1\x02\n" + ("Clause one text. " * 250) + "\x01PAGE:2\x02\n" + ("Clause two text. " * 250)
+    text = (
+        "\x01PAGE:1\x02\n"
+        + ("Clause one text. " * 250)
+        + "\x01PAGE:2\x02\n"
+        + ("Clause two text. " * 250)
+    )
     pdf = PdfText(text=text)
     chunks = parse_generic(pdf)
 

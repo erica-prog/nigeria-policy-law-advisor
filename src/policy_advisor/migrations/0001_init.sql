@@ -1,14 +1,14 @@
 -- Initial schema: matters, their chunks (text, metadata and embedding in the
--- same row), and each lawyer's recent chats, in Supabase Postgres.
+-- same row), and each lawyer's recent chats, in hosted Postgres.
 --
 -- Replaces three stores that had to be kept in step by hand: Chroma for
 -- vectors, data/index/matters/<id>/chunks.json for BM25, and meta.json for
 -- ownership. A document added to or removed from one but not the others left
 -- the keyword and vector indexes disagreeing about what a matter contained.
 --
--- Runs unchanged on Supabase, a local Postgres, and the CI container.
+-- Runs unchanged on a hosted Postgres, a local Postgres, and the CI container.
 
--- pgvector. Supabase keeps extensions in its own `extensions` schema, so use
+-- pgvector. Some hosts keep extensions in their own `extensions` schema, so use
 -- it where it exists; a plain Postgres has no such schema and takes the
 -- default. Every connection sets search_path to "public, extensions", so the
 -- vector type and its operators resolve the same way either way.
@@ -96,7 +96,7 @@ CREATE TABLE index_meta (
     value TEXT NOT NULL
 );
 
--- Never reachable through Supabase's auto-generated REST API. The app talks to
+-- Never reachable through a hosted provider's auto-generated REST API. The app talks to
 -- Postgres directly, so none of this affects it; it means client chats and
 -- document text can't be read with the project's public anon key even if a
 -- dashboard setting changes. RLS with no policies denies every API role.
@@ -105,7 +105,7 @@ ALTER TABLE chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_exchanges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE index_meta ENABLE ROW LEVEL SECURITY;
 
--- The roles exist only on Supabase, so revoke conditionally: a plain Postgres
+-- The roles exist only on some hosted providers, so revoke conditionally: a plain Postgres
 -- would reject the statement outright.
 DO $$
 DECLARE

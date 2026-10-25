@@ -1,6 +1,6 @@
 """Read-only health and safety check of the database behind DATABASE_URL.
 
-Safe to point at the live Supabase project: it changes nothing. It opens a
+Safe to point at the live hosted database: it changes nothing. It opens a
 plain connection rather than going through policy_advisor.db, so it never
 applies a migration - on a project that hasn't been set up it says so instead
 of quietly creating tables. It prints the host, never the connection string,
@@ -10,7 +10,7 @@ Fails (exit 1) on anything that would put client data at risk or break
 retrieval:
   - pgvector missing, or the vector operator not resolvable
   - row-level security off on any of the app's tables
-  - Supabase's public API roles (anon, authenticated) holding any privilege
+  - a hosted provider's public API roles (anon, authenticated) holding any privilege
 Warns on the connection type, and reports what's stored and how far away the
 database is - which matters because each question makes several round trips.
 
@@ -38,6 +38,13 @@ APP_TABLES = (
     "sources",
     "agent_runs",
     "agent_tool_calls",
+    "tenants",
+    "tenant_users",
+    "matter_shares",
+    "cost_ledger",
+    "bulk_jobs",
+    "extractions",
+    "findings",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")
@@ -48,15 +55,11 @@ def _connection_warnings(url: str) -> list[str]:
     parsed = urlparse(url)
     host, port = (parsed.hostname or ""), parsed.port
     warnings = []
-    if port == 6543:
+    if "-pooler" in host or port == 6543:
         warnings.append(
-            "Port 6543 is the transaction pooler, which doesn't support the prepared statements "
-            "psycopg creates for repeated queries. Use the Session pooler (port 5432)."
-        )
-    if host.startswith("db.") and host.endswith(".supabase.co"):
-        warnings.append(
-            "This is the direct connection, which is IPv6-only without the paid IPv4 add-on. "
-            "It works here, but many hosts can't reach it; the Session pooler is safer."
+            "This looks like a pooled connection (PgBouncer in transaction mode). It rejects the "
+            "prepared statements psycopg creates and cannot hold SET ROLE across statements, which "
+            "the tenant isolation needs. Use the unpooled connection string (docs/16)."
         )
     return warnings
 
@@ -122,10 +125,42 @@ def run_checks(url: str) -> tuple[list[str], list[str], list[str]]:
                 if granted and granted[0]:
                     failures.append(f"Role {role} has privileges on {table}: revoke them.")
         if not existing_roles:
-            facts.append("api roles: none (not a Supabase database)")
+            facts.append("api roles: none (no provider API roles on this database)")
         else:
             facts.append(f"api roles checked: {', '.join(sorted(existing_roles))}")
 
+        # Tenancy (docs/31): the application role must exist and every
+        # tenant-scoped table must force its isolation policy.
+        role = conn.execute(
+            "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'policy_advisor_app'"
+        ).fetchone()
+        if role is None:
+            failures.append("Role policy_advisor_app is missing: migration 0009 has not run.")
+        elif role[0] or role[1]:
+            failures.append("Role policy_advisor_app can bypass row-level security.")
+        for table in (
+            "matters",
+            "chunks",
+            "documents",
+            "document_jobs",
+            "conversations",
+            "chat_exchanges",
+            "agent_runs",
+            "matter_shares",
+        ):
+            forced = conn.execute(
+                "SELECT relforcerowsecurity FROM pg_class WHERE oid = %s::regclass",
+                (f"public.{table}",),
+            ).fetchone()
+            policy = conn.execute(
+                "SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = %s "
+                "AND policyname = 'tenant_isolation'",
+                (table,),
+            ).fetchone()
+            if not (forced and forced[0]) or policy is None:
+                failures.append(f"Tenant isolation is not enforced on {table}.")
+        tenants = conn.execute("SELECT count(*) FROM tenants").fetchone()
+        facts.append(f"tenants: {tenants[0] if tenants else 0}")
         applied = [
             row[0] for row in conn.execute("SELECT version FROM schema_migrations ORDER BY version")
         ]

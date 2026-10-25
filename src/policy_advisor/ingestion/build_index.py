@@ -70,6 +70,14 @@ def build_collection(matter_id: str, chunks: list[Chunk], title: str | None = No
 
 
 def main() -> None:
+    # The libraries belong to the shared tenant (docs/31): every firm reads them.
+    from policy_advisor.tenancy import SHARED_TENANT, tenant_context
+
+    with tenant_context(SHARED_TENANT):
+        _build_all()
+
+
+def _build_all() -> None:
     settings = get_settings()
 
     chunks = chunk_corpus(DATA_DIR)

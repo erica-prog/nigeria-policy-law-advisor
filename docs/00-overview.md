@@ -59,7 +59,7 @@ Not "it runs on my machine." Specifically:
 - [13-voice-pipeline.md](13-voice-pipeline.md) — speech-to-text and text-to-speech, and the confidentiality and mis-transcription risks voice introduces
 - [14-cartoon-avatar-frontend.md](14-cartoon-avatar-frontend.md) — the avatar as a trust-state indicator, lip-sync, and the browser TypeScript
 - [15-avatar-character-asset.md](15-avatar-character-asset.md) — the advisor character's frames and state rules
-- [16-supabase-setup.md](16-supabase-setup.md) — the Postgres + pgvector database: tables, region, backups, running the app
+- [16-database-setup.md](16-database-setup.md) — the Postgres + pgvector database (Netlify DB, a Neon database): connection strings, tables, backups, region, running the app
 - [17-web-app-mvp.md](17-web-app-mvp.md) — running the web app, bring-your-own Claude key, chat jobs and the live bubble
 - [18-architecture-review.md](18-architecture-review.md) — code and structure review against the USA + Nigeria, Harvey-style target: what exists, what to keep, ranked gaps
 - [19-adr-001-multi-jurisdiction-legal-platform.md](19-adr-001-multi-jurisdiction-legal-platform.md) — ADR: three corpus tiers, jurisdiction taxonomy, Postgres + pgvector + workers, MCP connectors, agent loop, bulk analysis, grounded drafting
@@ -74,6 +74,9 @@ Not "it runs on my machine." Specifically:
 - [28-research-agent.md](28-research-agent.md) — the research agent: Claude tool use over the chains, the web and the connectors, under the policy and budget, with audited runs and citations that resolve only to what the run saw
 - [29-playbooks-and-routing.md](29-playbooks-and-routing.md) — playbooks per practice area and country (investigations, immigration; NG, US), the selector that replaced decide_mode, and the routing evals
 - [30-plan-platform-phase-3.md](30-plan-platform-phase-3.md) — plan for ADR-001 Phase 3: bulk extraction with cost ceilings, grounded artefacts with provenance and review states, tenancy with row-level security, tracing and a cost ledger, the remaining CI gates; decisions pending
+- [31-tenancy.md](31-tenancy.md) — firms as rows, roles and matter sharing, the application role and forced row-level security policies, how the tenant travels through requests, jobs and scripts
+- [32-tracing-and-cost-ledger.md](32-tracing-and-cost-ledger.md) — OpenTelemetry spans for requests, retrieval, model and tool calls, the cost_ledger table attributed to tenant, user, matter and run, and GET /api/usage
+- [33-bulk-analysis.md](33-bulk-analysis.md) — bulk extraction as a batch pipeline: the contract ledger schema with verified evidence spans, model tiering and token ceilings, the Batch API backend, cross-document findings, and the agent's query tool
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase

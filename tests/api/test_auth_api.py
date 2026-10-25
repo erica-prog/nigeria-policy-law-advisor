@@ -17,6 +17,8 @@ def test_login_success_sets_httponly_cookie_and_returns_user(api):
         "display_name": "Alice",
         "advisor_ready": False,
         "key_source": None,
+        "tenant_id": "default",
+        "role": "lawyer",
     }
     cookie_header = response.headers["set-cookie"].lower()
     assert SESSION_COOKIE in cookie_header

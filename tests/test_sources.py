@@ -10,6 +10,7 @@ from policy_advisor import sources
 from policy_advisor.db import MIGRATIONS_DIR, connect
 from policy_advisor.generation import web_search
 from scripts import manage_sources
+from tests.conftest import owner_sql
 
 PHASE1_DOMAINS = ["nass.gov.ng", "ndpc.gov.ng"]
 
@@ -18,11 +19,9 @@ PHASE1_DOMAINS = ["nass.gov.ng", "ndpc.gov.ng"]
 def registry(fresh_db):
     """An empty registry; the packaged seed is restored afterwards so later
     tests (and the real web-search call) still find the Phase 1 row."""
-    with connect() as conn:
-        conn.execute("TRUNCATE sources")
+    owner_sql(fresh_db, "TRUNCATE sources")
     yield
-    with connect() as conn:
-        conn.execute("TRUNCATE sources")
+    owner_sql(fresh_db, "TRUNCATE sources")
     sources.seed()
 
 

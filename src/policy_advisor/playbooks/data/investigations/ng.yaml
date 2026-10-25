@@ -29,6 +29,7 @@ allowed_tools:
   - search_case_documents
   - analyze_case
   - assess_case_position
+  - query_extractions
   - search_official_web
   - search_ng_official
   - fetch_ng_official

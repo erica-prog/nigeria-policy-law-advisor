@@ -18,7 +18,9 @@ def _vectors(n: int) -> np.ndarray:
 
 
 def test_replace_then_load_round_trips(fresh_db):
-    matter_store.replace_document_chunks("matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "hello")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "hello")], _vectors(1)
+    )
 
     assert matter_store.load_matter_chunks("matter-a")[0]["text"] == "hello"
 
@@ -48,7 +50,9 @@ def test_an_embedding_of_the_wrong_dimension_is_rejected(fresh_db):
 
 
 def test_version_and_rows_come_from_one_snapshot(fresh_db):
-    matter_store.replace_document_chunks("matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "a")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "a")], _vectors(1)
+    )
 
     version, records = matter_store.load_matter_snapshot("matter-a")
 
@@ -67,24 +71,37 @@ def test_reuploading_a_document_replaces_it_rather_than_merging(fresh_db):
     # fewer chunks kept the stale extras alive in BM25 while Chroma dropped
     # them. Replacing the whole document in one transaction can't do that.
     matter_store.replace_document_chunks(
-        "matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "v1"), _chunk("c2", "doc.pdf", "v1")], _vectors(2)
+        "matter-a",
+        "doc.pdf",
+        [_chunk("c1", "doc.pdf", "v1"), _chunk("c2", "doc.pdf", "v1")],
+        _vectors(2),
     )
-    matter_store.replace_document_chunks("matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "v2")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "v2")], _vectors(1)
+    )
 
     chunks = matter_store.load_matter_chunks("matter-a")
     assert [(c["chunk_id"], c["text"]) for c in chunks] == [("c1", "v2")]
 
 
 def test_replacing_one_document_leaves_the_others_alone(fresh_db):
-    matter_store.replace_document_chunks("matter-a", "a.pdf", [_chunk("c1", "a.pdf", "a")], _vectors(1))
-    matter_store.replace_document_chunks("matter-a", "b.pdf", [_chunk("c2", "b.pdf", "b")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "a.pdf", [_chunk("c1", "a.pdf", "a")], _vectors(1)
+    )
+    matter_store.replace_document_chunks(
+        "matter-a", "b.pdf", [_chunk("c2", "b.pdf", "b")], _vectors(1)
+    )
 
     assert matter_store.list_documents("matter-a") == ["a.pdf", "b.pdf"]
 
 
 def test_remove_document_only_removes_its_own_chunks(fresh_db):
-    matter_store.replace_document_chunks("matter-a", "doc-a.pdf", [_chunk("c1", "doc-a.pdf", "a")], _vectors(1))
-    matter_store.replace_document_chunks("matter-a", "doc-b.pdf", [_chunk("c2", "doc-b.pdf", "b")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "doc-a.pdf", [_chunk("c1", "doc-a.pdf", "a")], _vectors(1)
+    )
+    matter_store.replace_document_chunks(
+        "matter-a", "doc-b.pdf", [_chunk("c2", "doc-b.pdf", "b")], _vectors(1)
+    )
 
     removed = matter_store.remove_document("matter-a", "doc-a.pdf")
 
@@ -95,8 +112,12 @@ def test_remove_document_only_removes_its_own_chunks(fresh_db):
 def test_matters_are_isolated_even_when_chunk_ids_collide(fresh_db):
     # Same chunk id in two matters. Isolation must come from the schema's
     # (matter_id, chunk_id) key, not from the chunker happening to prefix ids.
-    matter_store.replace_document_chunks("matter-a", "x.pdf", [_chunk("c1", "x.pdf", "a")], _vectors(1))
-    matter_store.replace_document_chunks("matter-b", "x.pdf", [_chunk("c1", "x.pdf", "b")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "x.pdf", [_chunk("c1", "x.pdf", "a")], _vectors(1)
+    )
+    matter_store.replace_document_chunks(
+        "matter-b", "x.pdf", [_chunk("c1", "x.pdf", "b")], _vectors(1)
+    )
 
     assert matter_store.load_matter_chunks("matter-a")[0]["text"] == "a"
     assert matter_store.load_matter_chunks("matter-b")[0]["text"] == "b"
@@ -116,7 +137,9 @@ def test_every_write_moves_the_content_version(fresh_db):
     # Retrievers rebuild their cached indexes when this changes, so a write
     # that failed to move it would leave every cache serving stale chunks.
     start = matter_store.matter_version("matter-a")
-    matter_store.replace_document_chunks("matter-a", "x.pdf", [_chunk("c1", "x.pdf", "a")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "x.pdf", [_chunk("c1", "x.pdf", "a")], _vectors(1)
+    )
     after_add = matter_store.matter_version("matter-a")
     matter_store.remove_document("matter-a", "x.pdf")
     after_remove = matter_store.matter_version("matter-a")
@@ -125,14 +148,19 @@ def test_every_write_moves_the_content_version(fresh_db):
 
 
 def test_a_failed_write_changes_nothing(fresh_db):
-    matter_store.replace_document_chunks("matter-a", "x.pdf", [_chunk("c1", "x.pdf", "old")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "x.pdf", [_chunk("c1", "x.pdf", "old")], _vectors(1)
+    )
     version = matter_store.matter_version("matter-a")
 
     with pytest.raises(ValueError):
         # Two chunks, one embedding: rejected after the delete has run, so
         # only the transaction rolling back keeps the old chunk.
         matter_store.replace_document_chunks(
-            "matter-a", "x.pdf", [_chunk("c1", "x.pdf", "new"), _chunk("c2", "x.pdf", "new")], _vectors(1)
+            "matter-a",
+            "x.pdf",
+            [_chunk("c1", "x.pdf", "new"), _chunk("c2", "x.pdf", "new")],
+            _vectors(1),
         )
 
     assert [c["text"] for c in matter_store.load_matter_chunks("matter-a")] == ["old"]
@@ -140,19 +168,28 @@ def test_a_failed_write_changes_nothing(fresh_db):
 
 
 def test_vectors_from_a_different_embedding_model_are_refused(fresh_db):
-    matter_store.replace_document_chunks("matter-a", "x.pdf", [_chunk("c1", "x.pdf", "a")], _vectors(1))
+    matter_store.replace_document_chunks(
+        "matter-a", "x.pdf", [_chunk("c1", "x.pdf", "a")], _vectors(1)
+    )
     with connect() as conn, transaction(conn):
-        conn.execute("UPDATE index_meta SET value = 'some-other-model' WHERE key = 'embedding_model'")
+        conn.execute(
+            "UPDATE index_meta SET value = 'some-other-model' WHERE key = 'embedding_model'"
+        )
 
     with pytest.raises(EmbeddingModelMismatch):
         matter_store.load_matter_snapshot("matter-a")
     with pytest.raises(EmbeddingModelMismatch):
-        matter_store.replace_document_chunks("matter-a", "y.pdf", [_chunk("c2", "y.pdf", "b")], _vectors(1))
+        matter_store.replace_document_chunks(
+            "matter-a", "y.pdf", [_chunk("c2", "y.pdf", "b")], _vectors(1)
+        )
 
 
 def test_list_documents_returns_unique_source_documents(fresh_db):
     matter_store.replace_document_chunks(
-        "matter-a", "doc.pdf", [_chunk("c1", "doc.pdf", "a"), _chunk("c2", "doc.pdf", "b")], _vectors(2)
+        "matter-a",
+        "doc.pdf",
+        [_chunk("c1", "doc.pdf", "a"), _chunk("c2", "doc.pdf", "b")],
+        _vectors(2),
     )
     assert matter_store.list_documents("matter-a") == ["doc.pdf"]
 

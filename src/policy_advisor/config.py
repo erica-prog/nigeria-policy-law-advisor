@@ -43,12 +43,15 @@ class Settings(BaseSettings):
     anthropic_workspace_id: str = ""
     anthropic_model: str = "claude-sonnet-4-6"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
-    # Supabase Postgres: matters, chunks with their embeddings, and chat
-    # history. Use the Session pooler string (port 5432) from Dashboard >
-    # Connect - the direct connection is IPv6-only without the paid IPv4
-    # add-on. Optional here so tools that never touch the database still
-    # import; db.py raises a clear error if it's missing when needed.
+    # Postgres (Netlify DB, a Neon database): matters, chunks with their
+    # embeddings, chat history, accounts and tenants. Use the unpooled
+    # connection string (docs/16). Optional here so tools that never touch the
+    # database still import; db.py raises a clear error if it's missing when needed.
     database_url: SecretStr | None = None
+    # After connecting, the app switches to this role, which cannot bypass
+    # row-level security (migration 0009; docs/31). Empty keeps the connecting
+    # role, which bypasses the tenant policies: for emergencies only.
+    database_app_role: str = "policy_advisor_app"
     # Where uploaded originals are kept (storage.py). A mounted volume in the
     # container; an S3-compatible store is the planned alternative.
     originals_dir: Path = ORIGINALS_DIR
@@ -131,6 +134,24 @@ class Settings(BaseSettings):
     # one key and one bill; the per-turn output cap bounds a runaway answer.
     agent_model: str = ""
     agent_max_tokens: int = 16_000
+    # Tracing and the cost ledger (docs/32). OTEL_EXPORTER: none | console |
+    # otlp (endpoint from OTEL_EXPORTER_OTLP_ENDPOINT) | memory (tests).
+    # MODEL_PRICES is JSON per model, per million tokens, e.g.
+    #   {"claude-sonnet-4-6": {"input_per_million": 3.0, "output_per_million": 15.0}}
+    # Empty leaves estimated_usd NULL in the ledger; token counts are always kept.
+    otel_exporter: str = "none"
+    # Bulk analysis (docs/33). Triage with the cheaper model, escalate flagged
+    # documents to the escalation model (blank = ANTHROPIC_MODEL); jobs over
+    # BULK_BATCH_THRESHOLD documents use the Batch API; a job stops at its
+    # token ceiling and waits to be resumed; a record below the confidence
+    # floor is flagged for escalation and review.
+    bulk_triage_model: str = "claude-haiku-5-5"
+    bulk_escalation_model: str = ""
+    bulk_batch_threshold: int = 50
+    bulk_default_ceiling_tokens: int = 2_000_000
+    bulk_flag_confidence: float = 0.8
+    bulk_max_document_chars: int = 120_000
+    model_prices: dict[str, dict[str, float]] = {}
 
     def llm_configured(self) -> bool:
         return bool(self.anthropic_api_key.get_secret_value().strip())

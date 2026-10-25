@@ -23,7 +23,7 @@ per-tenant residency setting; a lawyer's review of playbooks, taxonomy and sourc
 
 - The database already carries `tenant_id` on `matters` and `chunks` (migration 0003),
   unused. Every query filters by `matter_id`; none by tenant. Row-level security is on for
-  every table, but the policies only revoke Supabase's API roles: the app connects as one
+  every table, but the policies only revoke a hosted provider's API roles: the app connects as one
   database role, so tenancy today is application code, not the database.
 - `document_jobs` (migration 0006) with `claim_next` over `FOR UPDATE SKIP LOCKED` is a
   working queue with one worker process; a bulk pipeline needs the same shape at a larger
@@ -134,3 +134,6 @@ merged.
 
 | Slice | Branch | Commit | Verification | Notes |
 |---|---|---|---|---|
+| P3-A | `platform/phase-3-a` | the slice commit (`Tenancy: ...`) | `ruff`, `mypy`, `pytest` green; `tests/test_tenancy.py` proves isolation on one pooled connection, the policy refusing a cross-tenant write, the worker running as the job's tenant, roles and shares | the worker uses an all-tenants view (`*`) the API never sets; shared-library writes are not yet restricted by the database; residency and retention columns exist without behaviour (P3-G) |
+| P3-B | `platform/phase-3-a` | the slice commit (`Tracing and cost ledger: ...`) | `ruff`, `mypy`, `pytest` green; `tests/test_telemetry.py` reads spans back from the memory exporter and the ledger rows from the table | the LangChain callback covers every chain; raw SDK calls record their own usage; `MODEL_PRICES` ships empty so `estimated_usd` is NULL until set; exporters: none, console, otlp, memory |
+| P3-C | `platform/phase-3-a` | the slice commit (`Bulk analysis: ...`) | `ruff`, `mypy`, `pytest` green; tests run the extractor with a fake model and a fake Batch API client: evidence verification, tiering, the ceiling pause and resume, the batch path, findings, the agent tool and the API | no live Batch API run; F1 gate is P3-D; review transitions are P3-F |

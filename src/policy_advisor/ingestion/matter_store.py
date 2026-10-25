@@ -1,4 +1,4 @@
-"""Matters and their chunks, in Supabase Postgres (docs/16).
+"""Matters and their chunks, in Postgres (docs/16).
 
 Each chunk's text, metadata and embedding live in one row, and every write
 replaces a whole document or matter inside a single transaction. That is the
@@ -88,9 +88,11 @@ def record_from_row(row: dict) -> dict:
 
 
 def _ensure_matter(conn: DictConnection, matter_id: str) -> None:
+    from policy_advisor.tenancy import tenant_for_matter
+
     conn.execute(
-        "INSERT INTO matters (matter_id) VALUES (%s) ON CONFLICT (matter_id) DO NOTHING",
-        (matter_id,),
+        "INSERT INTO matters (matter_id, tenant_id) VALUES (%s, %s) ON CONFLICT (matter_id) DO NOTHING",
+        (matter_id, tenant_for_matter(matter_id)),
     )
 
 
@@ -135,7 +137,7 @@ def _insert_chunks(
     tier = _matter_tier(conn, matter_id)
     with conn.cursor() as cur:
         # psycopg pipelines executemany, so hundreds of rows cost roughly one
-        # round trip to Supabase rather than one each.
+        # round trip to the database rather than one each.
         cur.executemany(
             f"INSERT INTO chunks ({', '.join(_INSERT_COLUMNS)}) VALUES ({placeholders})",
             [
@@ -174,6 +176,13 @@ def _insert_chunks(
                 )
                 for record, embedding in zip(records, embeddings)
             ],
+        )
+        # A chunk belongs to its matter's firm whatever context inserted it
+        # (the libraries are built under the shared tenant; tests are not).
+        conn.execute(
+            "UPDATE chunks c SET tenant_id = m.tenant_id FROM matters m "
+            "WHERE c.matter_id = m.matter_id AND c.matter_id = %s AND c.tenant_id <> m.tenant_id",
+            (matter_id,),
         )
 
 
@@ -231,11 +240,13 @@ def set_matter_owner(matter_id: str, owner: str) -> None:
     """Called once, when a matter is created - a matter has exactly one owner
     for now (no co-counsel sharing in this pass, see CLAUDE-2.md cross-cutting
     concerns)."""
+    from policy_advisor.tenancy import tenant_for_matter
+
     with connect() as conn:
         conn.execute(
-            "INSERT INTO matters (matter_id, owner) VALUES (%s, %s) "
+            "INSERT INTO matters (matter_id, owner, tenant_id) VALUES (%s, %s, %s) "
             "ON CONFLICT (matter_id) DO UPDATE SET owner = excluded.owner",
-            (matter_id, owner),
+            (matter_id, owner, tenant_for_matter(matter_id)),
         )
 
 
@@ -256,14 +267,19 @@ def list_matters() -> list[str]:
 
 
 def list_matters_for_user(username: str) -> list[str]:
-    """Every matter this user owns, plus the shared libraries: the Phase 1 demo
-    matter always (visible to everyone, read-only - see api/deps.py) and any
-    other library collection that has been built. Never the full multi-tenant
-    list `list_matters()` returns."""
+    """Every matter this user owns or has been given a share of, plus the
+    shared libraries: the Phase 1 demo matter always (visible to everyone,
+    read-only - see api/deps.py) and any other library collection that has
+    been built. The tenant policies already hide other firms' rows; this
+    narrows to the user within the firm."""
     with connect() as conn:
-        owned = {
+        visible = {
             row["matter_id"]
-            for row in conn.execute("SELECT matter_id FROM matters WHERE owner = %s", (username,))
+            for row in conn.execute(
+                "SELECT matter_id FROM matters WHERE owner = %s "
+                "UNION SELECT matter_id FROM matter_shares WHERE username = %s",
+                (username, username),
+            )
         }
         built = {
             row["matter_id"]
@@ -272,8 +288,50 @@ def list_matters_for_user(username: str) -> list[str]:
                 (sorted(LIBRARY_MATTER_IDS),),
             )
         }
-    owned.add(PHASE1_DEMO_MATTER_ID)
-    return sorted(owned | built)
+    visible.add(PHASE1_DEMO_MATTER_ID)
+    return sorted(visible | built)
+
+
+def share_matter(matter_id: str, username: str, *, can_write: bool = False) -> None:
+    """Give a user of the same firm access to a matter (docs/31)."""
+    from policy_advisor.tenancy import require_tenant
+
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO matter_shares (matter_id, username, tenant_id, can_write) VALUES (%s, %s, %s, %s) "
+            "ON CONFLICT (matter_id, username) DO UPDATE SET can_write = EXCLUDED.can_write",
+            (matter_id, username, require_tenant(), can_write),
+        )
+
+
+def unshare_matter(matter_id: str, username: str) -> bool:
+    with connect() as conn:
+        return bool(
+            conn.execute(
+                "DELETE FROM matter_shares WHERE matter_id = %s AND username = %s",
+                (matter_id, username),
+            ).rowcount
+        )
+
+
+def share_for(matter_id: str, username: str) -> dict | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT username, can_write FROM matter_shares WHERE matter_id = %s AND username = %s",
+            (matter_id, username),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def shared_with(matter_id: str) -> list[str]:
+    with connect() as conn:
+        return [
+            r["username"]
+            for r in conn.execute(
+                "SELECT username FROM matter_shares WHERE matter_id = %s ORDER BY username",
+                (matter_id,),
+            )
+        ]
 
 
 def matter_version(matter_id: str) -> int:

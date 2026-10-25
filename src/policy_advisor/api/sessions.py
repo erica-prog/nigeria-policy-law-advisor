@@ -17,23 +17,39 @@ def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(get_settings().auth_cookie_key.get_secret_value(), salt=_SALT)
 
 
-def create_session_token(username: str) -> str:
-    return _serializer().dumps({"u": username})
+def create_session_token(username: str, tenant_id: str | None = None) -> str:
+    payload: dict[str, str] = {"u": username}
+    if tenant_id:
+        payload["t"] = tenant_id
+    return _serializer().dumps(payload)
 
 
-def read_session_token(token: str) -> str | None:
+def read_session(token: str) -> tuple[str, str | None] | None:
+    """(username, tenant claim) from a valid cookie, else None. The tenant is
+    a claim the request dependency checks against `tenant_users`; the
+    middleware uses it to set the tenant before any query runs."""
     try:
         payload = _serializer().loads(token, max_age=SESSION_MAX_AGE_SECONDS)
     except (BadSignature, SignatureExpired):
         return None
-    username = payload.get("u") if isinstance(payload, dict) else None
-    return username if isinstance(username, str) and username else None
+    if not isinstance(payload, dict):
+        return None
+    username = payload.get("u")
+    if not isinstance(username, str) or not username:
+        return None
+    tenant = payload.get("t")
+    return username, (tenant if isinstance(tenant, str) and tenant else None)
 
 
-def set_session_cookie(response: Response, username: str) -> None:
+def read_session_token(token: str) -> str | None:
+    session = read_session(token)
+    return session[0] if session else None
+
+
+def set_session_cookie(response: Response, username: str, tenant_id: str | None = None) -> None:
     response.set_cookie(
         SESSION_COOKIE,
-        create_session_token(username),
+        create_session_token(username, tenant_id),
         max_age=SESSION_MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",

@@ -35,8 +35,8 @@ Stack:
 | Embeddings          | Hugging Face sentence-transformers (local, no token required)         |
 | Backend             | Python 3.12, FastAPI, managed with `uv`                               |
 | Browser client      | Plain HTML, CSS and ES modules in `web/` (no build step)              |
-| Storage (today)     | Supabase Postgres + pgvector for matters, chunks and chat history (`docs/16-supabase-setup.md`); conversation logs, credentials and user keys still on disk under `data/`; uploaded originals are not retained |
-| Auth (today)        | bcrypt credentials file plus a signed HttpOnly session cookie         |
+| Storage (today)     | Postgres + pgvector (Netlify DB, a Neon database; `docs/16-database-setup.md`) for matters, chunks, documents, jobs, chats, accounts, keys, audit and tenants; uploaded originals in the blob store under `data/` |
+| Auth (today)        | bcrypt credentials in Postgres, a signed HttpOnly session cookie carrying the tenant, roles per tenant (`docs/31`) |
 | Document processing | In-process background jobs (an MVP stand-in for a worker queue); BM25 held in memory per matter |
 | Tool integration    | MCP: one in-process client over stdio and HTTP behind a tool policy (`docs/26`); connectors under `connectors/` |
 | TypeScript          | The Nigeria MCP connector in `connectors/ng-sources/` (docs/27); taught in `docs/05-typescript-guide.md` |
@@ -90,7 +90,7 @@ rewriting it.
 | Area                                     | Location                                                        |
 | ---------------------------------------- | --------------------------------------------------------------- |
 | Settings (env-driven, pydantic)          | `src/policy_advisor/config.py`, `.env.example`                  |
-| Database, migrations, Supabase guide     | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-supabase-setup.md` |
+| Database, migrations, setup guide        | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-database-setup.md` |
 | Ingestion (PDF, DOCX, OCR, chunking)     | `src/policy_advisor/ingestion/`                                 |
 | US federal library (texts, parsers, fetch) | `data/us/`, `src/policy_advisor/ingestion/parse_us.py`, `scripts/fetch_us_corpus.py`, `docs/25-us-library-corpus.md` |
 | Retrieval (BM25 + dense, hybrid)         | `src/policy_advisor/retrieval/`                                 |
@@ -102,6 +102,9 @@ rewriting it.
 | Nigeria connector (TypeScript MCP server) | `connectors/ng-sources/`, `docs/27-nigeria-connector.md`, TypeScript notes in `docs/05-typescript-guide.md` |
 | Research agent (tool runner, audit tables)  | `src/policy_advisor/agents/`, `docs/28-research-agent.md` |
 | Playbooks and routing (selector, routing evals) | `src/policy_advisor/playbooks/`, `eval/routing/`, `eval/run_routing_evals.py`, `docs/29-playbooks-and-routing.md` |
+| Tenancy (tenants, roles, shares, RLS policies) | `src/policy_advisor/tenancy.py`, `src/policy_advisor/api/tenant_middleware.py`, migration `0009`, `scripts/manage_tenants.py`, `docs/31-tenancy.md` |
+| Tracing and cost ledger (spans, usage endpoint) | `src/policy_advisor/telemetry.py`, migration `0010`, `GET /api/usage`, `docs/32-tracing-and-cost-ledger.md` |
+| Bulk analysis (schemas, evidence, jobs, checks, API) | `src/policy_advisor/bulk/`, `src/policy_advisor/api/routers/bulk.py`, migration `0011`, `docs/33-bulk-analysis.md` |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |

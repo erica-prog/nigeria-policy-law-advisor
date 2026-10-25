@@ -3,10 +3,10 @@ import json
 import numpy as np
 
 from policy_advisor.config import PHASE1_DEMO_MATTER_ID
-from policy_advisor.db import connect
 from policy_advisor.ingestion import matter_store
 from scripts.check_database import _connection_warnings, run_checks
 from scripts.migrate_to_postgres import legacy_matters, migrate
+from tests.conftest import owner_sql
 
 DIMENSIONS = 384
 
@@ -26,7 +26,14 @@ def test_migration_moves_owners_and_chunks(fresh_db, tmp_path, monkeypatch):
         legacy,
         "smith-v-acme",
         owner="jdoe",
-        chunks=[{"chunk_id": "c1", "source_document": "brief.pdf", "text": "the claim", "locator": "Para 1"}],
+        chunks=[
+            {
+                "chunk_id": "c1",
+                "source_document": "brief.pdf",
+                "text": "the claim",
+                "locator": "Para 1",
+            }
+        ],
     )
     monkeypatch.setattr(
         "policy_advisor.ingestion.embed.embed_texts",
@@ -43,7 +50,11 @@ def test_migration_moves_owners_and_chunks(fresh_db, tmp_path, monkeypatch):
 
 def test_migration_skips_the_demo_matter_and_test_leftovers(tmp_path):
     legacy = tmp_path / "matters"
-    _write_legacy_matter(legacy, PHASE1_DEMO_MATTER_ID, chunks=[{"chunk_id": "c", "source_document": "d", "text": "t"}])
+    _write_legacy_matter(
+        legacy,
+        PHASE1_DEMO_MATTER_ID,
+        chunks=[{"chunk_id": "c", "source_document": "d", "text": "t"}],
+    )
     _write_legacy_matter(legacy, "test-matter-a-1234", chunks=[])
     _write_legacy_matter(legacy, "owned-but-empty", owner="jdoe", chunks=[])
 
@@ -58,43 +69,44 @@ def test_database_check_passes_a_correctly_set_up_database(fresh_db):
 def test_database_check_fails_when_row_level_security_is_off(fresh_db):
     # The check only earns its place if it catches the dangerous state, not
     # just approves the safe one.
-    with connect() as conn:
-        conn.execute("ALTER TABLE chat_exchanges DISABLE ROW LEVEL SECURITY")
+    owner_sql(fresh_db, "ALTER TABLE chat_exchanges DISABLE ROW LEVEL SECURITY")
     try:
         _, _, failures = run_checks(fresh_db)
     finally:
-        with connect() as conn:
-            conn.execute("ALTER TABLE chat_exchanges ENABLE ROW LEVEL SECURITY")
+        owner_sql(fresh_db, "ALTER TABLE chat_exchanges ENABLE ROW LEVEL SECURITY")
 
     assert any("chat_exchanges" in f and "Row-level security is OFF" in f for f in failures)
 
 
 def test_database_check_fails_when_an_api_role_can_read_a_table(fresh_db):
-    # Supabase's anon key is public by design; any privilege it holds on these
+    # A hosted provider's public API role is anonymous by design; any privilege it holds on these
     # tables is a way to read client data without logging in.
-    with connect() as conn:
-        conn.execute(
-            "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') "
-            "THEN CREATE ROLE anon NOLOGIN; END IF; END $$"
-        )
-        conn.execute("GRANT SELECT ON chunks TO anon")
+    owner_sql(
+        fresh_db,
+        "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') "
+        "THEN CREATE ROLE anon NOLOGIN; END IF; END $$",
+        "GRANT SELECT ON chunks TO anon",
+    )
     try:
         _, _, failures = run_checks(fresh_db)
     finally:
-        with connect() as conn:
-            conn.execute("REVOKE ALL ON chunks FROM anon")
+        owner_sql(fresh_db, "REVOKE ALL ON chunks FROM anon")
 
     assert any("anon" in f and "chunks" in f for f in failures)
 
 
 def test_database_check_warns_about_the_wrong_connection_type():
-    transaction_pooler = "postgresql://postgres.ref:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
-    direct = "postgresql://postgres:pw@db.ref.supabase.co:5432/postgres"
-    session_pooler = "postgresql://postgres.ref:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres"
+    # Netlify DB (Neon): the pooled string runs PgBouncer in transaction mode;
+    # the unpooled one is what the app needs (docs/16).
+    pooled = "postgresql://owner:pw@ep-calm-sea-123-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+    unpooled = (
+        "postgresql://owner:pw@ep-calm-sea-123.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+    )
+    legacy_transaction_port = "postgresql://u:pw@some-host.example:6543/db"
 
-    assert any("transaction pooler" in w for w in _connection_warnings(transaction_pooler))
-    assert any("direct connection" in w for w in _connection_warnings(direct))
-    assert _connection_warnings(session_pooler) == []
+    assert any("pooled" in w and "unpooled" in w for w in _connection_warnings(pooled))
+    assert any("pooled" in w for w in _connection_warnings(legacy_transaction_port))
+    assert _connection_warnings(unpooled) == []
 
 
 def test_database_check_never_prints_the_password(fresh_db):
