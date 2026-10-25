@@ -182,7 +182,8 @@ Response `200`:
 }
 ```
 
-- `source`: `corpus` (answered from this matter's documents and citation-checked),
+- `source`: `research` (the research agent; mixed provenance, see Chat),
+  `corpus` (answered from this matter's documents and citation-checked),
   `web` (official-source fallback; only when `allow_web` is true and the corpus had
   nothing), `none` (nothing relevant found).
 - `citations`: resolved `[Source: ...]` tags in order of first appearance. For `web`
@@ -249,8 +250,16 @@ analyze above remain available and unchanged.
      shared read-only library, whose first message is a question).
   2. Analysis wanted **and the matter has documents** -> `mode: "analysis"` via the
      analyze pipeline with `case_facts = message`.
-  3. Analysis wanted **and the matter has no documents** -> `mode: "research"`: the ask
-     pipeline with `allow_web` forced to `true`, labelled as general legal research.
+  0. A playbook selector (docs/29) runs first: when the message and the jurisdiction
+     match a playbook, the reply carries its id in `playbook`, its notice replaces the
+     generic one, and the research agent runs under its tool allow-list and checklist.
+     A matched playbook may choose the mode (analysis needs documents).
+  3. `intent: "research"`, or analysis wanted **and the matter has no documents** ->
+     `mode: "research"`: the research agent (docs/28) over the matter, the shared
+     libraries, the registry's connectors and, when `allow_web` is true, official
+     websites. `answer.source` is `"research"`; every citation carries its own `kind`
+     and `trust_kind`; `answer.run_id`, `answer.tool_calls` and `answer.budget_exhausted`
+     describe the run. Labelled as research, never as evidence.
      `notice` is set and no `evidence` citation can appear (there are no documents).
   4. Otherwise `mode: "question"`: the ask pipeline with the caller's `allow_web`.
 
@@ -260,8 +269,9 @@ Response `200 ChatReply`:
 {
   "id": "5f1c...", "role": "assistant", "created_at": "2026-09-29T22:10:00+00:00",
   "mode": "analysis" | "research" | "question",
+  "playbook": null | "investigations-ng" | "investigations-us" | "immigration-ng" | "immigration-us",
   "bubble": "I have analysed your case: 2 issues, 1 without support in your documents. The details are below.",
-  "notice": null | "This is general legal research from official web sources and the model, not evidence from your documents. ...",
+  "notice": null | "This is legal research across your documents, the reference library, official sources and (when allowed) official websites. ...",
   "avatar_state": "verified_source",
   "citations": [SourceReference],
   "answer": AskResponse | null,
@@ -313,7 +323,7 @@ same side effects.
 
 ```json
 { "job_id": "8f0e...", "status": "queued" | "running" | "done" | "failed",
-  "stage": "reading_documents" | "searching_web" | "checking_citations" | "writing" | null,
+  "stage": "reading_documents" | "searching_web" | "researching" | "checking_citations" | "writing" | null,
   "stages": ["reading_documents", "writing", "checking_citations", "writing"],
   "reply": ChatReply | null,
   "error": { "code": "llm_unavailable", "message": "..." } | null }

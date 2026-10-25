@@ -27,3 +27,15 @@ def avatar_state_for_analysis(issues) -> AvatarState:
     if any(issue.unverified for issue in issues):
         return "unverified"
     return "verified_source"
+
+
+def avatar_state_for_research(citation_kinds: list[str], faithful: bool) -> AvatarState:
+    """A research run (docs/28) cites passages, connector results and web
+    pages; the state follows the weakest provenance in the answer."""
+    if not citation_kinds:
+        return "no_results"
+    if not faithful:
+        return "unverified"
+    if "web" in citation_kinds:
+        return "web_source"
+    return "verified_source"

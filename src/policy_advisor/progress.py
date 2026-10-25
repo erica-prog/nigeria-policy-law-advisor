@@ -10,8 +10,16 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Literal
 
-Stage = Literal["reading_documents", "searching_web", "checking_citations", "writing"]
-STAGES: tuple[Stage, ...] = ("reading_documents", "searching_web", "checking_citations", "writing")
+Stage = Literal[
+    "reading_documents", "searching_web", "researching", "checking_citations", "writing"
+]
+STAGES: tuple[Stage, ...] = (
+    "reading_documents",
+    "searching_web",
+    "researching",
+    "checking_citations",
+    "writing",
+)
 
 _listener: ContextVar[Callable[[Stage], None] | None] = ContextVar(
     "policy_advisor_stage_listener", default=None

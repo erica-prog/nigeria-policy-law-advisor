@@ -22,12 +22,10 @@ Users must be able to:
 6. Optionally expand research to a curated legal library and official web sources.
 7. Identify missing evidence, contradictory material and counterarguments.
 
-Current scope: Nigerian commercial disputes and related civil litigation.
-Planned direction: a USA + Nigeria platform covering investigations and immigration,
-federated primary-law sources, grounded drafting and bulk contract analysis. That plan
-is `docs/19-adr-001-multi-jurisdiction-legal-platform.md` (status: Proposed) and the
-review behind it is `docs/18-architecture-review.md`. Do not build against the ADR's
-target data model until it is marked Accepted.
+Current scope: Nigerian commercial disputes and civil litigation, plus investigations and
+immigration playbooks for Nigeria and the United States over federated primary-law
+sources (ADR-001 Phases 0 to 2: `docs/19`, Accepted; plans `docs/22`, `docs/23`).
+Still planned: grounded drafting and bulk contract analysis (Phase 3).
 
 Stack:
 
@@ -102,6 +100,8 @@ rewriting it.
 | Source registry (licence terms, lawyer sign-off, web allow-list) | `src/policy_advisor/sources/`, `scripts/manage_sources.py`, `docs/24-source-registry.md` |
 | Connectors and tool policy (MCP client, deny-list, result wrapper) | `src/policy_advisor/tools/`, `connectors/legal-ai-skills/` (vendored, see its `UPSTREAM.md`), `docs/26-connectors-and-tool-policy.md` |
 | Nigeria connector (TypeScript MCP server) | `connectors/ng-sources/`, `docs/27-nigeria-connector.md`, TypeScript notes in `docs/05-typescript-guide.md` |
+| Research agent (tool runner, audit tables)  | `src/policy_advisor/agents/`, `docs/28-research-agent.md` |
+| Playbooks and routing (selector, routing evals) | `src/policy_advisor/playbooks/`, `eval/routing/`, `eval/run_routing_evals.py`, `docs/29-playbooks-and-routing.md` |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |

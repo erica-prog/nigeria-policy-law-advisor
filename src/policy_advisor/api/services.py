@@ -32,8 +32,11 @@ class AdvisorServices:
         self._retriever: Any = None
         self._rag_chains: OrderedDict[str, Any] = OrderedDict()
         self._case_chains: OrderedDict[str, Any] = OrderedDict()
+        self._research_agents: OrderedDict[str, Any] = OrderedDict()
+        self._research_agent: Any = None
         self.rag_chain_factory: Callable[[str], Any] | None = None
         self.case_chain_factory: Callable[[str], Any] | None = None
+        self.research_agent_factory: Callable[[str], Any] | None = None
         self.ingest_lock = threading.Lock()
         self._blob_store: BlobStore | None = None
         self.key_attempts = AttemptLimiter()
@@ -102,12 +105,35 @@ class AdvisorServices:
                 return self._case_chain
             return self._cached(self._case_chains, api_key, self._build_case_chain)
 
+    def _build_research_agent(self, api_key: str):
+        if self.research_agent_factory is not None:
+            return self.research_agent_factory(api_key)
+        from policy_advisor.agents.research import ResearchAgent
+        from policy_advisor.generation.advisory import AdvisoryChain
+
+        case_chain = self.case_chain_for(api_key)
+        return ResearchAgent(
+            api_key,
+            retriever=self.retriever,
+            rag_chain=self.rag_chain_for(api_key),
+            case_chain=case_chain,
+            advisory_chain=AdvisoryChain(case_chain=case_chain, api_key=api_key),
+        )
+
+    def research_agent_for(self, api_key: str):
+        """ResearchAgent bound to `api_key` (docs/28); shares the user's chains."""
+        with self._lock:
+            if self._research_agent is not None:
+                return self._research_agent
+            return self._cached(self._research_agents, api_key, self._build_research_agent)
+
     def invalidate_matter(self, matter_id: str) -> None:
         """After add/remove document: drop cached BM25 indexes for the matter."""
         with self._lock:
-            holders = [self._rag_chain, self._case_chain, self._retriever]
+            holders = [self._rag_chain, self._case_chain, self._retriever, self._research_agent]
             holders.extend(self._rag_chains.values())
             holders.extend(self._case_chains.values())
+            holders.extend(self._research_agents.values())
             for holder in holders:
                 # Chains built before this method existed, and test doubles,
                 # must not turn a successful upload or deletion into a 500.

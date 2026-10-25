@@ -1,0 +1,44 @@
+# Routes that must not pick a playbook: the Phase 2 rules stay in force.
+version: 1
+cases:
+  - id: first-message-with-documents-is-analysis
+    prompt: "Acme stopped paying our invoices in March and terminated the supply agreement without notice."
+    jurisdiction: ng-lagos
+    has_documents: true
+    expected_skill: none
+    expected_behavior: analysis
+    must_include: []
+    must_not_include: []
+  - id: first-message-without-documents-is-research
+    prompt: "Acme stopped paying our invoices and terminated without notice."
+    has_documents: false
+    expected_skill: none
+    expected_behavior: research
+    must_include: []
+    must_not_include: []
+  - id: follow-up-is-a-question
+    prompt: "When are invoices due under the agreement?"
+    has_documents: true
+    conversation_started: true
+    analysed: true
+    expected_skill: none
+    expected_behavior: question
+    must_include: []
+    must_not_include: []
+  - id: shared-library-is-never-analysed
+    prompt: "What is the time limit for filing a defence?"
+    read_only: true
+    has_documents: true
+    expected_skill: none
+    expected_behavior: question
+    must_include: []
+    must_not_include: []
+  - id: word-inside-another-word-does-not-trigger
+    prompt: "The visage of the witness is irrelevant; when is the defence due?"
+    has_documents: true
+    conversation_started: true
+    analysed: true
+    expected_skill: none
+    expected_behavior: question
+    must_include: []
+    must_not_include: []

@@ -1,0 +1,77 @@
+id: immigration-us
+name: Immigration (United States)
+practice_area: immigration
+country: US
+jurisdictions: [us-federal]
+description: >-
+  Status, adjustment, removal and relief questions under the Immigration and Nationality Act,
+  8 CFR and the USCIS Policy Manual: adjustment of status, bars and waivers, unlawful presence,
+  detention and removal, and the documents each form needs. Authority comes from the US library
+  and official sources; a client's documents are evidence of their own history.
+triggers:
+  - immigration
+  - visa
+  - adjustment of status
+  - adjust status
+  - adjust her status
+  - adjust his status
+  - 8 cfr 245
+  - immigrant visa
+  - green card
+  - i-485
+  - i-130
+  - i-140
+  - uscis
+  - removal
+  - deportation
+  - asylum
+  - unlawful presence
+  - inadmissib
+  - naturalization
+  - naturalisation
+  - eoir
+  - detention
+  - zadvydas
+mode: research
+allowed_tools:
+  - search_case_documents
+  - search_official_web
+  - search_us_ecfr
+  - get_us_ecfr_text
+  - search_us_federal_register
+  - get_us_federal_register_document
+  - search
+  - search_document
+  - read_document
+  - get_endpoint_item
+  - searchGovInfo
+  - describePackageOrGranule
+checklist:
+  - Identify the relief or status sought and the applicant's history (entries, admissions, paroles, periods of unlawful presence) from the matter's documents.
+  - State the governing provision with its locator (INA section, 8 CFR section, USCIS Policy Manual chapter) and the date of the text used.
+  - Check eligibility requirements and bars one by one against the documents; say which the documents do not establish.
+  - Name the form, its required evidence and filing conditions only as an official source states them.
+  - Flag deadlines, bars that accrue with time, and detention or removal risks as questions for the lawyer.
+  - Say plainly what no source answered and which facts the lawyer must confirm with the client.
+extraction_schema:
+  relief_sought: the status, benefit or relief
+  history: entries, admissions, paroles and unlawful-presence periods from the documents
+  governing_provisions: the locators relied on
+  eligibility: each requirement and whether the documents establish it
+  deadlines: dates that matter and where they come from
+  gaps: what no source answered
+output_sections:
+  - Relief sought and history
+  - Governing provisions
+  - Eligibility against the documents
+  - Forms, evidence and filing
+  - Deadlines and risks
+  - What was not answered
+notice: >-
+  Immigration playbook (United States): the regulation and Policy Manual text in the library
+  carry their version dates and may have changed; nothing here is a decision of USCIS or an
+  immigration court. A client's documents are evidence of their history; the library and
+  official pages are authority.
+attribution: Written for this project.
+eval_file: eval/routing/immigration.yaml
+source_ids: [us-ecfr, us-uscis-policy-manual, us-reports-loc, us-courtlistener, us-govinfo]

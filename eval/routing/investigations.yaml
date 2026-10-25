@@ -1,0 +1,67 @@
+# Routing evals for the investigations playbooks (docs/29). Same shape as
+# the legal-ai-skills plugin's behavioural evals (MIT): prompt, expected
+# skill, expected behaviour, must/must-not include. `expected_skill` is a
+# playbook id or "none"; `expected_behavior` is the mode; `must_include`
+# and `must_not_include` are checked against the playbook's notice and
+# checklist (the route text), case-insensitively. Each case may set
+# `jurisdiction`, `has_documents`, `intent`, `conversation_started`,
+# `analysed`, `read_only`; the defaults are a first message on an owned
+# matter with documents.
+version: 1
+cases:
+  - id: ng-whistleblower-with-documents
+    prompt: "Investigate the whistleblower's allegation that the procurement officer inflated invoices; the emails and payment vouchers are uploaded."
+    jurisdiction: ng-lagos
+    has_documents: true
+    expected_skill: investigations-ng
+    expected_behavior: analysis
+    must_include: ["allegation", "contrary evidence", "chronology", "not decide guilt", "EFCC"]
+    must_not_include: ["guaranteed", "guilty"]
+  - id: ng-investigation-without-documents-falls-back-to-research
+    prompt: "We need to run an internal investigation into misconduct in the Lagos office. What does the Evidence Act require of us?"
+    jurisdiction: ng-federal
+    has_documents: false
+    expected_skill: investigations-ng
+    expected_behavior: research
+    must_include: ["standard of proof", "missing evidence"]
+    must_not_include: ["sanction decided"]
+  - id: us-fraud-with-privilege
+    prompt: "Internal investigation into fraud allegations against our CFO; we must think about litigation hold and Upjohn warnings. Documents attached."
+    jurisdiction: us-federal
+    has_documents: true
+    expected_skill: investigations-us
+    expected_behavior: analysis
+    must_include: ["Upjohn", "litigation hold", "spoliation", "self-report"]
+    must_not_include: ["guarantee privilege"]
+  - id: us-sec-whistleblower-research
+    prompt: "A whistleblower says our client misled investors; what are the SEC self-reporting considerations?"
+    jurisdiction: us-federal
+    has_documents: false
+    expected_skill: investigations-us
+    expected_behavior: research
+    must_include: ["SEC", "questions for the lawyer"]
+    must_not_include: []
+  - id: jurisdiction-keeps-playbooks-apart
+    prompt: "Investigate the fraud allegation."
+    jurisdiction: us-ny
+    has_documents: true
+    expected_skill: investigations-us
+    expected_behavior: analysis
+    must_include: ["United States"]
+    must_not_include: ["EFCC"]
+  - id: no-jurisdiction-picks-by-trigger-strength
+    prompt: "Investigate the EFCC referral and the ICPC letter about the misconduct."
+    has_documents: true
+    expected_skill: investigations-ng
+    expected_behavior: analysis
+    must_include: ["EFCC"]
+    must_not_include: []
+  - id: explicit-ask-intent-keeps-question-mode
+    prompt: "What does the investigation report say about the vouchers?"
+    jurisdiction: ng-federal
+    has_documents: true
+    intent: ask
+    expected_skill: investigations-ng
+    expected_behavior: question
+    must_include: []
+    must_not_include: []

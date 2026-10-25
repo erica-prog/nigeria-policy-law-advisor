@@ -53,6 +53,8 @@ jobs:
       # eval-gate is the job that spends a real key.
       - name: Unit tests
         run: uv run pytest
+      - name: Routing evals (playbook selector, no model)
+        run: uv run python -m eval.run_routing_evals
 
   connectors:
     # The vendored plugin server's own tests (connectors/legal-ai-skills/UPSTREAM.md).

@@ -7,6 +7,8 @@ import pytest
 from policy_advisor.api.conversations import derive_title
 from policy_advisor.api.routers.chat import RESEARCH_NOTICE
 from tests.api.helpers import (
+    FakeResearchAgent,
+    research_result,
     FakeCaseChain,
     FakeRagChain,
     FakeRetriever,
@@ -51,6 +53,7 @@ def fakes(api_with_llm):
     api_with_llm.services._retriever = FakeRetriever(
         chunks=[chunk("Section 3", "Either party may terminate on ninety days written notice.")]
     )
+    api_with_llm.services._research_agent = FakeResearchAgent(result=research_result())
     return rag, case
 
 
@@ -103,36 +106,66 @@ def test_first_message_with_documents_runs_case_analysis(api_with_llm, fakes):
     assert rag.calls == []
 
 
-def test_first_message_without_documents_is_research_mode_forcing_web(api_with_llm, fakes):
+def test_first_message_without_documents_runs_the_research_agent(api_with_llm, fakes):
     rag, case = fakes
-    rag.result = web_answer()
+    agent = api_with_llm.services._research_agent
     alice = api_with_llm.login("alice")
     matter = _new_case(alice)
 
-    body = _chat(alice, matter["id"], CASE, allow_web=False).json()
+    body = _chat(alice, matter["id"], CASE, allow_web=True).json()
 
     assert body["mode"] == "research"
-    assert rag.calls[0]["allow_web_fallback"] is True, "research mode must force the web search"
-    assert case.calls == [], "no documents: case analysis must not run"
-    assert body["answer"]["source"] == "web"
-    assert body["avatar_state"] == "web_source"
+    assert rag.calls == [] and case.calls == [], (
+        "research mode goes to the agent, not the fixed chains"
+    )
+    assert agent.calls[0]["matter_id"] == matter["id"] and agent.calls[0]["allow_web"] is True
+    assert agent.calls[0]["username"] == "alice", "the audit row names who paid for the run"
+    assert body["answer"]["source"] == "research"
+    assert body["answer"]["run_id"] == "run-fake-1" and body["answer"]["tool_calls"] == 3
+    assert body["avatar_state"] == "web_source", "a web citation is the weakest provenance cited"
     assert body["notice"] == RESEARCH_NOTICE
-    assert "not evidence" in body["notice"] and "not evidence" in body["bubble"]
-    assert [c["kind"] for c in body["citations"]] == ["web"]
-    assert all(c["kind"] != "evidence" for c in body["citations"])
-    assert [c["action"] for c in body["chips"]] == ["add_documents"]
+    assert [c["kind"] for c in body["citations"]] == ["evidence", "authority", "web"]
+    assert "your documents, legal authority, official websites" in body["bubble"]
+    assert [c["action"] for c in body["chips"]] == ["ask"]
 
 
-def test_research_mode_with_nothing_found_still_asks_for_documents(api_with_llm, fakes):
-    rag, _ = fakes
-    rag.result = not_found_answer()
+def test_research_mode_with_nothing_cited_still_asks_for_documents(api_with_llm, fakes):
+    api_with_llm.services._research_agent = FakeResearchAgent(
+        result=research_result(citations=False)
+    )
     alice = api_with_llm.login("alice")
     matter = _new_case(alice)
 
     body = _chat(alice, matter["id"], CASE).json()
     assert body["mode"] == "research" and body["avatar_state"] == "no_results"
     assert body["notice"] == RESEARCH_NOTICE
-    assert [c["action"] for c in body["chips"]] == ["add_documents"]
+    assert [c["action"] for c in body["chips"]] == ["add_documents", "ask"]
+
+
+def test_explicit_research_intent_uses_the_agent_even_with_documents(api_with_llm, fakes):
+    rag, _ = fakes
+    agent = api_with_llm.services._research_agent
+    alice = api_with_llm.login("alice")
+    matter = _new_case(alice)
+    _upload_ready(alice, matter["id"])
+
+    body = _chat(
+        alice, matter["id"], "What do the rules say about late defences?", intent="research"
+    ).json()
+    assert body["mode"] == "research" and body["answer"]["source"] == "research"
+    assert agent.calls and rag.calls == []
+    assert body["avatar_state"] == "web_source"
+
+
+def test_unfaithful_research_answer_is_flagged(api_with_llm, fakes):
+    api_with_llm.services._research_agent = FakeResearchAgent(
+        result=research_result(faithful=False)
+    )
+    alice = api_with_llm.login("alice")
+    matter = _new_case(alice)
+    body = _chat(alice, matter["id"], CASE).json()
+    assert body["avatar_state"] == "unverified" and "did not check out" in body["bubble"]
+    assert body["answer"]["unsupported_citations"] == ["Order 99 Rule 1"]
 
 
 def test_follow_up_messages_are_questions_and_respect_allow_web(api_with_llm, fakes):
@@ -324,3 +357,31 @@ def test_chat_validation_error_shape(api_with_llm, fakes):
         ("body", "message"),
         ("body", "intent"),
     }
+
+
+def test_playbook_shapes_the_reply_and_reaches_the_agent(api_with_llm, fakes):
+    # docs/29: an immigration question on a US matter routes to the US immigration
+    # playbook; the reply names it, carries its notice, and the agent receives it.
+    agent = api_with_llm.services._research_agent
+    alice = api_with_llm.login("alice")
+    matter = _new_case(alice)
+    body = _chat(
+        alice,
+        matter["id"],
+        "Can my client adjust status after a B-2 entry?",
+        jurisdiction="us-federal",
+    ).json()
+    assert body["mode"] == "research" and body["playbook"] == "immigration-us"
+    assert body["notice"].startswith("Immigration playbook (United States)")
+    assert agent.calls[-1]["playbook"].id == "immigration-us"
+
+    # The same words on a Nigerian matter pick the Nigerian playbook.
+    body = _chat(
+        alice, matter["id"], "Can my client get a visa on arrival?", jurisdiction="ng-federal"
+    ).json()
+    assert body["playbook"] == "immigration-ng"
+
+    # An ordinary question matches nothing and the reply says so.
+    _upload_ready(alice, matter["id"])
+    body = _chat(alice, matter["id"], "When are invoices due?", intent="ask").json()
+    assert body["playbook"] is None and body["mode"] == "question"

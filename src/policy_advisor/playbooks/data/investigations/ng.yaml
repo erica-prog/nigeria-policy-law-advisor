@@ -1,0 +1,68 @@
+id: investigations-ng
+name: Investigations (Nigeria)
+practice_area: investigations
+country: NG
+jurisdictions: [ng-federal, ng-lagos]
+description: >-
+  An internal, regulatory, workplace or fraud investigation under Nigerian law: build the
+  allegation matrix and chronology from the matter's evidence, test each allegation against the
+  Evidence Act 2011 and the relevant regulator's rules, and keep findings separate from
+  recommendations. Evidence comes only from the matter's documents; authority from the library
+  and official sources.
+triggers:
+  - investigation
+  - investigate
+  - whistleblower
+  - whistle-blower
+  - misconduct
+  - fraud
+  - forensic
+  - allegation
+  - disciplinary
+  - internal inquiry
+  - evidence act
+  - efcc
+  - icpc
+  - ndpc audit
+mode: analysis
+allowed_tools:
+  - search_case_documents
+  - analyze_case
+  - assess_case_position
+  - search_official_web
+  - search_ng_official
+  - fetch_ng_official
+  - cite_ng_official
+checklist:
+  - State the mandate, scope, standard of proof and who decides; say when the documents do not give them.
+  - Turn each allegation into propositions to test and link every item of supporting and contrary evidence to a locator in the matter's documents.
+  - Build a sourced chronology before any narrative conclusion.
+  - Assess reliability by provenance, contemporaneity, consistency and corroboration; never by demeanour, delay or presentation style.
+  - Label established fact, reported account, inference and unknown; make one bounded finding per allegation.
+  - Identify reporting duties and interim measures (regulator, EFCC or ICPC referral, data-breach notification under the NDPA 2023) as questions for the lawyer, not as decisions.
+  - Separate recommendations from findings; leave sanction to the authorised decision-maker.
+  - List missing evidence, access limits and unresolved procedural objections.
+extraction_schema:
+  mandate: who commissioned the investigation and its scope
+  allegations: each allegation as a testable proposition
+  evidence_index: locators of the documents relied on, with dates
+  reporting_duties: statutory or regulatory reporting the facts may trigger
+  gaps: evidence that is missing or could not be accessed
+output_sections:
+  - Mandate and scope
+  - Chronology
+  - Allegation-by-allegation analysis
+  - Findings
+  - Reporting and interim measures to consider
+  - Gaps and limitations
+  - Recommendations
+notice: >-
+  Investigations playbook (Nigeria): findings rest only on the documents in this matter; legal
+  authority comes from the library and official sources and never proves a fact. The advisor
+  does not decide guilt or sanction.
+attribution: >-
+  Checklist adapted from the MIT-licensed legal-ai-skills plugin (Rohas Nagpal, commit ad5df19):
+  investigation-report-drafter, evidence-organizer, fraud-pattern-analyst,
+  whistleblower-report-analyst.
+eval_file: eval/routing/investigations.yaml
+source_ids: [web-official-ng, ng-ndpc, ng-fhc]

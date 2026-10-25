@@ -210,7 +210,7 @@ added their own yet: see *Bring your own Claude key* above. If `/api/health` rep
 | Session cookie, credentials   | `api/sessions.py`, `api/credentials.py`           |
 | Permission dependency         | `api/deps.py` (`get_matter`, `get_writable_matter`) |
 | Routers                       | `api/routers/{auth,matters,documents,advice,chat,keys}.py` |
-| Chat flow decision            | `api/routers/chat.py` (`decide_mode`)             |
+| Chat flow decision            | `api/routers/chat.py` (`decide_route`, the playbook selector of docs/29)             |
 | Conversation log, titles      | `api/conversations.py`                            |
 | Document job table            | `api/jobs.py`                                     |
 | Chat job table (stages)       | `api/chat_jobs.py`; stages emitted via `policy_advisor/progress.py` |

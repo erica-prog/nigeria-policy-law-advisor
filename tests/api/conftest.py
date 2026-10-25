@@ -46,6 +46,32 @@ class ApiHarness:
         return self.app.state.services  # type: ignore[attr-defined]
 
 
+def _scripted_research_agent(services, api_key: str):
+    """The real ResearchAgent wired to the user's own chains, driven by a
+    scripted loop instead of Claude: it calls search_case_documents once and
+    returns that answer. Tests that need research mode proper set
+    `services._research_agent` to a fake; this default keeps the key-isolation
+    and failure-envelope tests honest without a network call."""
+    from policy_advisor.agents.research import ResearchAgent
+
+    async def loop(tools, system, prompt):
+        by_name = {t.name: t for t in tools}
+        question = prompt.rsplit("Question from the lawyer:\n", 1)[-1]
+        found = await by_name["search_case_documents"].call({"question": question})
+        answer = found.split("Answer: ", 1)[-1].split("\nLocators you may cite:", 1)[0]
+        return answer.strip(), {"input_tokens": 1, "output_tokens": 1}
+
+    return ResearchAgent(
+        api_key,
+        retriever=services.retriever,
+        rag_chain=services.rag_chain_for(api_key),
+        case_chain=services.case_chain_for(api_key),
+        run_loop=loop,
+        sources=[],
+        specs={},
+    )
+
+
 def _build_harness(
     tmp_path: Path, monkeypatch, llm_key: str, shared_key: bool = False
 ) -> ApiHarness:
@@ -65,14 +91,18 @@ def _build_harness(
     with connect() as conn:
         conn.execute(
             "TRUNCATE chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
-            "index_meta RESTART IDENTITY CASCADE"
+            "index_meta, agent_tool_calls, agent_runs RESTART IDENTITY CASCADE"
         )
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")
     monkeypatch.setattr(matter_store, "MATTERS_DIR", tmp_path / "matters")
     _create_users()
     app = create_app(serve_static=False)
     client = TestClient(app, raise_server_exceptions=False)
-    return ApiHarness(app=app, client=client, root=tmp_path)
+    harness = ApiHarness(app=app, client=client, root=tmp_path)
+    harness.services.research_agent_factory = lambda api_key: _scripted_research_agent(
+        harness.services, api_key
+    )
+    return harness
 
 
 @pytest.fixture
