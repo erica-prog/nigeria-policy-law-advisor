@@ -53,7 +53,7 @@ os.environ["OTEL_EXPORTER"] = "memory"
 TENANT_TABLES = (
     "chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
     "index_meta, agent_tool_calls, agent_runs, matter_shares, tenant_users, tenants, cost_ledger, "
-    "findings, extractions, bulk_jobs"
+    "findings, extractions, bulk_jobs, artefacts"
 )
 
 
@@ -84,6 +84,15 @@ def reset_database(url: str) -> None:
         conn.execute(
             "INSERT INTO tenants (tenant_id, name) VALUES ('shared', 'Shared reference libraries'), "
             "('default', 'Default tenant')"
+        )
+        # Truncating tenants cascades into templates; put the defaults back
+        # (migration 0012) so drafting tests find them.
+        conn.execute(
+            "INSERT INTO templates (template_id, tenant_id, kind, name, docx_key, style, is_default) VALUES "
+            "('memo-default', 'shared', 'memo', 'Memorandum (default)', 'packaged:memo.docx', "
+            '\'{"font": "Calibri", "footer": "Review before use."}\', true), '
+            "('slides-default', 'shared', 'slides', 'Presentation (default)', NULL, '{}', true) "
+            "ON CONFLICT (template_id) DO NOTHING"
         )
 
 

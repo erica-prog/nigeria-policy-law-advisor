@@ -381,3 +381,51 @@ class FindingOut(BaseModel):
 
 class FindingList(BaseModel):
     findings: list[FindingOut]
+
+
+# ---- Artefacts (docs/35) ----
+
+ArtefactKind = Literal["memo", "slides", "both"]
+ArtefactStatus = Literal["draft", "reviewed", "approved", "rejected"]
+
+
+class DraftRequest(BaseModel):
+    instruction: str = Field(min_length=10, max_length=20000)
+    kind: ArtefactKind = "memo"
+    template_id: str | None = None
+    jurisdiction: JurisdictionId = None
+    allow_web: bool = False
+
+
+class ArtefactOut(BaseModel):
+    artefact_id: str
+    matter_id: str
+    kind: ArtefactKind
+    title: str
+    status: ArtefactStatus
+    instruction: str
+    outline: dict
+    manifest: dict
+    has_docx: bool
+    has_pptx: bool
+    template_id: str | None = None
+    run_id: str | None = None
+    created_by: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class ArtefactList(BaseModel):
+    artefacts: list[ArtefactOut]
+
+
+class TemplateOut(BaseModel):
+    template_id: str
+    kind: Literal["memo", "slides"]
+    name: str
+    is_default: bool
+    shared: bool
+
+
+class TemplateList(BaseModel):
+    templates: list[TemplateOut]

@@ -34,6 +34,9 @@ class AdvisorServices:
         self._case_chains: OrderedDict[str, Any] = OrderedDict()
         self._research_agents: OrderedDict[str, Any] = OrderedDict()
         self._research_agent: Any = None
+        self._drafting_agents: OrderedDict[str, Any] = OrderedDict()
+        self._drafting_agent: Any = None
+        self.drafting_agent_factory: Callable[[str], Any] | None = None
         self.rag_chain_factory: Callable[[str], Any] | None = None
         self.case_chain_factory: Callable[[str], Any] | None = None
         self.research_agent_factory: Callable[[str], Any] | None = None
@@ -126,6 +129,22 @@ class AdvisorServices:
             if self._research_agent is not None:
                 return self._research_agent
             return self._cached(self._research_agents, api_key, self._build_research_agent)
+
+    def _build_drafting_agent(self, api_key: str):
+        if self.drafting_agent_factory is not None:
+            return self.drafting_agent_factory(api_key)
+        from policy_advisor.artefacts.draft import DraftingAgent
+
+        return DraftingAgent(
+            self.research_agent_for(api_key), blob_store=self.blob_store, api_key=api_key
+        )
+
+    def drafting_agent_for(self, api_key: str):
+        """DraftingAgent bound to `api_key` (docs/35); shares the user's research agent."""
+        with self._lock:
+            if self._drafting_agent is not None:
+                return self._drafting_agent
+            return self._cached(self._drafting_agents, api_key, self._build_drafting_agent)
 
     def invalidate_matter(self, matter_id: str) -> None:
         """After add/remove document: drop cached BM25 indexes for the matter."""
