@@ -77,6 +77,7 @@ Not "it runs on my machine." Specifically:
 - [31-tenancy.md](31-tenancy.md) — firms as rows, roles and matter sharing, the application role and forced row-level security policies, how the tenant travels through requests, jobs and scripts
 - [32-tracing-and-cost-ledger.md](32-tracing-and-cost-ledger.md) — OpenTelemetry spans for requests, retrieval, model and tool calls, the cost_ledger table attributed to tenant, user, matter and run, and GET /api/usage
 - [33-bulk-analysis.md](33-bulk-analysis.md) — bulk extraction as a batch pipeline: the contract ledger schema with verified evidence spans, model tiering and token ceilings, the Batch API backend, cross-document findings, and the agent's query tool
+- [34-extraction-eval.md](34-extraction-eval.md) — the labelled synthetic contract set, the eight-field F1 scorer, the oracle gate in CI and the advisory model run until a threshold is set
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase

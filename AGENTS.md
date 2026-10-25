@@ -108,7 +108,7 @@ rewriting it.
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
-| Evaluation (golden sets NG and US, rubric) | `eval/`                                                         |
+| Evaluation (golden sets NG and US, routing evals, extraction F1, rubric) | `eval/`, `docs/34-extraction-eval.md` |
 | Tests                                    | `tests/`                                                        |
 | CI                                       | `.github/workflows/ci.yml`                                      |
 | Design documents                         | `docs/` (numbered; start at `docs/00-overview.md`)              |

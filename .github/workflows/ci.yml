@@ -55,6 +55,10 @@ jobs:
         run: uv run pytest
       - name: Routing evals (playbook selector, no model)
         run: uv run python -m eval.run_routing_evals
+      - name: Extraction pipeline and scorer (oracle, no model)
+        # docs/34: the labels fed back as answers must score 1.0; proves the
+        # bulk pipeline end to end without a key.
+        run: uv run python -m eval.run_extraction_eval --oracle --fail-below 0.99
 
   connectors:
     # The vendored plugin server's own tests (connectors/legal-ai-skills/UPSTREAM.md).
@@ -128,6 +132,12 @@ jobs:
         # and recorded in docs/23 until the agent loop (P2-E) gives them a
         # cheaper home; the Nigerian set above already spends the key here.
         run: uv run python -m eval.run_golden_set --golden-set eval/golden_set_us.json --skip-generation --fail-below 0.9
+
+      - name: Extraction F1 on 12 synthetic contracts (advisory until a threshold is set)
+        # docs/34: prints the eight-field table; set --fail-below from the first
+        # measurement and record it in docs/30.
+        run: uv run python -m eval.run_extraction_eval --limit 12
+        continue-on-error: true
 
       - name: Relevance-floor calibration report
         # Advisory: prints where the answerable and off-corpus questions sit
