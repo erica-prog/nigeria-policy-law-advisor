@@ -65,6 +65,8 @@ production-specific parts:
   the whole interaction.
 
 ## Observability
+
+> **Since Phase 3 (docs/32):** OpenTelemetry spans and a per-tenant cost ledger are implemented in `telemetry.py`; the rest of this section is the original guidance.
 At minimum, log per query (structured, not free text):
 - Query text (consider whether this needs redaction/retention limits —
   legal queries may contain client-sensitive detail)

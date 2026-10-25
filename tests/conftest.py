@@ -46,11 +46,13 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 # No cross-encoder in unit tests: deterministic ordering, no model download.
 # Tests that exercise reranking inject their own scorer.
 os.environ["RERANK_ENABLED"] = "false"
+# Spans go to an in-memory exporter the telemetry tests read; nothing is printed.
+os.environ["OTEL_EXPORTER"] = "memory"
 
 
 TENANT_TABLES = (
     "chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
-    "index_meta, agent_tool_calls, agent_runs, matter_shares, tenant_users, tenants"
+    "index_meta, agent_tool_calls, agent_runs, matter_shares, tenant_users, tenants, cost_ledger"
 )
 
 

@@ -385,3 +385,13 @@ code for a failed model call.
 - A `reviewer` gets `403 role_forbidden` on `POST /api/matters` and `403
   matter_read_only` on uploads and deletes; a share with `can_write` does not change
   that.
+
+
+## Usage (docs/32)
+
+- `GET /api/usage?days=30&scope=me` -> `{ "scope": "me", "days": 30, "by_kind": [{ "kind":
+  "model", "calls": 12, "input_tokens": 48210, "output_tokens": 9120, "estimated_usd": null }],
+  "by_matter": [{ "matter_id": "case-...", "calls": 7, ... }] }`. `estimated_usd` is null
+  until the deployment configures `MODEL_PRICES`. `scope=tenant` needs the `admin` role
+  (`403 role_forbidden` otherwise); the database policies bound the rows to the caller's
+  firm in either case.

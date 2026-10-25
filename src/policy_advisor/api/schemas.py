@@ -283,3 +283,22 @@ class ChatJobOut(BaseModel):
     stages: list[ChatStage] = Field(default_factory=list)
     reply: ChatReply | None = None
     error: ChatJobError | None = None
+
+
+# ---- Usage (docs/32): what a user, or a firm's admin, has spent ----
+
+
+class UsageRow(BaseModel):
+    kind: str | None = None
+    matter_id: str | None = None
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    estimated_usd: float | None = None
+
+
+class UsageOut(BaseModel):
+    scope: Literal["me", "tenant"]
+    days: int
+    by_kind: list[UsageRow] = Field(default_factory=list)
+    by_matter: list[UsageRow] = Field(default_factory=list)

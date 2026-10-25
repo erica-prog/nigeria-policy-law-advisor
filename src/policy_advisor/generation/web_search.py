@@ -17,6 +17,7 @@ no search at all - the function returns "not found" without calling Anthropic,
 because a web search with no restriction would put unvetted pages on the same
 footing as the lawyer's documents."""
 
+import time
 from dataclasses import dataclass, field
 
 import anthropic
@@ -24,6 +25,7 @@ import anthropic
 from policy_advisor import sources
 from policy_advisor.config import get_settings, workspace_headers
 from policy_advisor.llm_retry import call_with_retry
+from policy_advisor.telemetry import record_cost, span
 
 
 @dataclass
@@ -57,29 +59,40 @@ def search_official_sources(
         default_headers=workspace_headers(settings, api_key) or None,
     )
 
-    response = call_with_retry(
-        lambda: client.messages.create(
-            model=settings.anthropic_model,
-            max_tokens=1024,
-            tools=[
-                {
-                    "type": "web_search_20250305",
-                    "name": "web_search",
-                    "allowed_domains": allowed_domains,
-                    "max_uses": 3,
-                }
-            ],
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"Respond in {response_language}. Answer using only what you find on the allowed "
-                        f"official sources. If you can't find a relevant answer there, say so plainly rather "
-                        f"than answering from general knowledge.\n\nQuestion: {question}"
-                    ),
-                }
-            ],
+    started = time.perf_counter()
+    with span("web_search.call", model=settings.anthropic_model, domains=len(allowed_domains)):
+        response = call_with_retry(
+            lambda: client.messages.create(
+                model=settings.anthropic_model,
+                max_tokens=1024,
+                tools=[
+                    {
+                        "type": "web_search_20250305",
+                        "name": "web_search",
+                        "allowed_domains": allowed_domains,
+                        "max_uses": 3,
+                    }
+                ],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Respond in {response_language}. Answer using only what you find on the allowed "
+                            f"official sources. If you can't find a relevant answer there, say so plainly rather "
+                            f"than answering from general knowledge.\n\nQuestion: {question}"
+                        ),
+                    }
+                ],
+            )
         )
+
+    usage = getattr(response, "usage", None)
+    record_cost(
+        "web_search",
+        model=settings.anthropic_model,
+        input_tokens=getattr(usage, "input_tokens", None),
+        output_tokens=getattr(usage, "output_tokens", None),
+        duration_ms=int((time.perf_counter() - started) * 1000),
     )
 
     answer_parts = []

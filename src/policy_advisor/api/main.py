@@ -17,6 +17,7 @@ from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.routers import advice, auth, chat, documents, keys, matters
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.api.tenant_middleware import TenantMiddleware
+from policy_advisor.telemetry import configure_tracing
 from policy_advisor.config import PROJECT_ROOT, Settings, get_settings
 from policy_advisor.logging_utils import log_event
 
@@ -53,6 +54,7 @@ def create_app(settings: Settings | None = None, serve_static: bool = True) -> F
 
     app = FastAPI(title="Nigeria Policy & Law Advisor API", version="0.1.0", lifespan=lifespan)
 
+    configure_tracing(get_settings())
     app.add_middleware(TenantMiddleware)
     app.state.services = AdvisorServices()
     app.state.jobs = JobTable()

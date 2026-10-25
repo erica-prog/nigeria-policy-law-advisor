@@ -135,3 +135,4 @@ merged.
 | Slice | Branch | Commit | Verification | Notes |
 |---|---|---|---|---|
 | P3-A | `platform/phase-3-a` | the slice commit (`Tenancy: ...`) | `ruff`, `mypy`, `pytest` green; `tests/test_tenancy.py` proves isolation on one pooled connection, the policy refusing a cross-tenant write, the worker running as the job's tenant, roles and shares | the worker uses an all-tenants view (`*`) the API never sets; shared-library writes are not yet restricted by the database; residency and retention columns exist without behaviour (P3-G) |
+| P3-B | `platform/phase-3-a` | the slice commit (`Tracing and cost ledger: ...`) | `ruff`, `mypy`, `pytest` green; `tests/test_telemetry.py` reads spans back from the memory exporter and the ledger rows from the table | the LangChain callback covers every chain; raw SDK calls record their own usage; `MODEL_PRICES` ships empty so `estimated_usd` is NULL until set; exporters: none, console, otlp, memory |

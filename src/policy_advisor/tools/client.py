@@ -12,6 +12,7 @@ agent loop (slice P2-E) runs on the async tool runner for the same reason.
 """
 
 import os
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -25,6 +26,7 @@ from mcp.types import CallToolResult, Tool
 from policy_advisor.config import get_settings
 from policy_advisor.tools.connectors import ConnectorSpec
 from policy_advisor.tools.policy import ToolGrant, ToolPolicy
+from policy_advisor.telemetry import record_cost, span
 from policy_advisor.tools.results import (
     ConnectorError,
     ConnectorResult,
@@ -133,7 +135,15 @@ async def guarded_call(
     wrap. Returns the result and the text block the model may see."""
     grant = policy.grant(connector, tool)
     policy.spend()
-    result = await call_tool(session, grant, arguments, timeout=timeout)
+    started = time.perf_counter()
+    with span("tool.call", connector=connector, tool=tool, source_id=grant.source.source_id):
+        result = await call_tool(session, grant, arguments, timeout=timeout)
+    record_cost(
+        "tool",
+        connector=connector,
+        tool=tool,
+        duration_ms=int((time.perf_counter() - started) * 1000),
+    )
     rendered = render_untrusted(
         result,
         source_id=grant.source.source_id,

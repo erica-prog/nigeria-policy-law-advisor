@@ -3,7 +3,17 @@ from fastapi import APIRouter, Request, Response, status
 from policy_advisor.api.credentials import get_user, verify_credentials
 from policy_advisor.api.deps import CurrentUser, Services
 from policy_advisor.api.errors import ApiError
-from policy_advisor.api.schemas import HealthOut, LoginRequest, SessionOut, UserOut
+from policy_advisor.api.schemas import (
+    UsageOut,
+    UsageRow,
+    HealthOut,
+    LoginRequest,
+    SessionOut,
+    UserOut,
+)
+from typing import Literal
+
+from policy_advisor.telemetry import usage_totals
 from policy_advisor.tenancy import Role, membership
 from policy_advisor.api.sessions import (
     SESSION_COOKIE,
@@ -81,4 +91,25 @@ def session(request: Request) -> SessionOut:
         return SessionOut(user=None)
     return SessionOut(
         user=user_out(user.username, user.display_name, member.tenant_id, member.role)
+    )
+
+
+@router.get("/usage", response_model=UsageOut)
+def usage(
+    user: CurrentUser,
+    days: int = 30,
+    scope: Literal["me", "tenant"] = "me",
+) -> UsageOut:
+    """What the ledger (docs/32) holds for this user over `days`; an admin may
+    ask for the whole firm with `scope=tenant`. The database policies limit
+    the rows to the caller's tenant whatever is asked."""
+    if scope == "tenant" and user.role != "admin":
+        raise ApiError(403, "role_forbidden", "Only a firm admin can see the firm's usage.")
+    days = max(1, min(days, 366))
+    totals = usage_totals(username=None if scope == "tenant" else user.username, days=days)
+    return UsageOut(
+        scope=scope,
+        days=days,
+        by_kind=[UsageRow(**{k: v for k, v in r.items()}) for r in totals["by_kind"]],
+        by_matter=[UsageRow(**{k: v for k, v in r.items()}) for r in totals["by_matter"]],
     )

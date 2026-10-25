@@ -13,6 +13,7 @@ from typing import Any, TypeVar
 from langchain_anthropic import ChatAnthropic
 from pydantic import BaseModel, SecretStr
 
+from policy_advisor.telemetry import make_usage_callback
 from policy_advisor.config import Settings, workspace_headers
 
 M = TypeVar("M", bound=BaseModel)
@@ -36,6 +37,8 @@ def chat_model(
             "model": settings.anthropic_model,
             "anthropic_api_key": SecretStr(key),
             "max_tokens": max_tokens,
+            # Every call this model makes becomes a span and a ledger row (docs/32).
+            "callbacks": [make_usage_callback(settings.anthropic_model)],
             "default_request_timeout": timeout,
             "max_retries": 0,
             "default_headers": workspace_headers(settings, api_key) or None,

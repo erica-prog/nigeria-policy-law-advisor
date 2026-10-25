@@ -51,6 +51,7 @@ from policy_advisor.logging_utils import get_logger, log_event
 from policy_advisor.playbooks import Playbook
 from policy_advisor.progress import report_stage
 from policy_advisor.sources import Source, list_sources
+from policy_advisor.telemetry import attributed, record_cost, span
 from policy_advisor.tools import (
     ConnectorSpec,
     ToolBudgetExceeded,
@@ -213,6 +214,33 @@ class ResearchAgent:
         log_event(self._logger, "research_started", run_id=run_id, matter_id=matter_id)
         report_stage("researching")
         usage: dict[str, int] = {}
+        with (
+            attributed(username=username, matter_id=matter_id, run_id=run_id),
+            span("agent.run", run_id=run_id, matter_id=matter_id, model=self.model),
+        ):
+            return await self._arun_attributed(
+                question,
+                state,
+                matter_id,
+                jurisdiction,
+                conversation_language,
+                allow_web,
+                playbook,
+                usage,
+            )
+
+    async def _arun_attributed(
+        self,
+        question: str,
+        state: "_RunState",
+        matter_id: str,
+        jurisdiction: str | None,
+        conversation_language: str,
+        allow_web: bool,
+        playbook: Playbook | None,
+        usage: dict[str, int],
+    ) -> ResearchResult:
+        run_id = state.run_id
         try:
             async with AsyncExitStack() as stack:
                 tools = self._chain_tools(state, matter_id, jurisdiction, conversation_language)
@@ -232,6 +260,13 @@ class ResearchAgent:
             audit.finish_run(run_id, status="failed", tool_call_count=state.seq, error=repr(exc))
             raise AgentUnavailable(str(exc)) from exc
 
+        if usage:
+            record_cost(
+                "model",
+                model=self.model,
+                input_tokens=usage.get("input_tokens"),
+                output_tokens=usage.get("output_tokens"),
+            )
         report_stage("checking_citations")
         citations, unsupported = self._resolve(answer, state)
         status = "budget_exhausted" if state.budget_exhausted else "done"

@@ -262,7 +262,15 @@ class JobTable:
                     "SELECT tenant_id FROM document_jobs WHERE job_id = %s", (job.job_id,)
                 ).fetchone()
             tenant = row["tenant_id"] if row else None
-        with tenant_context(tenant):
+        from policy_advisor.telemetry import attributed, span
+
+        with (
+            tenant_context(tenant),
+            attributed(
+                username=uploaded_by or job.uploaded_by, matter_id=job.matter_id, job_id=job.job_id
+            ),
+            span("document.job", job_id=job.job_id, matter_id=job.matter_id),
+        ):
             self._run_job(job, services, jurisdiction, api_key, uploaded_by)
 
     def _run_job(

@@ -134,6 +134,13 @@ class Settings(BaseSettings):
     # one key and one bill; the per-turn output cap bounds a runaway answer.
     agent_model: str = ""
     agent_max_tokens: int = 16_000
+    # Tracing and the cost ledger (docs/32). OTEL_EXPORTER: none | console |
+    # otlp (endpoint from OTEL_EXPORTER_OTLP_ENDPOINT) | memory (tests).
+    # MODEL_PRICES is JSON per model, per million tokens, e.g.
+    #   {"claude-sonnet-4-6": {"input_per_million": 3.0, "output_per_million": 15.0}}
+    # Empty leaves estimated_usd NULL in the ledger; token counts are always kept.
+    otel_exporter: str = "none"
+    model_prices: dict[str, dict[str, float]] = {}
 
     def llm_configured(self) -> bool:
         return bool(self.anthropic_api_key.get_secret_value().strip())

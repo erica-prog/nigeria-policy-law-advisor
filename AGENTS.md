@@ -103,6 +103,7 @@ rewriting it.
 | Research agent (tool runner, audit tables)  | `src/policy_advisor/agents/`, `docs/28-research-agent.md` |
 | Playbooks and routing (selector, routing evals) | `src/policy_advisor/playbooks/`, `eval/routing/`, `eval/run_routing_evals.py`, `docs/29-playbooks-and-routing.md` |
 | Tenancy (tenants, roles, shares, RLS policies) | `src/policy_advisor/tenancy.py`, `src/policy_advisor/api/tenant_middleware.py`, migration `0009`, `scripts/manage_tenants.py`, `docs/31-tenancy.md` |
+| Tracing and cost ledger (spans, usage endpoint) | `src/policy_advisor/telemetry.py`, migration `0010`, `GET /api/usage`, `docs/32-tracing-and-cost-ledger.md` |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
