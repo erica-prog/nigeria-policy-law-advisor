@@ -43,11 +43,10 @@ class Settings(BaseSettings):
     anthropic_workspace_id: str = ""
     anthropic_model: str = "claude-sonnet-4-6"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
-    # Supabase Postgres: matters, chunks with their embeddings, and chat
-    # history. Use the Session pooler string (port 5432) from Dashboard >
-    # Connect - the direct connection is IPv6-only without the paid IPv4
-    # add-on. Optional here so tools that never touch the database still
-    # import; db.py raises a clear error if it's missing when needed.
+    # Postgres (Netlify DB, a Neon database): matters, chunks with their
+    # embeddings, chat history, accounts and tenants. Use the unpooled
+    # connection string (docs/16). Optional here so tools that never touch the
+    # database still import; db.py raises a clear error if it's missing when needed.
     database_url: SecretStr | None = None
     # After connecting, the app switches to this role, which cannot bypass
     # row-level security (migration 0009; docs/31). Empty keeps the connecting

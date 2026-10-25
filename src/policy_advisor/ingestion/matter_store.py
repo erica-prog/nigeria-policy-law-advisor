@@ -1,4 +1,4 @@
-"""Matters and their chunks, in Supabase Postgres (docs/16).
+"""Matters and their chunks, in Postgres (docs/16).
 
 Each chunk's text, metadata and embedding live in one row, and every write
 replaces a whole document or matter inside a single transaction. That is the
@@ -137,7 +137,7 @@ def _insert_chunks(
     tier = _matter_tier(conn, matter_id)
     with conn.cursor() as cur:
         # psycopg pipelines executemany, so hundreds of rows cost roughly one
-        # round trip to Supabase rather than one each.
+        # round trip to the database rather than one each.
         cur.executemany(
             f"INSERT INTO chunks ({', '.join(_INSERT_COLUMNS)}) VALUES ({placeholders})",
             [

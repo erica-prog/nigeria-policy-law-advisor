@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 # Every job that needs a database gets its own disposable Postgres with
-# pgvector. CI never connects to the Supabase project and holds no Supabase
-# secret: the tests truncate tables, and tests/conftest.py refuses Supabase
+# pgvector. CI never connects to the hosted database and holds no database
+# secret: the tests truncate tables, and tests/conftest.py refuses hosted
 # hosts outright for that reason.
 #
 # Set here rather than per job: workflow-level variables reach every job and

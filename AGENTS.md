@@ -35,7 +35,7 @@ Stack:
 | Embeddings          | Hugging Face sentence-transformers (local, no token required)         |
 | Backend             | Python 3.12, FastAPI, managed with `uv`                               |
 | Browser client      | Plain HTML, CSS and ES modules in `web/` (no build step)              |
-| Storage (today)     | Supabase Postgres + pgvector for matters, chunks and chat history (`docs/16-supabase-setup.md`); conversation logs, credentials and user keys still on disk under `data/`; uploaded originals are not retained |
+| Storage (today)     | Postgres + pgvector (Netlify DB, a Neon database; `docs/16-database-setup.md`) for matters, chunks, documents, jobs, chats, accounts, keys, audit and tenants; uploaded originals in the blob store under `data/` |
 | Auth (today)        | bcrypt credentials in Postgres, a signed HttpOnly session cookie carrying the tenant, roles per tenant (`docs/31`) |
 | Document processing | In-process background jobs (an MVP stand-in for a worker queue); BM25 held in memory per matter |
 | Tool integration    | MCP: one in-process client over stdio and HTTP behind a tool policy (`docs/26`); connectors under `connectors/` |
@@ -90,7 +90,7 @@ rewriting it.
 | Area                                     | Location                                                        |
 | ---------------------------------------- | --------------------------------------------------------------- |
 | Settings (env-driven, pydantic)          | `src/policy_advisor/config.py`, `.env.example`                  |
-| Database, migrations, Supabase guide     | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-supabase-setup.md` |
+| Database, migrations, setup guide        | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-database-setup.md` |
 | Ingestion (PDF, DOCX, OCR, chunking)     | `src/policy_advisor/ingestion/`                                 |
 | US federal library (texts, parsers, fetch) | `data/us/`, `src/policy_advisor/ingestion/parse_us.py`, `scripts/fetch_us_corpus.py`, `docs/25-us-library-corpus.md` |
 | Retrieval (BM25 + dense, hybrid)         | `src/policy_advisor/retrieval/`                                 |

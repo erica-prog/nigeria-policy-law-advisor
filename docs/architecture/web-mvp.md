@@ -36,7 +36,7 @@ Existing prototype modules (reused, not rewritten)
    generation/case_reasoning.py   CaseReasoningChain.analyze
    generation/web_search.py       reached only through RAGChain(allow_web_fallback=True)
    v
-Storage: Supabase Postgres + pgvector (db.py, migrations/): matters (owner,
+Storage: Postgres + pgvector, Netlify DB in production (db.py, migrations/): matters (owner,
 content_version), chunks (text, metadata and embedding in one row), chat_exchanges,
 index_meta, documents (retained originals: storage key, sha256, size), conversations
 (one row per chat message), users (bcrypt hashes) and user_keys (Fernet tokens).

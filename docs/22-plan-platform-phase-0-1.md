@@ -68,7 +68,7 @@ once the local database is up. One commit per slice.
 |---|---|---|---|
 | R1 | Scheme-aware citation check rejects legitimate pinpoints | each scheme's pinpoint grammar is wider than what Claude emits | faithfulness tests per scheme; invariants job green |
 | R2 | Alias normalisation changes golden-set retrieval | filters compare normalised ids on both sides | golden set green |
-| R3 | Migration `0003` on real Supabase data | backfill is deterministic from existing columns | run on a copy first; `scripts/check_database.py` extended |
+| R3 | Migration `0003` on real hosted data | backfill is deterministic from existing columns | run on a copy first; `scripts/check_database.py` extended |
 | R4 | Retained originals change the storage footprint and retention posture | blobs are per matter and deleted with it; residency note in doc 16 | AC-2 delete path tests |
 | R5 | FTS ranks differently from BM25 | both are only candidates for fusion and the gate decides relevance | AC-7 comparison |
 

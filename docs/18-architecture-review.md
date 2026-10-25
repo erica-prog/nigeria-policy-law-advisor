@@ -23,7 +23,7 @@ both countries, and adds three platform capabilities:
 | Layer | What is there | Where |
 |---|---|---|
 | Ingestion | PDF (pypdf, OCR fallback via tesseract) and DOCX. Heuristic type detection: `statute` (Order/Rule), `judgment` (numbered paragraphs), else `generic` (recursive splitter, 1200/200). Optional per-chunk Claude translation with a fidelity check. Uploaded originals are deleted after ingestion. | `src/policy_advisor/ingestion/` |
-| Storage | Supabase Postgres with pgvector. One `chunks` table holds text, metadata and the 384-dim embedding in the same row; `matters` carries an owner and a `content_version`; `chat_exchanges` keeps a lawyer's last five exchanges; `index_meta` pins the embedding model. Row-level security is on and the Supabase API roles are revoked. Exact cosine scan per matter, no vector index by design. Still on disk: per-matter `conversation.json` and `meta.json`, `credentials.yaml`, encrypted `user_keys.json`. | `db.py`, `migrations/0001_init.sql`, `ingestion/matter_store.py`, docs 16 |
+| Storage | Hosted Postgres with pgvector (Supabase at review time; Netlify DB since Phase 3). One `chunks` table holds text, metadata and the 384-dim embedding in the same row; `matters` carries an owner and a `content_version`; `chat_exchanges` keeps a lawyer's last five exchanges; `index_meta` pins the embedding model. Row-level security is on and the Supabase API roles are revoked. Exact cosine scan per matter, no vector index by design. Still on disk: per-matter `conversation.json` and `meta.json`, `credentials.yaml`, encrypted `user_keys.json`. | `db.py`, `migrations/0001_init.sql`, `ingestion/matter_store.py`, docs 16 |
 | Retrieval | Hybrid: bge-small dense search in Postgres + rank-bm25 held in memory per matter and rebuilt when `content_version` moves; min-max fusion; optional `jurisdiction` filter; exact "Order N Rule M" short-circuit. A two-band relevance gate (cosine distance 0.21 / 0.50) with a Claude adjudicator for the middle band. No reranker. | `retrieval/`, `generation/relevance_check.py` |
 | Generation | `RAGChain` (one retrieval, relevance gate, one Claude call, deterministic citation check, restricted web fallback). `CaseReasoningChain` (issues → arguments per side → synthesis) with tiered faithfulness: regex locator check, one corrective retry, Claude-as-judge at step boundaries. `AdvisoryChain` (opt-in recommendation with computed, not generated, confidence). One retry/backoff policy for every Claude call. | `generation/`, `llm_retry.py` |
 | Web research | Anthropic `web_search` server tool, `allowed_domains` = `nass.gov.ng`, `ndpc.gov.ng`. | `generation/web_search.py` |
@@ -54,7 +54,7 @@ a platform.
   is replaced wholesale; `content_version` lets every process see an upload.
   The schema comment explains each choice. Build on this.
 - **Per-matter isolation is enforced at the function level**, and the
-  Supabase tables are unreachable through the public API roles.
+  the hosted tables are unreachable through the provider's public API roles.
 - **Bring-your-own-key, per-user chains, secrets never logged.**
 - **The eval gate exists, runs in CI, and now has a structural-invariants
   job** for the reasoning chains.
@@ -128,7 +128,7 @@ remains:
   `matters` table; the fix branch resolves that, the rest stays on disk.
 - **In-process job tables and a process-wide ingest lock.** One document
   ingests at a time; a restart forgets in-flight work. The connection pool
-  is capped at four to respect the Supabase session pooler, which also caps
+  is capped at four to respect the hosted session pooler, which also caps
   concurrency for workers.
 - **No vector index by design.** Correct for an exact scan over one matter;
   not viable for a shared authority tier of hundreds of thousands of chunks.
@@ -184,7 +184,7 @@ correctness risk, not a tidiness issue.
   format --check` would reformat 51 files; it is a documented convention
   but not a CI step. On `main`, unit tests receive
   the real `ANTHROPIC_API_KEY`; the fix branch stops that.
-- Supabase has no African region (doc 16). Hosting client documents in
+- The database provider has no African region (doc 16). Hosting client documents in
   London or Frankfurt is a decision under Nigeria's NDPA that a lawyer, not
   the code, must take; US state-bar guidance on AI confidentiality bears on
   the US side.

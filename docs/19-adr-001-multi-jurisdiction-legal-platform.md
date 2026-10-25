@@ -16,7 +16,7 @@ written as a TypeScript MCP server (see "Where TypeScript appears").
 ## Context
 
 The repository is a disciplined single-matter assistant over Nigerian civil
-procedure: hybrid retrieval over Supabase Postgres + pgvector, a calibrated
+procedure: hybrid retrieval over hosted Postgres + pgvector, a calibrated
 relevance gate, locator-level citations, tiered faithfulness checks, an
 opt-in advisory chain with computed confidence, per-matter isolation,
 bring-your-own Claude key, and CI eval gates. `main` is currently broken by a
@@ -39,7 +39,7 @@ Forces at play:
 | Premium sources are licensed | Storage of licensed text is usually forbidden; the design must retrieve on demand and persist only citations and short snippets where the licence permits. |
 | Solo developer, Python-strong, learning TypeScript | One deployable and one language for the core. TypeScript where it earns its place: the MCP connector boundary. |
 | Bring-your-own-key billing | Cost per user must be attributable; batch analysis must have hard budgets. |
-| Client confidentiality, NDPA (Nigeria) and US bar guidance on AI | Tenancy, audit trails, retention and data residency are requirements, not later polish. Supabase has no African region. |
+| Client confidentiality, NDPA (Nigeria) and US bar guidance on AI | Tenancy, audit trails, retention and data residency are requirements, not later polish. the database provider has no African region. |
 | Existing storage, grounding and gating code on `main` | Build on the Postgres schema, the relevance gate and the faithfulness checks. Do not rewrite them. |
 | An MIT-licensed plugin (`legal-ai-skills`) already ships US connectors, research protocol, skill prompts and eval formats | Adopt what fits, write what is missing (Nigeria, immigration), reject what assumes a Claude Code session. |
 
@@ -66,7 +66,7 @@ tool-using agent layer**, delivered in phases. Concretely:
    plugin's file layout (`authoritative-sources.md`, `operating-rules.md`,
    `integrations.md`, `skill-map.yaml`), which we author for `ng` and adapt
    for `us`.
-3. **Storage and runtime: finish the move `main` started.** Keep Supabase
+3. **Storage and runtime: finish the move `main` started.** Keep hosted
    Postgres + pgvector. Add: object storage for uploaded originals (stop
    deleting them); Postgres full-text search (`tsvector`) for keyword
    retrieval over the `firm` and `authority` tiers and for large matters,
@@ -345,7 +345,7 @@ slides and memo share provenance.
 Tenant → users → matters with roles; row-level security in Postgres;
 immutable audit log of every tool call and generated artefact; encryption
 at rest for originals and embeddings; a per-tenant residency setting (NG or
-US region, with the Supabase region constraint stated to the firm);
+US region, with the database provider's region constraint stated to the firm);
 retention policies per tier; a prompt-injection boundary that treats every
 external and uploaded text as data, with connector output schema-validated
 before it reaches the model; OpenTelemetry traces per agent run with a cost

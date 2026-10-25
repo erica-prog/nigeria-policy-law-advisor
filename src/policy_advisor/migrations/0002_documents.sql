@@ -15,7 +15,7 @@ CREATE TABLE documents (
     PRIMARY KEY (matter_id, name)
 );
 
--- Same posture as every other table: never reachable through Supabase's
+-- Same posture as every other table: never reachable through a provider's
 -- auto-generated REST API (see 0001_init.sql).
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 DO $$

@@ -59,7 +59,7 @@ Not "it runs on my machine." Specifically:
 - [13-voice-pipeline.md](13-voice-pipeline.md) — speech-to-text and text-to-speech, and the confidentiality and mis-transcription risks voice introduces
 - [14-cartoon-avatar-frontend.md](14-cartoon-avatar-frontend.md) — the avatar as a trust-state indicator, lip-sync, and the browser TypeScript
 - [15-avatar-character-asset.md](15-avatar-character-asset.md) — the advisor character's frames and state rules
-- [16-supabase-setup.md](16-supabase-setup.md) — the Postgres + pgvector database: tables, region, backups, running the app
+- [16-database-setup.md](16-database-setup.md) — the Postgres + pgvector database (Netlify DB, a Neon database): connection strings, tables, backups, region, running the app
 - [17-web-app-mvp.md](17-web-app-mvp.md) — running the web app, bring-your-own Claude key, chat jobs and the live bubble
 - [18-architecture-review.md](18-architecture-review.md) — code and structure review against the USA + Nigeria, Harvey-style target: what exists, what to keep, ranked gaps
 - [19-adr-001-multi-jurisdiction-legal-platform.md](19-adr-001-multi-jurisdiction-legal-platform.md) — ADR: three corpus tiers, jurisdiction taxonomy, Postgres + pgvector + workers, MCP connectors, agent loop, bulk analysis, grounded drafting

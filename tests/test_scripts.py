@@ -79,7 +79,7 @@ def test_database_check_fails_when_row_level_security_is_off(fresh_db):
 
 
 def test_database_check_fails_when_an_api_role_can_read_a_table(fresh_db):
-    # Supabase's anon key is public by design; any privilege it holds on these
+    # A hosted provider's public API role is anonymous by design; any privilege it holds on these
     # tables is a way to read client data without logging in.
     owner_sql(
         fresh_db,
@@ -96,17 +96,17 @@ def test_database_check_fails_when_an_api_role_can_read_a_table(fresh_db):
 
 
 def test_database_check_warns_about_the_wrong_connection_type():
-    transaction_pooler = (
-        "postgresql://postgres.ref:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+    # Netlify DB (Neon): the pooled string runs PgBouncer in transaction mode;
+    # the unpooled one is what the app needs (docs/16).
+    pooled = "postgresql://owner:pw@ep-calm-sea-123-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+    unpooled = (
+        "postgresql://owner:pw@ep-calm-sea-123.eu-west-2.aws.neon.tech/neondb?sslmode=require"
     )
-    direct = "postgresql://postgres:pw@db.ref.supabase.co:5432/postgres"
-    session_pooler = (
-        "postgresql://postgres.ref:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres"
-    )
+    legacy_transaction_port = "postgresql://u:pw@some-host.example:6543/db"
 
-    assert any("transaction pooler" in w for w in _connection_warnings(transaction_pooler))
-    assert any("direct connection" in w for w in _connection_warnings(direct))
-    assert _connection_warnings(session_pooler) == []
+    assert any("pooled" in w and "unpooled" in w for w in _connection_warnings(pooled))
+    assert any("pooled" in w for w in _connection_warnings(legacy_transaction_port))
+    assert _connection_warnings(unpooled) == []
 
 
 def test_database_check_never_prints_the_password(fresh_db):

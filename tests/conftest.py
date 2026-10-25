@@ -1,10 +1,10 @@
-"""Every test runs against a disposable local database - never Supabase.
+"""Every test runs against a disposable local database - never a hosted one.
 
 `fresh_db` truncates every table so each test starts clean. Pointed at the
-Supabase project, that would delete lawyers' matters, uploaded documents and
+production database, that would delete lawyers' matters, uploaded documents and
 chats, so where tests may run is an allowlist rather than a hope:
 
-  - Supabase hosts are refused outright, with no override.
+  - Known hosted providers (Neon, Netlify DB, Supabase) are refused outright, with no override.
   - Other non-local hosts are refused unless ALLOW_REMOTE_TEST_DATABASE=1, for
     someone with a dedicated remote database they are happy to wipe.
 
@@ -28,7 +28,7 @@ _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres"}
 
 def _refuse_unsafe(url: str) -> None:
     host = (urlparse(url).hostname or "").lower()
-    if "supabase" in host:
+    if any(provider in host for provider in ("neon.tech", "netlify", "supabase")):
         raise pytest.UsageError(
             f"Refusing to run tests against {host}: the tests truncate every table, which would "
             "delete real client data. Point TEST_DATABASE_URL at a local Postgres."

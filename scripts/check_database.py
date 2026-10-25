@@ -1,6 +1,6 @@
 """Read-only health and safety check of the database behind DATABASE_URL.
 
-Safe to point at the live Supabase project: it changes nothing. It opens a
+Safe to point at the live hosted database: it changes nothing. It opens a
 plain connection rather than going through policy_advisor.db, so it never
 applies a migration - on a project that hasn't been set up it says so instead
 of quietly creating tables. It prints the host, never the connection string,
@@ -10,7 +10,7 @@ Fails (exit 1) on anything that would put client data at risk or break
 retrieval:
   - pgvector missing, or the vector operator not resolvable
   - row-level security off on any of the app's tables
-  - Supabase's public API roles (anon, authenticated) holding any privilege
+  - a hosted provider's public API roles (anon, authenticated) holding any privilege
 Warns on the connection type, and reports what's stored and how far away the
 database is - which matters because each question makes several round trips.
 
@@ -51,15 +51,11 @@ def _connection_warnings(url: str) -> list[str]:
     parsed = urlparse(url)
     host, port = (parsed.hostname or ""), parsed.port
     warnings = []
-    if port == 6543:
+    if "-pooler" in host or port == 6543:
         warnings.append(
-            "Port 6543 is the transaction pooler, which doesn't support the prepared statements "
-            "psycopg creates for repeated queries. Use the Session pooler (port 5432)."
-        )
-    if host.startswith("db.") and host.endswith(".supabase.co"):
-        warnings.append(
-            "This is the direct connection, which is IPv6-only without the paid IPv4 add-on. "
-            "It works here, but many hosts can't reach it; the Session pooler is safer."
+            "This looks like a pooled connection (PgBouncer in transaction mode). It rejects the "
+            "prepared statements psycopg creates and cannot hold SET ROLE across statements, which "
+            "the tenant isolation needs. Use the unpooled connection string (docs/16)."
         )
     return warnings
 
@@ -125,7 +121,7 @@ def run_checks(url: str) -> tuple[list[str], list[str], list[str]]:
                 if granted and granted[0]:
                     failures.append(f"Role {role} has privileges on {table}: revoke them.")
         if not existing_roles:
-            facts.append("api roles: none (not a Supabase database)")
+            facts.append("api roles: none (no provider API roles on this database)")
         else:
             facts.append(f"api roles checked: {', '.join(sorted(existing_roles))}")
 

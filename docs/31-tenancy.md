@@ -73,10 +73,11 @@ uv run python -m scripts.add_user jdoe "Jane Doe" --tenant acme-llp --role lawye
 `scripts.check_database` fails when the application role is missing or can bypass
 row-level security, or when a tenant-scoped table lacks its forced policy.
 
-On Supabase the `postgres` role creates `policy_advisor_app` and grants itself
-membership during migration 0009; the `extensions` schema is granted to the role so
-the vector type resolves. Locally, CI and the scratch cluster connect as a superuser,
-which the role switch demotes for the life of the connection.
+On Netlify DB (Neon) the database's owner role creates `policy_advisor_app` and grants
+itself membership during migration 0009; an `extensions` schema, where a provider keeps
+one, is granted to the role so the vector type resolves. Locally, CI and the scratch
+cluster connect as a superuser, which the role switch demotes for the life of the
+connection.
 
 ## Tests that prove it
 

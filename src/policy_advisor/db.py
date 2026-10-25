@@ -1,13 +1,13 @@
-"""The Supabase Postgres database behind matters, chunks and chat history.
+"""The Postgres database behind matters, chunks, chats, accounts and tenants.
 
 One place owns the connection pool, the per-connection setup, and the schema
 migrations, so the rest of the code just asks for a connection.
 
-Connect with the Session pooler string (port 5432) from the Supabase dashboard.
-It speaks IPv4, which the direct connection does not without a paid add-on, and
-unlike the transaction pooler it supports the prepared statements psycopg
-creates for frequently repeated queries. The pool is kept small because the
-Session pooler caps how many clients a project may hold open at once.
+Connect with the unpooled connection string (docs/16). A pooled string runs
+PgBouncer in transaction mode, which rejects the prepared statements psycopg
+creates for frequently repeated queries and cannot hold the SET ROLE that the
+tenant isolation relies on. The pool is kept small because hosted databases
+cap how many clients may be open at once.
 """
 
 import threading
@@ -29,7 +29,7 @@ DictConnection = psycopg.Connection[DictRow]
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
-# Supabase installs extensions into `extensions`, which a plain Postgres lacks.
+# Some hosted Postgres offerings install extensions into `extensions`, which a plain Postgres lacks.
 # Postgres skips schemas that don't exist, so one setting fits both.
 SEARCH_PATH = "public, extensions"
 
@@ -56,8 +56,8 @@ def database_url() -> str:
     url = get_settings().database_url
     if url is None:
         raise DatabaseNotConfigured(
-            "DATABASE_URL is not set. Copy the Session pooler connection string from the "
-            "Supabase dashboard (Connect > Session pooler) into .env - see docs/16-supabase-setup.md."
+            "DATABASE_URL is not set. Copy the unpooled connection string from the database "
+            "provider (Netlify DB: NETLIFY_DATABASE_URL_UNPOOLED) into .env - see docs/16-database-setup.md."
         )
     return url.get_secret_value()
 

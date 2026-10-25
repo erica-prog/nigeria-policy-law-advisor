@@ -129,7 +129,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO policy_advisor_app;
 
 -- Policies. FORCE makes them apply to the owner too, should the application
--- ever run as it. Supabase's API roles keep the REVOKEs from earlier migrations.
+-- ever run as it. A provider's API roles keep the REVOKEs from earlier migrations.
 DO $$
 DECLARE
     t TEXT;
@@ -160,7 +160,7 @@ CREATE POLICY tenant_isolation ON agent_tool_calls
 -- username and sources are the platform's. Earlier migrations enabled
 -- row-level security on them with no policy, which the owner bypassed and the
 -- application role cannot, so each gets an explicit allow-all policy for the
--- application role; Supabase's API roles stay revoked.
+-- application role; a provider's API roles stay revoked.
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenant_users ENABLE ROW LEVEL SECURITY;
 DO $$

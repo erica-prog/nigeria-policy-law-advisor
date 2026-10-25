@@ -23,7 +23,7 @@ per-tenant residency setting; a lawyer's review of playbooks, taxonomy and sourc
 
 - The database already carries `tenant_id` on `matters` and `chunks` (migration 0003),
   unused. Every query filters by `matter_id`; none by tenant. Row-level security is on for
-  every table, but the policies only revoke Supabase's API roles: the app connects as one
+  every table, but the policies only revoke a hosted provider's API roles: the app connects as one
   database role, so tenancy today is application code, not the database.
 - `document_jobs` (migration 0006) with `claim_next` over `FOR UPDATE SKIP LOCKED` is a
   working queue with one worker process; a bulk pipeline needs the same shape at a larger
