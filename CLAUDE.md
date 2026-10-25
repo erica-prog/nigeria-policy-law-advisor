@@ -14,7 +14,8 @@ Claude. Keep both under 200 lines; when they overlap, `AGENTS.md` wins.
   (USA + Nigeria; three corpus tiers; jurisdiction taxonomy; MCP connectors; agent loop;
   bulk analysis; grounded drafting). **Accepted 2026-10-24**: its action list is the
   sequencing authority; each phase gets a short plan in the `docs/20` format first.
-- `docs/23` and `docs/30`: the Phase 2 and Phase 3 records (both complete; owed items listed there).
+- `docs/23` and `docs/30`: the Phase 2 and Phase 3 records (both complete; owed items listed
+  there). `docs/39`: the Phase 4 plan (decisions pending).
 - `docs/20-plan-claude-layout-and-streamlit-removal.md`: the plan format used here
   (acceptance criteria, slices, risks with a disproving check, verification map).
 
