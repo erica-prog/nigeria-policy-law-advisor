@@ -1,5 +1,9 @@
 name: CI
 
+# Pull-request gates (docs/38): everything that needs no key and no network
+# beyond package installs. The keyed and networked jobs (retrieval and
+# case-reasoning evals, extraction F1, the drafting eval, connector canaries)
+# run in nightly.yml on a schedule and on push to main.
 on:
   push:
     branches: [main]
@@ -59,6 +63,10 @@ jobs:
         # docs/34: the labels fed back as answers must score 1.0; proves the
         # bulk pipeline end to end without a key.
         run: uv run python -m eval.run_extraction_eval --oracle --fail-below 0.99
+      - name: Drafting rubric on recorded artefacts (no model)
+        # docs/38: a good draft scores 1.0 and each defective fixture stays
+        # under its expected maximum, so the scorer cannot stop noticing.
+        run: uv run python -m eval.run_drafting_eval --fixtures
 
   connectors:
     # The vendored plugin server's own tests (connectors/legal-ai-skills/UPSTREAM.md).
@@ -77,143 +85,3 @@ jobs:
           npm run typecheck --prefix connectors/ng-sources
           npm test --prefix connectors/ng-sources
           npm run build --prefix connectors/ng-sources
-
-  eval-gate:
-    runs-on: ubuntu-latest
-    needs: lint-and-test
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: policy_advisor_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - run: uv python install 3.12
-      - run: uv sync --frozen
-      - name: Install OCR dependencies (poppler, tesseract)
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
-      - name: Build demo corpus index
-        run: uv run python -m policy_advisor.ingestion.build_index
-      - name: Retrieval/faithfulness eval
-        # Raised from 0.85: the cosine/normalized-embedding configuration
-        # measures recall@8 of 1.0 on the golden set, so 0.85 would no longer
-        # catch a single question dropping out entirely (11 scored questions,
-        # so one total miss costs about 0.09).
-        run: |
-          set +e
-          uv run python -m eval.run_golden_set --fail-below 0.9 > /tmp/step-out.txt 2>&1
-          code=$?
-          set -e
-          tail -n 80 /tmp/step-out.txt
-          if [ "$code" -ne 0 ]; then
-            python3 - << 'PY'
-          import pathlib, re
-          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
-          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
-          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
-          line = line.replace("::", " -- ")[:500]
-          print(f"::error::{line}")
-          PY
-            exit "$code"
-          fi
-
-      - name: US library retrieval eval
-        # Retrieval-only gate for the United States collection (docs/23 slice
-        # P2-B, AC-2). Generation and faithfulness on this set are run by hand
-        # and recorded in docs/23 until the agent loop (P2-E) gives them a
-        # cheaper home; the Nigerian set above already spends the key here.
-        run: uv run python -m eval.run_golden_set --golden-set eval/golden_set_us.json --skip-generation --fail-below 0.9
-
-      - name: Extraction F1 on 12 synthetic contracts (advisory until a threshold is set)
-        # docs/34: prints the eight-field table; set --fail-below from the first
-        # measurement and record it in docs/30.
-        run: uv run python -m eval.run_extraction_eval --limit 12
-        continue-on-error: true
-
-      - name: Relevance-floor calibration report
-        # Advisory: prints where the answerable and off-corpus questions sit
-        # relative to RETRIEVAL_CERTAIN_DISTANCE / RETRIEVAL_MAX_DISTANCE, so a
-        # chunking or embedding change that moves them is visible in the log
-        # before it silently starts gating real questions out.
-        run: uv run python -m eval.calibrate_relevance_floor
-        continue-on-error: true
-
-  case-reasoning-invariants:
-    # Structural guarantees only - whether the legal reasoning is any good is a
-    # human judgement against eval/case_reasoning_rubric.md, which is why
-    # eval/run_case_reasoning_seed.py still has no automated verdict.
-    #
-    # Each case costs roughly 1 + 3N + 2 Claude calls, so pull requests check a
-    # single case and main checks all three. That keeps the gate meaningful
-    # without spending the account's rate limit on every push.
-    runs-on: ubuntu-latest
-    needs: lint-and-test
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: policy_advisor_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - run: uv python install 3.12
-      - run: uv sync --frozen
-      - name: Install OCR dependencies (poppler, tesseract)
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
-      - name: Build demo corpus index
-        run: uv run python -m policy_advisor.ingestion.build_index
-      - name: Structural invariants (single case)
-        if: github.event_name == 'pull_request'
-        run: |
-          set +e
-          uv run python -m eval.run_case_reasoning_invariants --id c01 --with-advisory > /tmp/step-out.txt 2>&1
-          code=$?
-          set -e
-          tail -n 80 /tmp/step-out.txt
-          if [ "$code" -ne 0 ]; then
-            python3 - << 'PY'
-          import pathlib, re
-          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
-          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
-          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
-          line = line.replace("::", " -- ")[:500]
-          print(f"::error::{line}")
-          PY
-            exit "$code"
-          fi
-      - name: Structural invariants (all seed cases)
-        if: github.event_name != 'pull_request'
-        run: |
-          set +e
-          uv run python -m eval.run_case_reasoning_invariants --with-advisory > /tmp/step-out.txt 2>&1
-          code=$?
-          set -e
-          tail -n 80 /tmp/step-out.txt
-          if [ "$code" -ne 0 ]; then
-            python3 - << 'PY'
-          import pathlib, re
-          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
-          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
-          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
-          line = line.replace("::", " -- ")[:500]
-          print(f"::error::{line}")
-          PY
-            exit "$code"
-          fi

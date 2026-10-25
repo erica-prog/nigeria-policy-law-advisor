@@ -81,6 +81,7 @@ Not "it runs on my machine." Specifically:
 - [35-artefacts.md](35-artefacts.md) — memos and decks drafted from authority and firm precedents only: the outline model, the provenance manifest and section judge, docxtpl and python-pptx rendering, the templates and artefacts tables
 - [36-review-states.md](36-review-states.md) — draft, reviewed, approved and rejected for artefacts; open, reviewed and dismissed for findings; who may move what, the events trail, the review queue and artefact viewer in the client
 - [37-residency-and-retention.md](37-residency-and-retention.md) — residency as a fact the deployment states, per-tenant retention with a floor, legal holds, the dry-run-first retention job and its events
+- [38-ci-gates-and-canaries.md](38-ci-gates-and-canaries.md) — pull-request gates versus the nightly keyed workflow, the drafting rubric as a scored eval with fixture gates, and connector canaries that open an issue
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase

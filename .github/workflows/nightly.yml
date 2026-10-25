@@ -1,0 +1,256 @@
+name: Nightly
+
+# Keyed and networked evaluation (docs/38). Runs every night and on push to
+# main, never on pull requests: these jobs spend the repository's Anthropic
+# key and reach live sources. A connector canary failure opens or updates an
+# issue rather than failing the workflow, because a source being down is not
+# a defect in this repository.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/policy_advisor_test
+  TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/policy_advisor_test
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - name: Install OCR dependencies (poppler, tesseract)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Build demo corpus index
+        run: uv run python -m policy_advisor.ingestion.build_index
+      - name: Retrieval/faithfulness eval
+        # Raised from 0.85: the cosine/normalized-embedding configuration
+        # measures recall@8 of 1.0 on the golden set, so 0.85 would no longer
+        # catch a single question dropping out entirely (11 scored questions,
+        # so one total miss costs about 0.09).
+        run: |
+          set +e
+          uv run python -m eval.run_golden_set --fail-below 0.9 > /tmp/step-out.txt 2>&1
+          code=$?
+          set -e
+          tail -n 80 /tmp/step-out.txt
+          if [ "$code" -ne 0 ]; then
+            python3 - << 'PY'
+          import pathlib, re
+          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
+          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
+          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
+          line = line.replace("::", " -- ")[:500]
+          print(f"::error::{line}")
+          PY
+            exit "$code"
+          fi
+
+      - name: US library retrieval eval
+        # Retrieval-only gate for the United States collection (docs/23 slice
+        # P2-B, AC-2). Generation and faithfulness on this set are run by hand
+        # and recorded in docs/23 until the agent loop (P2-E) gives them a
+        # cheaper home; the Nigerian set above already spends the key here.
+        run: uv run python -m eval.run_golden_set --golden-set eval/golden_set_us.json --skip-generation --fail-below 0.9
+
+      - name: Relevance-floor calibration report
+        # Advisory: prints where the answerable and off-corpus questions sit
+        # relative to RETRIEVAL_CERTAIN_DISTANCE / RETRIEVAL_MAX_DISTANCE, so a
+        # chunking or embedding change that moves them is visible in the log
+        # before it silently starts gating real questions out.
+        run: uv run python -m eval.calibrate_relevance_floor
+        continue-on-error: true
+
+  case-reasoning-invariants:
+    # Structural guarantees only - whether the legal reasoning is any good is a
+    # human judgement against eval/case_reasoning_rubric.md, which is why
+    # eval/run_case_reasoning_seed.py still has no automated verdict.
+    #
+    # Each case costs roughly 1 + 3N + 2 Claude calls, so pull requests check a
+    # single case and main checks all three. That keeps the gate meaningful
+    # without spending the account's rate limit on every push.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - name: Install OCR dependencies (poppler, tesseract)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Build demo corpus index
+        run: uv run python -m policy_advisor.ingestion.build_index
+      - name: Structural invariants (single case)
+        if: github.event_name == 'pull_request'
+        run: |
+          set +e
+          uv run python -m eval.run_case_reasoning_invariants --id c01 --with-advisory > /tmp/step-out.txt 2>&1
+          code=$?
+          set -e
+          tail -n 80 /tmp/step-out.txt
+          if [ "$code" -ne 0 ]; then
+            python3 - << 'PY'
+          import pathlib, re
+          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
+          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
+          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
+          line = line.replace("::", " -- ")[:500]
+          print(f"::error::{line}")
+          PY
+            exit "$code"
+          fi
+      - name: Structural invariants (all seed cases)
+        if: github.event_name != 'pull_request'
+        run: |
+          set +e
+          uv run python -m eval.run_case_reasoning_invariants --with-advisory > /tmp/step-out.txt 2>&1
+          code=$?
+          set -e
+          tail -n 80 /tmp/step-out.txt
+          if [ "$code" -ne 0 ]; then
+            python3 - << 'PY'
+          import pathlib, re
+          text = pathlib.Path("/tmp/step-out.txt").read_text(errors="replace")
+          text = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted-key]", text)
+          line = next((ln for ln in reversed(text.splitlines()) if ln.strip()), "no output")
+          line = line.replace("::", " -- ")[:500]
+          print(f"::error::{line}")
+          PY
+            exit "$code"
+          fi
+
+  extraction-f1:
+    # docs/34: the real models on 12 synthetic contracts. Advisory until the
+    # threshold is set from the first measurement; then add --fail-below.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - run: uv run python -m eval.run_extraction_eval --limit 12
+        continue-on-error: true
+
+  drafting-rubric:
+    # docs/38: live drafts against the shared libraries, scored by the rubric.
+    # Advisory until a threshold is set.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - name: Install OCR dependencies (poppler, tesseract)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Build the libraries
+        run: uv run python -m policy_advisor.ingestion.build_index
+      - run: uv run python -m eval.run_drafting_eval
+        continue-on-error: true
+
+  connector-canaries:
+    # docs/38: each live source listed and probed once through the policy. A
+    # failure opens (or comments on) the "Connector canary failed" issue.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      GOVINFO_API_KEY: ${{ secrets.GOVINFO_API_KEY }}
+      COURTLISTENER_API_KEY: ${{ secrets.COURTLISTENER_API_KEY }}
+      REGULATIONS_GOV_API_KEY: ${{ secrets.REGULATIONS_GOV_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - run: npm ci --prefix connectors/ng-sources && npm run build --prefix connectors/ng-sources
+      - name: Probe every available connector
+        id: canaries
+        run: |
+          set +e
+          uv run python -m eval.run_connector_canaries > canaries.txt 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat canaries.txt
+      - name: Open or update the canary issue
+        if: steps.canaries.outputs.code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Connector canary failed"
+          body="$(printf 'Nightly run %s on %s.\n\n```\n%s\n```' "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%MZ)" "$(tail -n 40 canaries.txt)")"
+          number="$(gh issue list --label canary --state open --search "$title in:title" --json number --jq '.[0].number')"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh label create canary --color D93F0B --description "A live legal source stopped answering" 2>/dev/null || true
+            gh issue create --title "$title" --label canary --body "$body"
+          fi
