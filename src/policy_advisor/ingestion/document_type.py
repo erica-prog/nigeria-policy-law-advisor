@@ -8,9 +8,16 @@ import re
 
 from policy_advisor.ingestion.parse_judgment import PARAGRAPH_START_RE
 from policy_advisor.ingestion.parse_rules import ORDER_RE
+from policy_advisor.ingestion.parse_us import (
+    CFR_SECTION_RE,
+    US_REPORTS_CITE_CUE_RE,
+    infer_cfr_title,
+)
 from policy_advisor.ingestion.pdf_text import PdfText
 
 _MIN_ORDER_MATCHES_FOR_STATUTE = 2
+_MIN_CFR_SECTIONS = 2
+_MIN_US_REPORTS_CITE_CUES = 2
 _MIN_PARAGRAPH_MATCHES_FOR_JUDGMENT = 3
 _JUDGMENT_CUE_RE = re.compile(
     r"\bIN THE\b.{0,40}\bCOURT\b|\bBETWEEN\b|\bJUDGMENT\b|\bAPPLICANT\b|\bRESPONDENT\b"
@@ -30,8 +37,19 @@ def _count_paragraph_starts(text: str) -> int:
 
 
 def classify_document_type(pdf_text: PdfText) -> str:
-    """Returns "statute", "judgment", or "generic" (the fallback for anything
-    that doesn't match either recognized structure - e.g. a contract)."""
+    """Returns "statute", "judgment", "us_cfr", "us_opinion", or "generic"
+    (the fallback for anything that doesn't match a recognized structure -
+    e.g. a contract)."""
+    # United States shapes first: `§ 245.1` section lines with a CFR title
+    # cue, or the `Cite as: 533 U. S. 678` running head of a bound volume.
+    if (
+        len(CFR_SECTION_RE.findall(pdf_text.text)) >= _MIN_CFR_SECTIONS
+        and infer_cfr_title(pdf_text.text) is not None
+    ):
+        return "us_cfr"
+    if len(US_REPORTS_CITE_CUE_RE.findall(pdf_text.text)) >= _MIN_US_REPORTS_CITE_CUES:
+        return "us_opinion"
+
     order_matches = len(ORDER_RE.findall(pdf_text.text))
     if order_matches >= _MIN_ORDER_MATCHES_FOR_STATUTE:
         return "statute"

@@ -2,20 +2,40 @@
 citations verifiable, jurisdiction filtering possible, and matters isolated
 from each other (docs/03, CLAUDE-2.md capability 1)."""
 
+import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
-from policy_advisor.config import PHASE1_DEMO_MATTER_ID
+from policy_advisor.config import PHASE1_DEMO_MATTER_ID, US_DATA_DIR, US_LIBRARY_MATTER_ID
 from policy_advisor.ingestion.document_type import classify_document_type
 from policy_advisor.ingestion.docx_text import extract_docx
 from policy_advisor.ingestion.generic_chunk import parse_generic
 from policy_advisor.ingestion.parse_judgment import parse_judgment
 from policy_advisor.ingestion.parse_rules import parse_rules
-from policy_advisor.ingestion.pdf_text import PdfText, extract_pdf
+from policy_advisor.ingestion.parse_us import (
+    REPORTER_PAGE_RE,
+    UsChunk,
+    infer_reporter_citation,
+    paged_text_from_pages,
+    parse_cfr,
+    parse_us_reporter,
+    parse_uscis_pm,
+    read_header,
+)
+from policy_advisor.ingestion.pdf_text import (
+    PAGE_MARKER_RE,
+    PdfText,
+    extract_pdf,
+    strip_page_markers,
+)
 from policy_advisor.jurisdictions import load_taxonomy, normalize_jurisdiction
 from policy_advisor.jurisdictions.locators import scheme_of
 
-AUTHORITY_DOC_TYPES = frozenset({"statute", "judgment"})
+# United States authority families (parse_us.py); all authority, like
+# statutes and judgments.
+US_DOC_TYPES = frozenset({"us_cfr", "uscis_pm", "us_opinion"})
+AUTHORITY_DOC_TYPES = frozenset({"statute", "judgment"}) | US_DOC_TYPES
 
 SUPPORTED_SUFFIXES = {".pdf", ".docx"}
 
@@ -36,6 +56,36 @@ CORPUS: list[DocumentSpec] = [
         "Lagos-State-Magistrates-Courts-Civil-Procedure-Rules-2009.pdf", "statute", "lagos"
     ),
     DocumentSpec("Meta v NDPC Terms & Consent Judgment.pdf", "judgment", "federal"),
+]
+
+
+@dataclass
+class LibraryDocumentSpec:
+    """A text file in a library collection: hand-mapped like the demo corpus,
+    plus the registry source it came from (docs/24)."""
+
+    filename: str
+    doc_type: str
+    jurisdiction: str
+    source_id: str
+
+
+# The United States federal library (docs/23 slice P2-B). Fetched by
+# scripts/fetch_us_corpus.py; each file's header carries its provenance.
+US_LIBRARY: list[LibraryDocumentSpec] = [
+    LibraryDocumentSpec("8-cfr-part-245.txt", "us_cfr", "us-federal", "us-ecfr"),
+    LibraryDocumentSpec(
+        "uscis-pm-vol7-part-b-ch1.txt", "uscis_pm", "us-federal", "us-uscis-policy-manual"
+    ),
+    LibraryDocumentSpec(
+        "uscis-pm-vol7-part-b-ch2.txt", "uscis_pm", "us-federal", "us-uscis-policy-manual"
+    ),
+    LibraryDocumentSpec(
+        "uscis-pm-vol7-part-b-ch3.txt", "uscis_pm", "us-federal", "us-uscis-policy-manual"
+    ),
+    LibraryDocumentSpec(
+        "zadvydas-v-davis-533-us-678.txt", "us_opinion", "us-federal", "us-reports-loc"
+    ),
 ]
 
 
@@ -145,6 +195,9 @@ def _build_chunks(
             )
         return chunks
 
+    if doc_type in US_DOC_TYPES:
+        return _build_us_chunks(pdf_text, doc_type, filename, matter_id, jurisdiction)
+
     if doc_type == "generic":
         return [
             Chunk(
@@ -162,6 +215,98 @@ def _build_chunks(
         ]
 
     raise ValueError(f"Unknown doc_type: {doc_type}")
+
+
+def _locator_slug(locator: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "", locator)
+
+
+def _iso_date(value: str | None) -> str | None:
+    """`2026-10-01` or `October 23, 2026` -> ISO date; anything else -> None,
+    because `effective_date` is a DATE column."""
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%B %d, %Y"):
+        try:
+            return datetime.strptime(value.strip(), fmt).date().isoformat()
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_us(pdf_text: PdfText, doc_type: str) -> tuple[list[UsChunk], dict[str, str]]:
+    text = pdf_text.text
+    header, _ = read_header(text)
+    if doc_type == "us_cfr":
+        return parse_cfr(text), header
+    if doc_type == "uscis_pm":
+        try:
+            volume, part, chapter = int(header["volume"]), header["part"], int(header["chapter"])
+        except KeyError:
+            raise ValueError(
+                "a USCIS Policy Manual text needs `volume`, `part` and `chapter` header lines"
+            ) from None
+        return parse_uscis_pm(text, volume, part, chapter), header
+    # us_opinion: a corpus file is already paged; a PDF of a bound volume is
+    # paged here from its page markers, numbering from the citation's page.
+    if not REPORTER_PAGE_RE.search(text):
+        citation = infer_reporter_citation(text)
+        if citation is None:
+            raise ValueError("cannot tell the reporter citation of this opinion")
+        first_page = int(citation.rsplit(" ", 1)[1])
+        pages = [strip_page_markers(p) for p in PAGE_MARKER_RE.split(text) if not p.isdigit()]
+        text = paged_text_from_pages([p for p in pages if p.strip()], first_page)
+        return parse_us_reporter(text, citation), header
+    return parse_us_reporter(text), header
+
+
+def _build_us_chunks(
+    pdf_text: PdfText, doc_type: str, filename: str, matter_id: str, jurisdiction: str | None
+) -> list[Chunk]:
+    parsed, header = _parse_us(pdf_text, doc_type)
+    effective = _iso_date(header.get("version_date") or header.get("current_as_of"))
+    return [
+        Chunk(
+            chunk_id=f"{matter_id}::{filename}::{_locator_slug(c.locator)}",
+            text=strip_page_markers(c.text),
+            source_document=filename,
+            doc_type=doc_type,
+            matter_id=matter_id,
+            jurisdiction=jurisdiction,
+            locator=c.locator,
+            page=c.page or pdf_text.page_at(c.start_offset),
+            heading=c.heading,
+            source_id=header.get("source_id") or None,
+            effective_date=effective,
+            licence=header.get("licence") or None,
+        )
+        for c in parsed
+    ]
+
+
+def chunk_library_document(
+    spec: LibraryDocumentSpec, data_dir: Path, matter_id: str
+) -> list[Chunk]:
+    """A text file of a library collection: already structured by the fetch
+    script, so no PDF extraction and no classification."""
+    text = (data_dir / spec.filename).read_text(encoding="utf-8")
+    chunks = _build_chunks(
+        PdfText(text=text),
+        spec.doc_type,
+        spec.filename,
+        matter_id,
+        normalize_jurisdiction(spec.jurisdiction),
+    )
+    for chunk in chunks:
+        chunk.source_id = chunk.source_id or spec.source_id
+    return _enrich(chunks, tier="authority")
+
+
+def chunk_us_library(data_dir: Path = US_DATA_DIR) -> list[Chunk]:
+    chunks: list[Chunk] = []
+    for spec in US_LIBRARY:
+        chunks.extend(chunk_library_document(spec, data_dir, US_LIBRARY_MATTER_ID))
+    return chunks
 
 
 def chunk_document(spec: DocumentSpec, data_dir: Path) -> list[Chunk]:

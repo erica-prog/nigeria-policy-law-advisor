@@ -40,8 +40,8 @@ Stack:
 | Storage (today)     | Supabase Postgres + pgvector for matters, chunks and chat history (`docs/16-supabase-setup.md`); conversation logs, credentials and user keys still on disk under `data/`; uploaded originals are not retained |
 | Auth (today)        | bcrypt credentials file plus a signed HttpOnly session cookie         |
 | Document processing | In-process background jobs (an MVP stand-in for a worker queue); BM25 held in memory per matter |
-| Tool integration    | MCP (designed in `docs/04-mcp-integration.md`; not yet implemented)   |
-| TypeScript          | Planned for an MCP connector server; see `docs/05-typescript-guide.md` |
+| Tool integration    | MCP: one in-process client over stdio and HTTP behind a tool policy (`docs/26`); connectors under `connectors/` |
+| TypeScript          | The Nigeria MCP connector in `connectors/ng-sources/` (docs/27); taught in `docs/05-typescript-guide.md` |
 | Config and secrets  | `.env` only; see `.env.example`                                       |
 
 ## Mandatory rules
@@ -94,15 +94,18 @@ rewriting it.
 | Settings (env-driven, pydantic)          | `src/policy_advisor/config.py`, `.env.example`                  |
 | Database, migrations, Supabase guide     | `src/policy_advisor/db.py`, `src/policy_advisor/migrations/`, `docs/16-supabase-setup.md` |
 | Ingestion (PDF, DOCX, OCR, chunking)     | `src/policy_advisor/ingestion/`                                 |
+| US federal library (texts, parsers, fetch) | `data/us/`, `src/policy_advisor/ingestion/parse_us.py`, `scripts/fetch_us_corpus.py`, `docs/25-us-library-corpus.md` |
 | Retrieval (BM25 + dense, hybrid)         | `src/policy_advisor/retrieval/`                                 |
 | Jurisdiction taxonomy and locator schemes (data + loader) | `src/policy_advisor/jurisdictions/`; human guides per country in `jurisdictions/` |
 | Generation, faithfulness, relevance gate, case reasoning, advisory | `src/policy_advisor/generation/`              |
 | Web search (allow-listed official sites) | `src/policy_advisor/generation/web_search.py`                   |
 | Source registry (licence terms, lawyer sign-off, web allow-list) | `src/policy_advisor/sources/`, `scripts/manage_sources.py`, `docs/24-source-registry.md` |
+| Connectors and tool policy (MCP client, deny-list, result wrapper) | `src/policy_advisor/tools/`, `connectors/legal-ai-skills/` (vendored, see its `UPSTREAM.md`), `docs/26-connectors-and-tool-policy.md` |
+| Nigeria connector (TypeScript MCP server) | `connectors/ng-sources/`, `docs/27-nigeria-connector.md`, TypeScript notes in `docs/05-typescript-guide.md` |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
-| Evaluation (golden set, rubric)          | `eval/`                                                         |
+| Evaluation (golden sets NG and US, rubric) | `eval/`                                                         |
 | Tests                                    | `tests/`                                                        |
 | CI                                       | `.github/workflows/ci.yml`                                      |
 | Design documents                         | `docs/` (numbered; start at `docs/00-overview.md`)              |

@@ -39,6 +39,11 @@ jobs:
         run: uv python install 3.12
       - name: Install dependencies
         run: uv sync --frozen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build the Nigeria connector (tests/test_connectors.py starts it)
+        run: npm ci --prefix connectors/ng-sources && npm run build --prefix connectors/ng-sources
       - name: Lint
         run: uv run ruff check .
       - name: Type check
@@ -48,6 +53,24 @@ jobs:
       # eval-gate is the job that spends a real key.
       - name: Unit tests
         run: uv run pytest
+
+  connectors:
+    # The vendored plugin server's own tests (connectors/legal-ai-skills/UPSTREAM.md).
+    # The Python side (tests/test_connectors.py) runs in lint-and-test, where
+    # the runner's Node lets it start this server under the real MCP client.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node --test connectors/legal-ai-skills/legal-research-server.test.mjs
+      - name: Nigeria connector (TypeScript)
+        run: |
+          npm ci --prefix connectors/ng-sources
+          npm run typecheck --prefix connectors/ng-sources
+          npm test --prefix connectors/ng-sources
+          npm run build --prefix connectors/ng-sources
 
   eval-gate:
     runs-on: ubuntu-latest
@@ -96,6 +119,13 @@ jobs:
           PY
             exit "$code"
           fi
+
+      - name: US library retrieval eval
+        # Retrieval-only gate for the United States collection (docs/23 slice
+        # P2-B, AC-2). Generation and faithfulness on this set are run by hand
+        # and recorded in docs/23 until the agent loop (P2-E) gives them a
+        # cheaper home; the Nigerian set above already spends the key here.
+        run: uv run python -m eval.run_golden_set --golden-set eval/golden_set_us.json --skip-generation --fail-below 0.9
 
       - name: Relevance-floor calibration report
         # Advisory: prints where the answerable and off-corpus questions sit

@@ -1,0 +1,30 @@
+{
+  "name": "@policy-advisor/ng-sources",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server over official Nigerian government sources (docs/27).",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "ng-sources": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

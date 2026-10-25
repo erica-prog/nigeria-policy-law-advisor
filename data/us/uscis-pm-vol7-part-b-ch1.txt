@@ -1,0 +1,30 @@
+# title: USCIS Policy Manual, Volume 7, Part B, Chapter 1 - Purpose and Background
+# source_id: us-uscis-policy-manual
+# source_url: https://www.uscis.gov/policy-manual/volume-7-part-b-chapter-1
+# volume: 7
+# part: B
+# chapter: 1
+# current_as_of: October 23, 2026
+# retrieved_at: 2026-10-24T23:29:26Z
+# licence: US government work, public domain (17 U.S.C. § 105)
+
+## A. Purpose
+Section 245 of the Immigration and Nationality Act (INA) allows certain aliens who are physically present in the United States to adjust status to that of a lawful permanent resident (LPR). Most adjustment applicants file their adjustment of status applications based on INA 245(a).
+## B. Background
+The Immigration Act of 1924 required all intending immigrants to obtain an immigrant visa at a U.S. embassy or consulate abroad[1] (commonly known as “consular processing”). An alien physically present in the United States could not become an LPR without leaving the United States to consular process abroad.
+By 1935, immigration authorities had developed an administrative process of “pre-examination” that enabled an alien temporarily in the United States to obtain LPR status more quickly and easily.[2] Pre-examination consisted of an official determination in the United States of the alien’s eligibility for an immigrant visa, the immigrant’s travel to Canada or elsewhere for an arranged immigrant visa appointment at a U.S. consulate, and the immigrant’s prompt return and admission to the United States as a LPR. From 1935 to 1950, the government processed over 45,000 pre-examination cases.[3]
+In 1952, Congress made the pre-examination process unnecessary by creating INA 245, which allowed eligible aliens to obtain LPR status through adjustment of status without leaving the United States.[4] Congress indicated that adjustment should be used for purposes of family unity or otherwise be in the public interest.[5]
+Over time, Congress revised and consolidated the eligibility requirements for adjustment of status into the current INA 245(a). The bars, restrictions, and special considerations to adjustment are found in INA 245(c) through INA 245(k). Applicable inadmissibility grounds, including public safety and security concerns are found in INA 212.
+## C. Scope
+The guidance in this Policy Manual part only addresses adjustment of status under INA 245(a).[6] Certain aliens may be eligible to adjust under other provisions of law, as detailed in other parts of this volume.
+## D. Legal Authorities
+INA 245(a); 8 CFR 245 – Adjustment of status to that of person admitted for permanent residence
+INA 245(c) – Bars to adjustment of status
+INA 245(k) – Inapplicability of certain provisions for certain employment-based immigrants
+## Footnotes
+[^ 1] See Section 13 of the Immigration Act of 1924, Pub. L. 68-139 (May 26, 1924).
+[^ 2] See 2 C. Gordon & H. Rosenfield, Immigration Law and Procedure, Section 7.3a. See Jain v. Immigration and Naturalization Service, 612 F.2d 683 (2nd Cir. 1979).
+[^ 3] See Sofaer, The Change of Status Adjudication: A Case Study of the Informal Agency Process, 1 J. Legal Studies 349, 351 (1971).
+[^ 4] See Section 245 of the Immigration and Nationality Act of 1952, Pub. L. 82-414 (PDF) (June 27, 1952).
+[^ 5] See H.R. Rep. 82-1365 (Feb. 14, 1952).
+[^ 6] There are many statutory bases for adjustment. For instance, refugees and asylees may adjust status under INA 209(c), which outlines slightly different rules and requirements for adjustment than under INA 245(a). The basis under which an applicant seeks adjustment of status is therefore key in determining the eligibility requirements for adjustment as well as exceptions, exemptions, waivers, and any other program-specific laws or benefits that may apply.

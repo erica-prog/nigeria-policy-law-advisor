@@ -50,7 +50,10 @@ FIDELITY_JUDGE_PROMPT = ChatPromptTemplate.from_messages(
             "mislead a lawyer relying on it. Answer 'FLAGGED' if you find any such error or significant "
             "meaning drift, 'ALLOWED' otherwise.",
         ),
-        ("human", "Original ({source_language}):\n{original}\n\nTranslation ({target_language}):\n{translated}"),
+        (
+            "human",
+            "Original ({source_language}):\n{original}\n\nTranslation ({target_language}):\n{translated}",
+        ),
     ]
 )
 
@@ -60,7 +63,10 @@ def judge_translation_fidelity(
 ) -> FidelityResult:
     structured = llm.with_structured_output(FidelityVerdict)
     messages = FIDELITY_JUDGE_PROMPT.format_messages(
-        original=original, translated=translated, source_language=source_language, target_language=target_language
+        original=original,
+        translated=translated,
+        source_language=source_language,
+        target_language=target_language,
     )
     result = as_model(call_with_retry(lambda: structured.invoke(messages)), FidelityVerdict)
     flagged = result.verdict.strip().upper() == "FLAGGED"
@@ -71,5 +77,7 @@ def check_translation_fidelity(
     llm: ChatAnthropic, original: str, translated: str, source_language: str, target_language: str
 ) -> FidelityResult:
     if not length_ratio_ok(original, translated):
-        return FidelityResult(flagged=True, reason="translated length is implausible relative to the original")
+        return FidelityResult(
+            flagged=True, reason="translated length is implausible relative to the original"
+        )
     return judge_translation_fidelity(llm, original, translated, source_language, target_language)

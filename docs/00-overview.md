@@ -68,6 +68,9 @@ Not "it runs on my machine." Specifically:
 - [22-plan-platform-phase-0-1.md](22-plan-platform-phase-0-1.md) — plan for ADR-001 Phase 0 and Phase 1: mypy blocking, retained originals, taxonomy and locator schemes, corpus tiers, storage completion, reranker
 - [23-plan-platform-phase-2.md](23-plan-platform-phase-2.md) — plan for ADR-001 Phase 2: source registry, US and Nigeria connectors, US parsers and golden set, the agent loop with a tool policy, playbooks and routing evals
 - [24-source-registry.md](24-source-registry.md) — the `sources` table: licence terms, lawyer sign-off, the web-search allow-list as a row, and the `manage_sources` command
+- [25-us-library-corpus.md](25-us-library-corpus.md) — the `us-library` collection: public-domain US texts with provenance, the CFR, Policy Manual and reporter parsers, and the US golden set
+- [26-connectors-and-tool-policy.md](26-connectors-and-tool-policy.md) — external sources as MCP tools: the vendored US research server, hosted CourtListener and GovInfo, the one client, and the tool policy every call passes
+- [27-nigeria-connector.md](27-nigeria-connector.md) — the TypeScript MCP server over official Nigerian sites (NDPC, Immigration Service, Federal High Court), why NigeriaLII is excluded, and what a lawyer must confirm
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase

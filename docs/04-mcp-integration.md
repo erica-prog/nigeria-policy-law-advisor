@@ -1,5 +1,7 @@
 # 04 — MCP Integration
 
+> **Since Phase 2 (docs/26):** the client side of this design is implemented in `src/policy_advisor/tools/`: one MCP client over stdio and streamable HTTP, a registry-backed tool policy, and the untrusted result wrapper. The connectors it reaches are the vendored `legal-research` server and the hosted CourtListener and GovInfo servers; the Nigeria connector follows in slice P2-D.
+
 ## What MCP is, briefly
 MCP (Model Context Protocol) is a standard way to expose **tools** and
 **context** to an LLM, independent of which client or orchestration

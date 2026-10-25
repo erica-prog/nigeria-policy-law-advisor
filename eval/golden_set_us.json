@@ -1,0 +1,207 @@
+[
+  {
+    "id": "u01",
+    "question": "Who may apply for adjustment of status under 8 CFR 245.1(a)?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "8-cfr-part-245.txt",
+        "locator": "8 C.F.R. § 245.1(a)"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Any alien physically present in the United States, unless ineligible under paragraph (b) or (c), who is eligible to receive an immigrant visa that is immediately available at the time of filing.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u02",
+    "question": "Is an alien who entered the United States in transit without a visa eligible to apply for adjustment of status?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "8-cfr-part-245.txt",
+        "locator": "8 C.F.R. § 245.1(b)(1)"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "No: an alien who entered in transit without a visa is a restricted alien ineligible to apply.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u03",
+    "question": "Does employment without authorization before filing bar adjustment of status, and who is exempt from that bar?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "8-cfr-part-245.txt",
+        "locator": "8 C.F.R. § 245.1(b)(4)"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Yes for employment on or after 1 January 1977, except immediate relatives, certain special immigrants and nurses covered by the Immigration Nursing Relief Act of 1989.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u04",
+    "question": "Is a medical examination by a civil surgeon required for an adjustment of status applicant?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "8-cfr-part-245.txt",
+        "locator": "8 C.F.R. § 245.5"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Yes, under section 232(b) of the Act, unless the applicant entered as a K nonimmigrant and was examined before entry.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u05",
+    "question": "Can the adjustment of status interview be waived, and when?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "8-cfr-part-245.txt",
+        "locator": "8 C.F.R. § 245.6"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Yes: for a child under 14, when the applicant is clearly ineligible, or when the Service determines an interview is unnecessary.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u06",
+    "question": "Can an exchange visitor subject to the two-year foreign residence requirement adjust status?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "8-cfr-part-245.txt",
+        "locator": "8 C.F.R. § 245.1(c)(2)"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Not unless the alien has complied with the foreign residence requirement or been granted a waiver of it.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u07",
+    "question": "What are the INA 245(a) eligibility requirements for adjustment of status according to the USCIS Policy Manual?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "uscis-pm-vol7-part-b-ch2.txt",
+        "locator": "USCIS-PM Vol. 7, Pt. B, Ch. 2"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Inspected and admitted or paroled; a properly filed application; physical presence; eligibility for an immigrant visa; a visa immediately available at filing and at approval; admissibility or a waiver; and favorable discretion.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u08",
+    "question": "If an inspector waved an alien through the port of entry without asking any questions, was the alien inspected and admitted?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "uscis-pm-vol7-part-b-ch2.txt",
+        "locator": "USCIS-PM Vol. 7, Pt. B, Ch. 2.A.7"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Yes: an alien who presents for inspection and makes no false claim to citizenship is considered inspected and admitted even if asked nothing.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u09",
+    "question": "Why does USCIS reject an adjustment of status application (Form I-485) at filing?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "uscis-pm-vol7-part-b-ch2.txt",
+        "locator": "USCIS-PM Vol. 7, Pt. B, Ch. 2.B"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Filed at an incorrect location, without the correct fee (absent a fee waiver), not properly signed, or filed when an immigrant visa is unavailable.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u10",
+    "question": "Must an immigrant visa be available both when the adjustment application is filed and when USCIS approves it?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "uscis-pm-vol7-part-b-ch2.txt",
+        "locator": "USCIS-PM Vol. 7, Pt. B, Ch. 2.D"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Yes: a visa must be available before applying and must be available for issuance on the date USCIS approves the application; immediate relatives always have one available.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u11",
+    "question": "What is the difference between lawful immigration status and a period of authorized stay?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "uscis-pm-vol7-part-b-ch3.txt",
+        "locator": "USCIS-PM Vol. 7, Pt. B, Ch. 3.D"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Lawful status is distinct from authorized stay; an alien in lawful status is also in authorized stay, but the reverse is not necessarily true; authorized stay matters only for unlawful-presence accrual.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u12",
+    "question": "In Zadvydas v. Davis, why would a statute permitting indefinite detention of an alien raise a serious constitutional problem?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "zadvydas-v-davis-533-us-678.txt",
+        "locator": "533 U.S. 678, 690"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Because freedom from imprisonment lies at the heart of the liberty the Fifth Amendment's Due Process Clause protects, and detention outside criminal proceedings needs adequate procedural protections and a special justification.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u13",
+    "question": "What did the Supreme Court conclude in Zadvydas about continued detention once removal is no longer reasonably foreseeable?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "zadvydas-v-davis-533-us-678.txt",
+        "locator": "533 U.S. 678, 699"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "Once removal is no longer reasonably foreseeable, continued detention is no longer authorized by the statute.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u14",
+    "question": "Why did the Zadvydas Court recognize a presumptively reasonable period of post-removal detention?",
+    "jurisdiction": "us-federal",
+    "expected": [
+      {
+        "source_document": "zadvydas-v-davis-533-us-678.txt",
+        "locator": "533 U.S. 678, 701"
+      }
+    ],
+    "expect_refusal": false,
+    "example_answer": "To guide lower courts and for uniform administration, as the Court has adopted similar presumptions in other contexts.",
+    "matter_id": "us-library"
+  },
+  {
+    "id": "u15",
+    "question": "What is the fee for renewing a Nigerian passport at the Nigeria Immigration Service?",
+    "jurisdiction": "us-federal",
+    "expected": [],
+    "expect_refusal": true,
+    "example_answer": "The US library has nothing on Nigerian passport fees; the advisor should say so.",
+    "matter_id": "us-library"
+  }
+]

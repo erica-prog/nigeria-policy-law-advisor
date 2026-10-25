@@ -43,7 +43,9 @@ def translate_chunks(
         language = detect_language(chunk.text)
         target_language = _OTHER_LANGUAGE[language]
         translated_text = translate_text(llm, chunk.text, language, target_language)
-        fidelity = check_translation_fidelity(llm, chunk.text, translated_text, language, target_language)
+        fidelity = check_translation_fidelity(
+            llm, chunk.text, translated_text, language, target_language
+        )
 
         if fidelity.flagged:
             log_event(

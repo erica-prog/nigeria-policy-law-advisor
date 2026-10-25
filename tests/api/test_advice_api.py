@@ -256,7 +256,8 @@ def test_library_answers_are_labelled_authority_not_evidence(api_with_llm):
         body["citations"][0]["kind"] == "authority"
         and body["citations"][0]["trust_kind"] == "authority"
     )
-    assert fake.calls[-1]["library_matters"] == ["phase1-demo"]
+    # Every shared library except the matter itself, Nigerian first (docs/25).
+    assert fake.calls[-1]["library_matters"] == ["phase1-demo", "us-library"]
 
     reply = alice.post(
         "/api/matters/alice-v-acme/chat", json={"message": "when in force?", "intent": "ask"}

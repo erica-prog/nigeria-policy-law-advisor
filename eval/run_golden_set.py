@@ -6,6 +6,7 @@ Usage:
   uv run python -m eval.run_golden_set                  # retrieval + faithfulness
   uv run python -m eval.run_golden_set --skip-generation # retrieval only, no Claude calls
   uv run python -m eval.run_golden_set --fail-below 0.85 # exit nonzero if recall@k drops below this (for a CI gate later)
+  uv run python -m eval.run_golden_set --golden-set eval/golden_set_us.json  # another set (the US library)
 """
 
 import argparse
@@ -51,6 +52,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--top-k", type=int, default=8)
     parser.add_argument(
+        "--golden-set", type=Path, default=GOLDEN_SET_PATH, help="which question file to run"
+    )
+    parser.add_argument(
         "--fail-below",
         type=float,
         default=None,
@@ -70,7 +74,7 @@ def main() -> None:
 
         chain = RAGChain()
 
-    questions = json.loads(GOLDEN_SET_PATH.read_text(encoding="utf-8"))
+    questions = json.loads(args.golden_set.read_text(encoding="utf-8"))
 
     retrieval_metrics = []
     faithfulness_results = []

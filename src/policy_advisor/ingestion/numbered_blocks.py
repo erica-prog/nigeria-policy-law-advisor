@@ -16,7 +16,9 @@ class NumberedBlock:
     start_offset: int
 
 
-def split_numbered_blocks(text: str, start_re: re.Pattern, base_offset: int = 0) -> list[NumberedBlock]:
+def split_numbered_blocks(
+    text: str, start_re: re.Pattern, base_offset: int = 0
+) -> list[NumberedBlock]:
     """Split `text` into blocks beginning at each `start_re` match (e.g. "12. ").
     Sub-numbering like "(1)"/"3.1." stays inside its parent block rather than
     starting a new one, since `start_re` only matches the top-level pattern.

@@ -34,7 +34,9 @@ def get_translation_llm(api_key: str | None = None) -> ChatAnthropic:
     return chat_model(settings, api_key, max_tokens=2048, timeout=45)
 
 
-def translate_text(llm: ChatAnthropic, text: str, source_language: str, target_language: str) -> str:
+def translate_text(
+    llm: ChatAnthropic, text: str, source_language: str, target_language: str
+) -> str:
     messages = TRANSLATE_PROMPT.format_messages(
         source_language=LANGUAGE_NAMES.get(source_language, source_language),
         target_language=LANGUAGE_NAMES.get(target_language, target_language),

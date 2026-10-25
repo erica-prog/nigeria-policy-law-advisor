@@ -9,13 +9,27 @@
       "tier": "authority",
       "trust_kind": "web",
       "connector": "web_search",
-      "tool_prefix": null,
-      "licence": {"terms_url": null, "may_store_text": false, "may_store_snippets": true, "attribution": "cite the page URL"},
-      "freshness": {"how_checked": "live search on every call", "last_checked": null},
-      "config": {"domains": ["nass.gov.ng", "ndpc.gov.ng"], "max_uses": 3},
+      "licence": {
+        "terms_url": null,
+        "may_store_text": false,
+        "may_store_snippets": true,
+        "attribution": "cite the page URL"
+      },
+      "freshness": {
+        "how_checked": "live search on every call",
+        "last_checked": null
+      },
+      "config": {
+        "domains": [
+          "nass.gov.ng",
+          "ndpc.gov.ng"
+        ],
+        "max_uses": 3
+      },
       "allowed": true,
       "allowed_by": "phase-1-default",
-      "notes": "The allow-list web_search.py carried as a constant before the registry existed. In use since Phase 1; a lawyer has not yet reviewed it."
+      "notes": "The allow-list web_search.py carried as a constant before the registry existed. In use since Phase 1; a lawyer has not yet reviewed it.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-ecfr",
@@ -24,13 +38,28 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "legal-research",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://www.ecfr.gov/reader-aids/using-ecfr/developer-resources", "may_store_text": true, "may_store_snippets": true, "attribution": "US government work, public domain; cite title, part and section"},
-      "freshness": {"how_checked": "eCFR point-in-time API on each call", "last_checked": null},
-      "config": {"server": "connectors/legal-ai-skills/legal-research-server.mjs", "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c"},
+      "licence": {
+        "terms_url": "https://www.ecfr.gov/reader-aids/using-ecfr/developer-resources",
+        "may_store_text": true,
+        "may_store_snippets": true,
+        "attribution": "US government work, public domain; cite title, part and section"
+      },
+      "freshness": {
+        "how_checked": "eCFR point-in-time API on each call",
+        "last_checked": null
+      },
+      "config": {
+        "server": "legal-ai-skills/legal-research-server.mjs",
+        "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c",
+        "tools": [
+          "search_us_ecfr",
+          "get_us_ecfr_text"
+        ]
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Reached through the plugin's legal-research server, vendored in slice P2-C. Locators: us_cfr."
+      "notes": "Reached through the plugin's legal-research server, vendored in slice P2-C. Locators: us_cfr.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-federal-register",
@@ -39,13 +68,28 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "legal-research",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://www.federalregister.gov/developers/documentation/api/v1", "may_store_text": true, "may_store_snippets": true, "attribution": "US government work, public domain; cite the document number"},
-      "freshness": {"how_checked": "Federal Register API on each call", "last_checked": null},
-      "config": {"server": "connectors/legal-ai-skills/legal-research-server.mjs", "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c"},
+      "licence": {
+        "terms_url": "https://www.federalregister.gov/developers/documentation/api/v1",
+        "may_store_text": true,
+        "may_store_snippets": true,
+        "attribution": "US government work, public domain; cite the document number"
+      },
+      "freshness": {
+        "how_checked": "Federal Register API on each call",
+        "last_checked": null
+      },
+      "config": {
+        "server": "legal-ai-skills/legal-research-server.mjs",
+        "upstream_commit": "ad5df1934e981f9aa1c2c163da02590d8ae0504c",
+        "tools": [
+          "search_us_federal_register",
+          "get_us_federal_register_document"
+        ]
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Vendored in slice P2-C."
+      "notes": "Vendored in slice P2-C.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-regulations-gov",
@@ -54,13 +98,28 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "legal-research",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://open.gsa.gov/api/regulationsgov/", "may_store_text": false, "may_store_snippets": true, "attribution": "cite the docket and document id"},
-      "freshness": {"how_checked": "Regulations.gov API on each call", "last_checked": null},
-      "config": {"server": "connectors/legal-ai-skills/legal-research-server.mjs", "credential_env": "REGULATIONS_GOV_API_KEY"},
+      "licence": {
+        "terms_url": "https://open.gsa.gov/api/regulationsgov/",
+        "may_store_text": false,
+        "may_store_snippets": true,
+        "attribution": "cite the docket and document id"
+      },
+      "freshness": {
+        "how_checked": "Regulations.gov API on each call",
+        "last_checked": null
+      },
+      "config": {
+        "server": "legal-ai-skills/legal-research-server.mjs",
+        "credential_env": "REGULATIONS_GOV_API_KEY",
+        "tools": [
+          "search_us_rulemaking",
+          "get_us_rulemaking_record"
+        ]
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Needs REGULATIONS_GOV_API_KEY on the server (docs/23 D7). Public comments are third-party text: snippets only."
+      "notes": "Needs REGULATIONS_GOV_API_KEY on the server (docs/23 D7). Public comments are third-party text: snippets only.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-courtlistener",
@@ -69,13 +128,33 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "courtlistener",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://www.courtlistener.com/terms/", "may_store_text": false, "may_store_snippets": true, "attribution": "cite the reporter citation and the CourtListener URL"},
-      "freshness": {"how_checked": "hosted MCP on each call", "last_checked": null},
-      "config": {"url": "https://mcp.courtlistener.com/", "credential_env": "COURTLISTENER_API_TOKEN", "denied_tool_patterns": ["*alert*"]},
+      "licence": {
+        "terms_url": "https://www.courtlistener.com/terms/",
+        "may_store_text": false,
+        "may_store_snippets": true,
+        "attribution": "cite the reporter citation and the CourtListener URL"
+      },
+      "freshness": {
+        "how_checked": "hosted MCP on each call",
+        "last_checked": null
+      },
+      "config": {
+        "url": "https://mcp.courtlistener.com/",
+        "credential_env": "COURTLISTENER_API_KEY",
+        "auth_header": "Authorization",
+        "auth_prefix": "Token ",
+        "denied_tool_patterns": [
+          "*alert*",
+          "*subscribe*",
+          "*pray*",
+          "call_endpoint",
+          "get_api_usage"
+        ]
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Hosted MCP server. may_store_text stays false until the terms are read during P2-C (docs/23 R5). Alert and subscription tools are denied for every playbook."
+      "notes": "Hosted MCP server, verified live on 2026-10-24 with COURTLISTENER_API_KEY (19 tools). Denied beyond the global list: the four alert and docket-subscription tools, pray_for_document and withdraw_prayer (RECAP purchase requests), call_endpoint (a generic REST call that can write) and get_api_usage (account data). Its results carry no provenance envelope; the policy layer adds one from this row. may_store_text stays false: the terms page could not be read by machine; a lawyer should read https://www.courtlistener.com/terms/ before any opinion text is stored.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-govinfo",
@@ -84,13 +163,25 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "govinfo",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://www.govinfo.gov/about/policies", "may_store_text": true, "may_store_snippets": true, "attribution": "US government work, public domain; cite the package id"},
-      "freshness": {"how_checked": "hosted MCP on each call", "last_checked": null},
-      "config": {"url": "https://api.govinfo.gov/mcp", "credential_env": "GOVINFO_API_KEY"},
+      "licence": {
+        "terms_url": "https://www.govinfo.gov/about/policies",
+        "may_store_text": true,
+        "may_store_snippets": true,
+        "attribution": "US government work, public domain; cite the package id"
+      },
+      "freshness": {
+        "how_checked": "hosted MCP on each call",
+        "last_checked": null
+      },
+      "config": {
+        "url": "https://api.govinfo.gov/mcp",
+        "credential_env": "GOVINFO_API_KEY",
+        "auth_header": "x-api-key"
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Hosted MCP server; needs GOVINFO_API_KEY on the server."
+      "notes": "Hosted MCP server; needs GOVINFO_API_KEY on the server.",
+      "tool_prefix": null
     },
     {
       "source_id": "us-uscis-policy-manual",
@@ -99,13 +190,49 @@
       "tier": "authority",
       "trust_kind": "authority",
       "connector": "library",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://www.uscis.gov/website-policies", "may_store_text": true, "may_store_snippets": true, "attribution": "US government work, public domain; cite volume, part and chapter"},
-      "freshness": {"how_checked": "manual re-fetch; date recorded in data/us/PROVENANCE.md", "last_checked": null},
-      "config": {"matter_id": "us-library"},
+      "licence": {
+        "terms_url": "https://www.uscis.gov/website-policies",
+        "may_store_text": true,
+        "may_store_snippets": true,
+        "attribution": "US government work, public domain; cite volume, part and chapter"
+      },
+      "freshness": {
+        "how_checked": "manual re-fetch; date recorded in data/us/PROVENANCE.md",
+        "last_checked": null
+      },
+      "config": {
+        "matter_id": "us-library"
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Static text committed under data/us/ in slice P2-B and seeded into the us-library authority collection. Locators: uscis_pm."
+      "notes": "Static text committed under data/us/ in slice P2-B and seeded into the us-library authority collection. Locators: uscis_pm.",
+      "tool_prefix": null
+    },
+    {
+      "source_id": "us-reports-loc",
+      "name": "United States Reports (bound volumes, Library of Congress)",
+      "country": "US",
+      "tier": "authority",
+      "trust_kind": "authority",
+      "connector": "library",
+      "licence": {
+        "terms_url": "https://www.loc.gov/legal/",
+        "may_store_text": true,
+        "may_store_snippets": true,
+        "attribution": "Opinions of the Supreme Court are public domain; cite volume, page and pinpoint"
+      },
+      "freshness": {
+        "how_checked": "bound volumes are final; re-fetch only to add opinions",
+        "last_checked": null
+      },
+      "config": {
+        "matter_id": "us-library",
+        "url_pattern": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep{vol}/usrep{vol}{page}/usrep{vol}{page}.pdf"
+      },
+      "allowed": false,
+      "allowed_by": null,
+      "notes": "Static text committed under data/us/ by scripts/fetch_us_corpus.py and seeded into us-library. Locators: us_reporter, one chunk per reporter page.",
+      "tool_prefix": null
     },
     {
       "source_id": "ng-nigerialii",
@@ -113,14 +240,25 @@
       "country": "NG",
       "tier": "authority",
       "trust_kind": "authority",
-      "connector": "ng-sources",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://nigerialii.org/", "may_store_text": false, "may_store_snippets": true, "attribution": "cite the neutral citation and the NigeriaLII URL"},
-      "freshness": {"how_checked": "connector fetch on each call; curated mirror for stability", "last_checked": null},
-      "config": {"server": "connectors/ng-sources", "base_url": "https://nigerialii.org/"},
+      "connector": "none",
+      "licence": {
+        "terms_url": "https://nigerialii.org/terms-of-use/",
+        "may_store_text": false,
+        "may_store_snippets": false,
+        "attribution": "CC BY-NC 4.0; non-commercial only"
+      },
+      "freshness": {
+        "how_checked": "connector fetch on each call; curated mirror for stability",
+        "last_checked": null
+      },
+      "config": {
+        "base_url": "https://nigerialii.org/",
+        "excluded": true
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Served by the TypeScript connector built in slice P2-D. Terms and robots to be read before the connector goes live (docs/23 R1)."
+      "notes": "EXCLUDED on 2026-10-24 (docs/27): robots.txt carries `Content-Signal: ai-input=no` and disallows /judgments/; the terms of use prohibit scraping and bulk download and licence content CC BY-NC 4.0, which a law firm's product cannot satisfy. Not reachable by any connector; ask NigeriaLII about their API and licensing before revisiting. A lawyer should confirm this reading.",
+      "tool_prefix": null
     },
     {
       "source_id": "ng-nass",
@@ -128,14 +266,105 @@
       "country": "NG",
       "tier": "authority",
       "trust_kind": "authority",
-      "connector": "ng-sources",
-      "tool_prefix": null,
-      "licence": {"terms_url": "https://nass.gov.ng/", "may_store_text": false, "may_store_snippets": true, "attribution": "cite the Act, section and the nass.gov.ng URL"},
-      "freshness": {"how_checked": "connector fetch on each call", "last_checked": null},
-      "config": {"server": "connectors/ng-sources", "base_url": "https://nass.gov.ng/"},
+      "connector": "none",
+      "licence": {
+        "terms_url": "https://nass.gov.ng/",
+        "may_store_text": false,
+        "may_store_snippets": true,
+        "attribution": "cite the Act, section and the nass.gov.ng URL"
+      },
+      "freshness": {
+        "how_checked": "connector fetch on each call",
+        "last_checked": null
+      },
+      "config": {
+        "base_url": "https://nass.gov.ng/"
+      },
       "allowed": false,
       "allowed_by": null,
-      "notes": "Served by the TypeScript connector built in slice P2-D. Already reachable through web search via web-official-ng."
+      "notes": "No connector: the site renders its bills and documents listings by script and no public data endpoint was found on 2026-10-24. Already reachable through web search (web-official-ng). Revisit when the portal exposes an API.",
+      "tool_prefix": null
+    },
+    {
+      "source_id": "ng-ndpc",
+      "name": "Nigeria Data Protection Commission (ndpc.gov.ng)",
+      "country": "NG",
+      "tier": "authority",
+      "trust_kind": "authority",
+      "connector": "ng-sources",
+      "tool_prefix": null,
+      "licence": {
+        "terms_url": "https://ndpc.gov.ng/",
+        "may_store_text": false,
+        "may_store_snippets": true,
+        "attribution": "cite the page title, the site and the URL with the accessed date"
+      },
+      "freshness": {
+        "how_checked": "connector reads the live site on each call; the page's modified date is returned",
+        "last_checked": null
+      },
+      "config": {
+        "server": "ng-sources/dist/server.js",
+        "host": "ndpc.gov.ng",
+        "site_key": "ndpc"
+      },
+      "allowed": false,
+      "allowed_by": null,
+      "notes": "Read through the site's own WordPress REST API by the TypeScript connector (docs/27). robots.txt allows it (checked 2026-10-24). Guidance pages are authority; news posts are context, not authority; a lawyer should confirm what may be stored."
+    },
+    {
+      "source_id": "ng-nis",
+      "name": "Nigeria Immigration Service (immigration.gov.ng)",
+      "country": "NG",
+      "tier": "authority",
+      "trust_kind": "authority",
+      "connector": "ng-sources",
+      "tool_prefix": null,
+      "licence": {
+        "terms_url": "https://immigration.gov.ng/",
+        "may_store_text": false,
+        "may_store_snippets": true,
+        "attribution": "cite the page title, the site and the URL with the accessed date"
+      },
+      "freshness": {
+        "how_checked": "connector reads the live site on each call; the page's modified date is returned",
+        "last_checked": null
+      },
+      "config": {
+        "server": "ng-sources/dist/server.js",
+        "host": "immigration.gov.ng",
+        "site_key": "nis"
+      },
+      "allowed": false,
+      "allowed_by": null,
+      "notes": "Read through the site's own WordPress REST API by the TypeScript connector (docs/27). robots.txt allows it (checked 2026-10-24). Guidance pages are authority; news posts are context, not authority; a lawyer should confirm what may be stored."
+    },
+    {
+      "source_id": "ng-fhc",
+      "name": "Federal High Court of Nigeria (fhc.gov.ng)",
+      "country": "NG",
+      "tier": "authority",
+      "trust_kind": "authority",
+      "connector": "ng-sources",
+      "tool_prefix": null,
+      "licence": {
+        "terms_url": "https://fhc.gov.ng/",
+        "may_store_text": false,
+        "may_store_snippets": true,
+        "attribution": "cite the page title, the site and the URL with the accessed date"
+      },
+      "freshness": {
+        "how_checked": "connector reads the live site on each call; the page's modified date is returned",
+        "last_checked": null
+      },
+      "config": {
+        "server": "ng-sources/dist/server.js",
+        "host": "fhc.gov.ng",
+        "site_key": "fhc"
+      },
+      "allowed": false,
+      "allowed_by": null,
+      "notes": "Read through the site's own WordPress REST API by the TypeScript connector (docs/27). robots.txt allows it (checked 2026-10-24). Guidance pages are authority; news posts are context, not authority; a lawyer should confirm what may be stored."
     }
   ]
 }

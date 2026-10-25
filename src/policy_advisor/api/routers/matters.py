@@ -14,7 +14,7 @@ from policy_advisor.api.deps import (
 )
 from policy_advisor.api.errors import ApiError
 from policy_advisor.api.schemas import MatterCreate, MatterList, MatterOut
-from policy_advisor.config import PHASE1_DEMO_MATTER_ID
+from policy_advisor.config import LIBRARY_MATTER_IDS
 from policy_advisor.ingestion.ingest_document import delete_matter as delete_matter_files
 from policy_advisor.ingestion.matter_store import (
     get_matter_meta,
@@ -45,7 +45,7 @@ def matter_out(matter: MatterAccess) -> MatterOut:
 
 
 def _generate_matter_id() -> str:
-    taken = set(list_matters()) | {PHASE1_DEMO_MATTER_ID}
+    taken = set(list_matters()) | LIBRARY_MATTER_IDS
     while True:
         candidate = f"case-{uuid.uuid4().hex[:12]}"
         if candidate not in taken:
@@ -70,7 +70,7 @@ def list_my_matters(user: CurrentUser) -> MatterList:
 
 @router.post("", response_model=MatterOut, status_code=status.HTTP_201_CREATED)
 def create_matter(body: MatterCreate, user: CurrentUser, services: Services) -> MatterOut:
-    if body.id is not None and (body.id == PHASE1_DEMO_MATTER_ID or body.id in list_matters()):
+    if body.id is not None and (body.id in LIBRARY_MATTER_IDS or body.id in list_matters()):
         raise ApiError(409, "matter_exists", "A matter with this id already exists.")
     matter_id = body.id or _generate_matter_id()
     set_matter_owner(matter_id, user.username)
