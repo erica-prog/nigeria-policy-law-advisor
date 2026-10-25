@@ -45,6 +45,8 @@ APP_TABLES = (
     "bulk_jobs",
     "extractions",
     "findings",
+    "templates",
+    "artefacts",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")

@@ -32,6 +32,8 @@ dependencies = [
     "mcp>=1.0",
     "opentelemetry-sdk>=1.45",
     "opentelemetry-exporter-otlp-proto-http>=1.45",
+    "docxtpl>=0.19",
+    "python-pptx>=1.0",
 ]
 
 [dependency-groups]

@@ -112,6 +112,18 @@ def set_matter_tier(matter_id: str, tier: str) -> None:
         conn.execute("UPDATE chunks SET tier = %s WHERE matter_id = %s", (tier, matter_id))
 
 
+def list_matters_by_tier(tier: str) -> list[str]:
+    """Collections of one tier visible to the current tenant (the firm's own
+    `firm` collections, for example)."""
+    with connect() as conn:
+        return [
+            r["matter_id"]
+            for r in conn.execute(
+                "SELECT matter_id FROM matters WHERE tier = %s ORDER BY matter_id", (tier,)
+            )
+        ]
+
+
 def get_matter_tier(matter_id: str) -> str:
     with connect() as conn:
         return _matter_tier(conn, matter_id)

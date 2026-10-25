@@ -417,3 +417,19 @@ code for a failed model call.
 - `GET /api/matters/{id}/bulk/findings/all?status_filter=open` -> `{ "findings": [{ "id",
   "job_id", "kind", "severity": "info" | "review" | "high", "summary", "documents",
   "evidence", "status": "open" | "reviewed" | "dismissed", "created_at" }] }`.
+
+
+## Artefacts (docs/35)
+
+- `GET /api/templates?kind=memo` -> `{ "templates": [{ "template_id", "kind": "memo" | "slides",
+  "name", "is_default", "shared" }] }`.
+- `POST /api/matters/{id}/artefacts` `{ "instruction", "kind": "memo" | "slides" | "both",
+  "template_id": null | "memo-default", "jurisdiction": null, "allow_web": false }` -> `201
+  Artefact` = `{ "artefact_id", "matter_id", "kind", "title", "status": "draft" | "reviewed" |
+  "approved" | "rejected", "instruction", "outline", "manifest", "has_docx", "has_pptx",
+  "template_id", "run_id", "created_by", "created_at", "updated_at" }`. Writable matter and
+  the caller's key; `502 draft_failed` when the run ended without a valid outline.
+- `GET /api/matters/{id}/artefacts` -> `{ "artefacts": [Artefact] }`; `GET
+  /api/matters/{id}/artefacts/{artefact_id}` -> `Artefact`.
+- `GET /api/matters/{id}/artefacts/{artefact_id}/file?format=docx|pptx` -> the file as an
+  attachment; `404 not_found` when the artefact has no file of that format.

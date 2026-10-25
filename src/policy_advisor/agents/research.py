@@ -105,6 +105,7 @@ class ResearchResult:
     budget_exhausted: bool
     usage: dict[str, int]
     source: str = "research"
+    recorded: list["RecordedResult"] = field(default_factory=list)
 
 
 @dataclass
@@ -168,6 +169,7 @@ class ResearchAgent:
         allow_web: bool = False,
         playbook_allow: Iterable[str] | None = None,
         playbook: Playbook | None = None,
+        authority_only: bool = False,
     ) -> ResearchResult:
         """Synchronous form for the chat job thread."""
         return asyncio.run(
@@ -180,6 +182,7 @@ class ResearchAgent:
                 allow_web=allow_web,
                 playbook_allow=playbook_allow,
                 playbook=playbook,
+                authority_only=authority_only,
             )
         )
 
@@ -194,6 +197,7 @@ class ResearchAgent:
         allow_web: bool = False,
         playbook_allow: Iterable[str] | None = None,
         playbook: Playbook | None = None,
+        authority_only: bool = False,
     ) -> ResearchResult:
         sources = self._sources if self._sources is not None else list_sources()
         # A playbook narrows the tools (its allow-list) and extends the brief
@@ -229,6 +233,7 @@ class ResearchAgent:
                 allow_web,
                 playbook,
                 usage,
+                authority_only,
             )
 
     async def _arun_attributed(
@@ -241,11 +246,16 @@ class ResearchAgent:
         allow_web: bool,
         playbook: Playbook | None,
         usage: dict[str, int],
+        authority_only: bool = False,
     ) -> ResearchResult:
         run_id = state.run_id
         try:
             async with AsyncExitStack() as stack:
-                tools = self._chain_tools(state, matter_id, jurisdiction, conversation_language)
+                tools = (
+                    self._authority_tools(state, matter_id, jurisdiction, conversation_language)
+                    if authority_only
+                    else self._chain_tools(state, matter_id, jurisdiction, conversation_language)
+                )
                 if allow_web:
                     tools.append(self._web_tool(state, conversation_language))
                 tools.extend(await self._connector_tools(state, stack))
@@ -299,6 +309,7 @@ class ResearchAgent:
             tool_calls=state.seq,
             budget_exhausted=state.budget_exhausted,
             usage=usage,
+            recorded=list(state.recorded),
         )
 
     # --- the model loop ---
@@ -613,6 +624,85 @@ class ResearchAgent:
 
             tools.append(beta_async_tool(assess_case_position))
         return tools
+
+    def _authority_tools(
+        self, state: _RunState, matter_id: str, jurisdiction: str | None, language: str
+    ) -> list[Any]:
+        """Retrieval over the shared libraries and the firm's own collections
+        only (docs/35): a drafting run never sees the matter's evidence."""
+        agent = self
+        from policy_advisor.ingestion.matter_store import list_matters_by_tier
+
+        libraries = sorted(LIBRARY_MATTER_IDS)
+
+        async def _search(tool: str, collections: list[str], question: str) -> str:
+            arguments = {"question": question}
+            refusal = agent._spend(state, CHAIN_CONNECTOR, tool, arguments)
+            if refusal:
+                return refusal
+            if not collections:
+                agent._record(
+                    state,
+                    connector=CHAIN_CONNECTOR,
+                    tool=tool,
+                    status="ok",
+                    arguments=arguments,
+                    result_chars=0,
+                )
+                return "No collections of that kind exist for this firm."
+            started = time.perf_counter()
+            try:
+                result = await asyncio.to_thread(
+                    agent._rag_chain.answer,
+                    question,
+                    matter_id=collections[0],
+                    jurisdiction=jurisdiction,
+                    conversation_language=language,
+                    allow_web_fallback=False,
+                    library_matters=collections[1:],
+                )
+            except Exception as exc:
+                agent._record(
+                    state,
+                    connector=CHAIN_CONNECTOR,
+                    tool=tool,
+                    status="error",
+                    arguments=arguments,
+                    started=started,
+                    error=str(exc),
+                )
+                return f"{tool} failed: {exc}"
+            state.chunks.extend(result.retrieved)
+            locators = [
+                c.metadata.get("locator") for c in result.retrieved if c.metadata.get("locator")
+            ]
+            text = (
+                f"Answer: {result.answer}\nLocators you may cite: {', '.join(locators) or 'none'}"
+            )
+            agent._record(
+                state,
+                connector=CHAIN_CONNECTOR,
+                tool=tool,
+                status="ok",
+                arguments=arguments,
+                result_chars=len(text),
+                started=started,
+            )
+            return text
+
+        async def search_authority(question: str) -> str:
+            """Search the shared legal libraries (statutes, rules, regulations, judgments, agency guidance) for passages that answer a question. Returns an answer and the locators you may cite as [Source: locator]."""
+            return await _search("search_authority", libraries, question)
+
+        async def search_firm_knowledge(question: str) -> str:
+            """Search the firm's own precedents and know-how collections for passages that answer a question. Returns an answer and the locators you may cite."""
+            return await _search(
+                "search_firm_knowledge",
+                await asyncio.to_thread(list_matters_by_tier, "firm"),
+                question,
+            )
+
+        return [beta_async_tool(search_authority), beta_async_tool(search_firm_knowledge)]
 
     def _collect_analysis(
         self, state: _RunState, analysis: Any, matter_id: str, jurisdiction: str | None
