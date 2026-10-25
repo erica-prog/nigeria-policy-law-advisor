@@ -33,7 +33,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "create":
-        tenancy.create_tenant(args.tenant_id, args.name, residency=args.residency)
+        try:
+            tenancy.create_tenant(args.tenant_id, args.name, residency=args.residency)
+        except tenancy.ResidencyNotHonoured as exc:
+            print(f"refused: {exc}", file=sys.stderr)
+            return 1
         print(f"tenant {args.tenant_id} ready")
     elif args.command == "list":
         for tenant in tenancy.list_tenants():

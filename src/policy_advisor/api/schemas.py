@@ -110,6 +110,9 @@ class MatterOut(BaseModel):
     updated_at: str | None = None
     # Users of the same firm this matter is shared with (docs/31).
     shared_with: list[str] = Field(default_factory=list)
+    # A legal hold (docs/37): the retention job never deletes a held matter.
+    hold: bool = False
+    hold_reason: str | None = None
 
 
 class MatterList(BaseModel):
@@ -429,3 +432,77 @@ class TemplateOut(BaseModel):
 
 class TemplateList(BaseModel):
     templates: list[TemplateOut]
+
+
+# ---- Review (docs/36) ----
+
+ReviewAction = Literal["review", "approve", "reject", "dismiss", "reopen"]
+
+
+class ReviewRequest(BaseModel):
+    action: ReviewAction
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class ReviewEventOut(BaseModel):
+    id: int
+    subject_kind: Literal["artefact", "finding"]
+    subject_id: str
+    action: str
+    from_status: str
+    to_status: str
+    username: str | None = None
+    role: str | None = None
+    note: str | None = None
+    created_at: str | None = None
+
+
+class ReviewEventList(BaseModel):
+    events: list[ReviewEventOut]
+
+
+class ReviewQueueOut(BaseModel):
+    artefacts: list[ArtefactOut] = Field(default_factory=list)
+    findings: list[FindingOut] = Field(default_factory=list)
+
+
+# ---- Tenant settings, residency and retention (docs/37) ----
+
+Residency = Literal["ng", "us"]
+
+
+class TenantOut(BaseModel):
+    tenant_id: str
+    name: str
+    residency: Residency | None = None
+    retention_days_matter: int | None = None
+    retention_days_firm: int | None = None
+    # What this deployment can honour and the floor it enforces.
+    deployment_residency: Residency | None = None
+    retention_min_days: int
+
+
+class TenantUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    residency: Residency | None = None
+    retention_days_matter: int | None = Field(default=None, ge=1, le=36500)
+    retention_days_firm: int | None = Field(default=None, ge=1, le=36500)
+
+
+class HoldRequest(BaseModel):
+    on: bool
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class RetentionEventOut(BaseModel):
+    id: int
+    matter_id: str
+    action: Literal["deleted", "would_delete", "skipped_hold"]
+    reason: str
+    counts: dict
+    actor: str | None = None
+    created_at: str | None = None
+
+
+class RetentionEventList(BaseModel):
+    events: list[RetentionEventOut]

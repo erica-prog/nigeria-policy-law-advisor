@@ -14,7 +14,17 @@ from fastapi.staticfiles import StaticFiles
 from policy_advisor.api.chat_jobs import ChatJobTable
 from policy_advisor.api.errors import install_error_handlers
 from policy_advisor.api.jobs import JobTable
-from policy_advisor.api.routers import advice, artefacts, auth, bulk, chat, documents, keys, matters
+from policy_advisor.api.routers import (
+    advice,
+    artefacts,
+    auth,
+    bulk,
+    chat,
+    documents,
+    keys,
+    matters,
+    tenant,
+)
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.api.tenant_middleware import TenantMiddleware
 from policy_advisor.telemetry import configure_tracing
@@ -79,6 +89,7 @@ def create_app(settings: Settings | None = None, serve_static: bool = True) -> F
     app.include_router(matters.router)
     app.include_router(bulk.router)
     app.include_router(artefacts.router)
+    app.include_router(tenant.router)
     app.include_router(documents.router)
     app.include_router(advice.router)
     app.include_router(chat.router)

@@ -151,6 +151,16 @@ class Settings(BaseSettings):
     bulk_default_ceiling_tokens: int = 2_000_000
     bulk_flag_confidence: float = 0.8
     bulk_max_document_chars: int = 120_000
+    # Residency and retention (docs/37). DATABASE_RESIDENCY is where this
+    # deployment's database actually lives ("ng", "us", or blank when it is
+    # somewhere else); a tenant may only ask for a residency the deployment
+    # honours. Retention is per tenant and per tier, never below the minimum;
+    # the worker runs the retention job every RETENTION_RUN_HOURS as a dry run
+    # unless RETENTION_AUTO_APPLY is true.
+    database_residency: str = ""
+    retention_min_days: int = 30
+    retention_run_hours: int = 24
+    retention_auto_apply: bool = False
     model_prices: dict[str, dict[str, float]] = {}
 
     def llm_configured(self) -> bool:

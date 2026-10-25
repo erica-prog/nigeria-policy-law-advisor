@@ -117,6 +117,7 @@
       <button class="btn btn--ghost btn--tiny" id="drawer-close" type="button" aria-label="Close">✕</button>
     </div>
     <button class="btn btn--primary btn--block" id="new-case" type="button">+ Start a new case</button>
+    <button class="btn btn--block" id="review-open" type="button" hidden>Review queue</button>
     <ul class="case-list" id="case-list"></ul>
     <section class="key-section" id="key-section" aria-labelledby="key-section-title">
       <h3 id="key-section-title" class="key-section__title">Claude key</h3>
@@ -146,6 +147,28 @@
       <p id="passage-url"></p>
       <p class="muted small" id="passage-note"></p>
     </form>
+  </dialog>
+
+  <!-- Review queue and artefact viewer (docs/36) -->
+  <dialog class="review" id="review-dialog" aria-labelledby="review-title">
+    <div class="review__inner">
+      <div class="review__head">
+        <h2 id="review-title">Review queue</h2>
+        <button class="btn btn--ghost btn--tiny" id="review-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <ul class="review-list" id="review-list"></ul>
+    </div>
+  </dialog>
+  <dialog class="artefact" id="artefact-dialog" aria-labelledby="artefact-title">
+    <div class="artefact__inner">
+      <div class="review__head">
+        <h2 id="artefact-title"></h2>
+        <button class="btn btn--ghost btn--tiny" id="artefact-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <p id="artefact-meta"></p>
+      <div class="artefact__body" id="artefact-body"></div>
+      <div class="artefact__links" id="artefact-links"></div>
+    </div>
   </dialog>
 
   <!-- Activate the advisor: bring your own Claude key (docs/17, BYOK) -->

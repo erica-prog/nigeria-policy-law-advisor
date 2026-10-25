@@ -12,6 +12,8 @@ from policy_advisor.api.errors import ApiError
 from policy_advisor.api.routers.advice import require_key
 from policy_advisor.api.schemas import (
     BulkJobCreate,
+    ReviewEventList,
+    ReviewRequest,
     BulkJobList,
     BulkJobOut,
     BulkResumeRequest,
@@ -176,22 +178,54 @@ def list_records(schema_id: str, matter: Matter, document: str | None = None) ->
     )
 
 
+def finding_out(r: dict) -> FindingOut:
+    return FindingOut(
+        id=r["id"],
+        job_id=r["job_id"],
+        kind=r["kind"],
+        severity=r["severity"],  # type: ignore[arg-type]
+        summary=r["summary"],
+        documents=list(r["documents"]),
+        evidence=r["evidence"],
+        status=r["status"],  # type: ignore[arg-type]
+        created_at=r["created_at"].isoformat() if r.get("created_at") else None,
+    )
+
+
 @router.get("/findings/all", response_model=FindingList)
 def list_matter_findings(matter: Matter, status_filter: str | None = None) -> FindingList:
-    rows = list_findings(matter.id, status=status_filter)
     return FindingList(
-        findings=[
-            FindingOut(
-                id=r["id"],
-                job_id=r["job_id"],
-                kind=r["kind"],
-                severity=r["severity"],  # type: ignore[arg-type]
-                summary=r["summary"],
-                documents=list(r["documents"]),
-                evidence=r["evidence"],
-                status=r["status"],  # type: ignore[arg-type]
-                created_at=r["created_at"].isoformat() if r.get("created_at") else None,
-            )
-            for r in rows
-        ]
+        findings=[finding_out(r) for r in list_findings(matter.id, status=status_filter)]
+    )
+
+
+@router.post("/findings/{finding_id}/review", response_model=FindingOut)
+def review_finding(
+    finding_id: int, body: ReviewRequest, matter: Matter, user: CurrentUser
+) -> FindingOut:
+    from policy_advisor import review
+
+    try:
+        updated = review.transition_finding(
+            finding_id, body.action, user=user, access=matter, note=body.note
+        )
+    except KeyError:
+        raise ApiError(404, "not_found", "Not found.") from None
+    except review.ReviewRefused as exc:
+        status_code = {"role_forbidden": 403}.get(exc.code, 409)
+        raise ApiError(status_code, exc.code, str(exc)) from exc
+    return finding_out(updated)
+
+
+@router.get("/findings/{finding_id}/events", response_model=ReviewEventList)
+def finding_events(finding_id: int, matter: Matter) -> ReviewEventList:
+    from policy_advisor import review
+    from policy_advisor.api.routers.artefacts import event_out
+    from policy_advisor.bulk.jobs import get_finding
+
+    finding = get_finding(finding_id)
+    if finding is None or finding["matter_id"] != matter.id:
+        raise ApiError(404, "not_found", "Not found.")
+    return ReviewEventList(
+        events=[event_out(e) for e in review.events_for("finding", str(finding_id))]
     )

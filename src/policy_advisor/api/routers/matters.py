@@ -20,7 +20,13 @@ from policy_advisor.api.deps import (
     resolve_matter_access,
 )
 from policy_advisor.api.errors import ApiError
-from policy_advisor.api.schemas import MatterCreate, MatterList, MatterOut, ShareRequest
+from policy_advisor.api.schemas import (
+    HoldRequest,
+    MatterCreate,
+    MatterList,
+    MatterOut,
+    ShareRequest,
+)
 from policy_advisor.config import LIBRARY_MATTER_IDS
 from policy_advisor.ingestion.ingest_document import delete_matter as delete_matter_files
 from policy_advisor.ingestion.matter_store import (
@@ -28,6 +34,7 @@ from policy_advisor.ingestion.matter_store import (
     list_documents,
     list_matters,
     list_matters_for_user,
+    set_hold,
     set_matter_owner,
     share_matter,
     shared_with,
@@ -52,6 +59,8 @@ def matter_out(matter: MatterAccess) -> MatterOut:
         created_at=meta.get("created_at"),
         updated_at=meta.get("updated_at"),
         shared_with=[] if matter.id in LIBRARY_MATTER_IDS else shared_with(matter.id),
+        hold=bool(meta.get("hold")),
+        hold_reason=meta.get("hold_reason"),
     )
 
 
@@ -134,3 +143,17 @@ def unshare_one_matter(username: str, matter: WritableMatter, user: CurrentUser)
         raise ApiError(403, "not_owner", "Only the owner can change sharing.")
     unshare_matter(matter.id, username)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{matter_id}/hold", response_model=MatterOut)
+def hold_one_matter(body: HoldRequest, matter: Matter, user: CurrentUser) -> MatterOut:
+    """A legal hold (docs/37): the owner or a firm admin places or lifts it;
+    the retention job never deletes a held matter. A reviewer may not."""
+    if matter.id in LIBRARY_MATTER_IDS:
+        raise ApiError(
+            403, "matter_read_only", "The shared libraries are never deleted and cannot be held."
+        )
+    if matter.owner != user.username and user.role != "admin":
+        raise ApiError(403, "not_owner", "Only the owner or a firm admin can change a hold.")
+    set_hold(matter.id, body.on, reason=body.reason, by=user.username)
+    return matter_out(matter)

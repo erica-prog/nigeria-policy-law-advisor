@@ -78,5 +78,14 @@ export const api = {
   startChatJob: (id, body) =>
     request("POST", `/api/matters/${encodeURIComponent(id)}/chat/jobs`, { json: body }),
   chatJob: (id, jobId) =>
-    request("GET", `/api/matters/${encodeURIComponent(id)}/chat/jobs/${encodeURIComponent(jobId)}`),
+    request("GET", `/api/matters/${encodeURIComponent(id)}/chat/jobs/${encodeURIComponent(jobId)}`),,
+  // Review (docs/36): what waits for a decision, the transitions, the trail.
+  reviewQueue: (matterId) => request("GET", `/api/matters/${matterId}/review-queue`),
+  reviewArtefact: (matterId, artefactId, action, note) =>
+    request("POST", `/api/matters/${matterId}/artefacts/${artefactId}/review`, { json: { action, note } }),
+  artefactEvents: (matterId, artefactId) =>
+    request("GET", `/api/matters/${matterId}/artefacts/${artefactId}/events`),
+  reviewFinding: (matterId, findingId, action, note) =>
+    request("POST", `/api/matters/${matterId}/bulk/findings/${findingId}/review`, { json: { action, note } }),
+  artefacts: (matterId) => request("GET", `/api/matters/${matterId}/artefacts`),
 };

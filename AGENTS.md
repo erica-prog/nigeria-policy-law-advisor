@@ -106,6 +106,8 @@ rewriting it.
 | Tracing and cost ledger (spans, usage endpoint) | `src/policy_advisor/telemetry.py`, migration `0010`, `GET /api/usage`, `docs/32-tracing-and-cost-ledger.md` |
 | Bulk analysis (schemas, evidence, jobs, checks, API) | `src/policy_advisor/bulk/`, `src/policy_advisor/api/routers/bulk.py`, migration `0011`, `docs/33-bulk-analysis.md` |
 | Artefacts (outline, provenance, renderers, drafting) | `src/policy_advisor/artefacts/`, `src/policy_advisor/api/routers/artefacts.py`, migration `0012`, `docs/35-artefacts.md` |
+| Review states (transitions, roles, events, queue) | `src/policy_advisor/review.py`, migration `0013`, `web/js/review.js`, `docs/36-review-states.md` |
+| Residency, retention, holds (settings, job, events) | `src/policy_advisor/retention.py`, `src/policy_advisor/api/routers/tenant.py`, migration `0014`, `scripts/run_retention.py`, `docs/37-residency-and-retention.md` |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
