@@ -47,7 +47,7 @@ MAX_ATTEMPTS = 3
 
 _COLUMNS = (
     "job_id, matter_id, name, status, storage_key, jurisdiction, uploaded_by, chunk_count, "
-    "error, attempts, locked_by, locked_at, created_at, finished_at"
+    "error, attempts, locked_by, locked_at, created_at, finished_at, tenant_id"
 )
 
 
@@ -64,6 +64,8 @@ class DocumentJob:
     jurisdiction: str | None = None
     uploaded_by: str | None = None
     attempts: int = 0
+    # The firm the upload belongs to (docs/31); a worker runs the job as it.
+    tenant_id: str | None = None
     # Kept for callers that set it (the cancel-verification skill); unused.
     temp_dir: Path | None = None
 
@@ -104,6 +106,7 @@ def _job_from_row(row: dict) -> DocumentJob:
         jurisdiction=row["jurisdiction"],
         uploaded_by=row["uploaded_by"],
         attempts=row["attempts"],
+        tenant_id=row.get("tenant_id"),
     )
 
 
@@ -135,12 +138,22 @@ class JobTable:
         jurisdiction: str | None = None,
         uploaded_by: str | None = None,
     ) -> DocumentJob:
+        from policy_advisor.tenancy import tenant_for_matter
+
         job_id = uuid.uuid4().hex
         with connect() as conn:
             row = conn.execute(
-                f"INSERT INTO document_jobs (job_id, matter_id, name, storage_key, jurisdiction, uploaded_by) "
-                f"VALUES (%s, %s, %s, %s, %s, %s) RETURNING {_COLUMNS}",
-                (job_id, matter_id, document_name, storage_key, jurisdiction, uploaded_by),
+                f"INSERT INTO document_jobs (job_id, matter_id, name, storage_key, jurisdiction, uploaded_by, tenant_id) "
+                f"VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {_COLUMNS}",
+                (
+                    job_id,
+                    matter_id,
+                    document_name,
+                    storage_key,
+                    jurisdiction,
+                    uploaded_by,
+                    tenant_for_matter(matter_id),
+                ),
             ).fetchone()
         assert row is not None
         return _job_from_row(dict(row))
@@ -230,6 +243,29 @@ class JobTable:
             )
 
     def run(
+        self,
+        job: DocumentJob,
+        services,
+        jurisdiction: str | None = None,
+        api_key: str | None = None,
+        uploaded_by: str | None = None,
+    ) -> None:
+        """Execute one claimed job as the tenant it belongs to (docs/31): a
+        worker process sees every queue, but the rows the job writes must be
+        the firm's own."""
+        from policy_advisor.tenancy import tenant_context
+
+        tenant = job.tenant_id
+        if tenant is None:
+            with connect() as conn:
+                row = conn.execute(
+                    "SELECT tenant_id FROM document_jobs WHERE job_id = %s", (job.job_id,)
+                ).fetchone()
+            tenant = row["tenant_id"] if row else None
+        with tenant_context(tenant):
+            self._run_job(job, services, jurisdiction, api_key, uploaded_by)
+
+    def _run_job(
         self,
         job: DocumentJob,
         services,

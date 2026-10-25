@@ -43,12 +43,23 @@ class LoginRequest(BaseModel):
 KeySource = Literal["user", "shared"]
 
 
+TenantRole = Literal["admin", "lawyer", "reviewer"]
+
+
 class UserOut(BaseModel):
     username: str
     display_name: str
     # Revision 3 (BYOK): can THIS user think, and with whose key?
     advisor_ready: bool = False
     key_source: KeySource | None = None
+    # Tenancy (docs/31): the firm this user works in and what they may do.
+    tenant_id: str | None = None
+    role: TenantRole | None = None
+
+
+class ShareRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=128)
+    can_write: bool = False
 
 
 class SessionOut(BaseModel):
@@ -97,6 +108,8 @@ class MatterOut(BaseModel):
     title: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
+    # Users of the same firm this matter is shared with (docs/31).
+    shared_with: list[str] = Field(default_factory=list)
 
 
 class MatterList(BaseModel):

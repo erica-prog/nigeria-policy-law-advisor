@@ -19,7 +19,13 @@ def test_only_the_newest_five_are_kept(fresh_db):
     for n in range(MAX_EXCHANGES + 1):
         save_exchange("jdoe", "matter-a", _exchange(f"q{n}"))
 
-    assert [e.question for e in recent_exchanges("jdoe", "matter-a")] == ["q1", "q2", "q3", "q4", "q5"]
+    assert [e.question for e in recent_exchanges("jdoe", "matter-a")] == [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5",
+    ]
 
 
 def test_pruning_deletes_the_rows_not_just_hides_them(fresh_db):
@@ -78,7 +84,9 @@ def test_a_web_sourced_answer_is_still_marked_as_web_after_a_reload(fresh_db):
 
 
 def test_a_failed_citation_check_survives_a_reload(fresh_db):
-    save_exchange("jdoe", "matter-a", _exchange("q", faithful=False, unsupported_citations=["Order 9 Rule 9"]))
+    save_exchange(
+        "jdoe", "matter-a", _exchange("q", faithful=False, unsupported_citations=["Order 9 Rule 9"])
+    )
 
     [restored] = recent_exchanges("jdoe", "matter-a")
     assert restored.faithful is False
@@ -98,12 +106,23 @@ def test_passage_text_is_never_stored():
         },
     )
     result = SimpleNamespace(
-        answer="18 months", source="corpus", faithful=True, unsupported_citations=[], web_citations=[], retrieved=[chunk]
+        answer="18 months",
+        source="corpus",
+        faithful=True,
+        unsupported_citations=[],
+        web_citations=[],
+        retrieved=[chunk],
     )
 
     exchange = exchange_from_result("how long?", result)
 
     assert exchange.sources == [
-        {"locator": "Paragraph 2", "doc_type": "contract", "jurisdiction": "", "source_document": "contract.docx", "page": 1}
+        {
+            "locator": "Paragraph 2",
+            "doc_type": "contract",
+            "jurisdiction": "",
+            "source_document": "contract.docx",
+            "page": 1,
+        }
     ]
     assert "eighteen months" not in str(exchange.sources)

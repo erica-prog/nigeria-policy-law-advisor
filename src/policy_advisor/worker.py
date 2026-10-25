@@ -15,6 +15,7 @@ from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.services import AdvisorServices
 from policy_advisor.config import get_settings
 from policy_advisor.logging_utils import log_event
+from policy_advisor.tenancy import ALL_TENANTS, tenant_context
 
 
 def main() -> None:
@@ -28,14 +29,17 @@ def main() -> None:
     log_event(
         services.logger, "worker_started", worker_id=jobs.worker_id, inline=settings.inline_workers
     )
-    while True:
-        jobs.requeue_stale()
-        ran = jobs.run_pending(services, limit=50)
-        if args.once:
-            log_event(services.logger, "worker_drained", ran=ran)
-            return
-        if ran == 0:
-            time.sleep(settings.worker_poll_seconds)
+    # The worker claims from every firm's queue, then runs each job as its
+    # own tenant (JobTable.run). The API never uses this view.
+    with tenant_context(ALL_TENANTS):
+        while True:
+            jobs.requeue_stale()
+            ran = jobs.run_pending(services, limit=50)
+            if args.once:
+                log_event(services.logger, "worker_drained", ran=ran)
+                return
+            if ran == 0:
+                time.sleep(settings.worker_poll_seconds)
 
 
 if __name__ == "__main__":

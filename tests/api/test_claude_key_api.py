@@ -312,6 +312,8 @@ def test_shared_server_key_is_off_by_default(api_byok):
         "display_name": "Alice",
         "advisor_ready": False,
         "key_source": None,
+        "tenant_id": "default",
+        "role": "lawyer",
     }
     assert alice.get(KEY_URL).json()["source"] is None
 

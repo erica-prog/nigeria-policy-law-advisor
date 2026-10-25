@@ -17,6 +17,7 @@ from pathlib import Path
 
 import psycopg
 from pgvector.psycopg import register_vector
+from psycopg import sql
 from psycopg.rows import DictRow, dict_row
 from psycopg_pool import ConnectionPool
 
@@ -65,6 +66,12 @@ def _configure(conn: DictConnection) -> None:
     conn.execute(f"SET search_path TO {SEARCH_PATH}")
     # Needs search_path first: it finds the vector type by name.
     register_vector(conn)
+    # Work as the application role for the life of the connection: it cannot
+    # bypass row-level security, so the tenant policies (migration 0009) hold
+    # whatever the connecting role's privileges are.
+    role = get_settings().database_app_role.strip()
+    if role:
+        conn.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(role)))
     conn.commit()  # SET is transactional; commit so it outlives this setup step
 
 
@@ -95,8 +102,15 @@ def _pool() -> ConnectionPool[DictConnection]:
 
 @contextmanager
 def connect() -> Iterator[DictConnection]:
-    """A pooled connection. Commits on a clean exit, rolls back on an error."""
+    """A pooled connection. Commits on a clean exit, rolls back on an error.
+
+    The current tenant (tenancy.py) is set on the connection for this
+    transaction only, so the policies see it and it cannot leak to the next
+    user of the pooled connection. No tenant means only shared rows."""
+    from policy_advisor.tenancy import current_tenant
+
     with _pool().connection() as conn:
+        conn.execute("SELECT set_config('app.tenant_id', %s, true)", (current_tenant() or "",))
         yield conn
 
 
@@ -152,7 +166,9 @@ def _migrate(url: str) -> None:
         conn.execute(f"SET search_path TO {SEARCH_PATH}")
         with conn.transaction():
             conn.execute("SELECT pg_advisory_xact_lock(%s)", (_MIGRATION_LOCK_KEY,))
-            exists = conn.execute("SELECT to_regclass('public.schema_migrations') IS NOT NULL").fetchone()
+            exists = conn.execute(
+                "SELECT to_regclass('public.schema_migrations') IS NOT NULL"
+            ).fetchone()
             if not (exists and exists[0]):
                 conn.execute(_BOOTSTRAP)
             applied = {row[0] for row in conn.execute("SELECT version FROM schema_migrations")}
@@ -163,6 +179,17 @@ def _migrate(url: str) -> None:
                 # query protocol, which accepts a whole file of statements.
                 conn.execute(path.read_text(encoding="utf-8"))
                 conn.execute("INSERT INTO schema_migrations (version) VALUES (%s)", (number,))
+            # Tables a later migration created are covered by the default
+            # privileges; re-granting keeps a restored database consistent.
+            role = get_settings().database_app_role.strip()
+            exists = conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)).fetchone()
+            if role and exists:
+                conn.execute(
+                    sql.SQL(
+                        "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {r}; "
+                        "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {r}"
+                    ).format(r=sql.Identifier(role))
+                )
 
 
 def check_embedding_model(conn: DictConnection, model: str) -> None:

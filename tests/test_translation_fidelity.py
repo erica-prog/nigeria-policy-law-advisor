@@ -20,7 +20,9 @@ def test_length_ratio_ok_for_plausible_translation():
 
 
 def test_length_ratio_rejects_truncated_translation():
-    original = "The defendant shall file a defence within five days of service of the summons upon him."
+    original = (
+        "The defendant shall file a defence within five days of service of the summons upon him."
+    )
     truncated = "Le défendeur."
     assert length_ratio_ok(original, truncated) is False
 
@@ -31,7 +33,9 @@ def test_length_ratio_rejects_empty_translation():
 
 def test_check_skips_judge_call_when_length_ratio_already_fails():
     llm = MagicMock()
-    result = check_translation_fidelity(llm, "a reasonably long original sentence here", "x", "en", "fr")
+    result = check_translation_fidelity(
+        llm, "a reasonably long original sentence here", "x", "en", "fr"
+    )
 
     assert result.flagged is True
     llm.with_structured_output.assert_not_called()
@@ -39,9 +43,13 @@ def test_check_skips_judge_call_when_length_ratio_already_fails():
 
 def test_check_calls_judge_when_length_ratio_passes():
     llm = MagicMock()
-    llm.with_structured_output.return_value.invoke.return_value = FidelityVerdict(verdict="ALLOWED", reason="fine")
+    llm.with_structured_output.return_value.invoke.return_value = FidelityVerdict(
+        verdict="ALLOWED", reason="fine"
+    )
 
-    result = check_translation_fidelity(llm, "five days notice", "cinq jours de préavis", "en", "fr")
+    result = check_translation_fidelity(
+        llm, "five days notice", "cinq jours de préavis", "en", "fr"
+    )
 
     assert result.flagged is False
     llm.with_structured_output.assert_called_once()

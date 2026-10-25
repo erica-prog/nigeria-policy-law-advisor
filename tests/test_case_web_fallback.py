@@ -43,9 +43,18 @@ def _found() -> WebSearchResult:
 
 def test_web_fallback_is_not_used_unless_asked_for():
     chain = _chain()
-    with patch(WEB_SEARCH_PATH) as search, patch(JUDGE_CHECK_PATH, return_value=MagicMock(judge_flagged=False)):
-        with patch.object(chain, "_generate_issue_arguments", return_value=MagicMock(issue="i", arguments=[], assessment="a")):
-            result = chain._analyze_issue("facts", "i", "m", None, "English", allow_web_fallback=False)
+    with (
+        patch(WEB_SEARCH_PATH) as search,
+        patch(JUDGE_CHECK_PATH, return_value=MagicMock(judge_flagged=False)),
+    ):
+        with patch.object(
+            chain,
+            "_generate_issue_arguments",
+            return_value=MagicMock(issue="i", arguments=[], assessment="a"),
+        ):
+            result = chain._analyze_issue(
+                "facts", "i", "m", None, "English", allow_web_fallback=False
+            )
 
     search.assert_not_called()
     assert result.confidence == CONFIDENCE_NO_AUTHORITY
@@ -103,10 +112,13 @@ def test_irrelevant_retrieval_is_adjudicated_away_and_reaches_the_web():
     chain._retriever.retrieve.return_value = [MagicMock(metadata={"locator": "Order 1 Rule 1"})]
     chain._retriever.needs_relevance_adjudication.return_value = True
 
-    with patch(
-        "policy_advisor.generation.case_reasoning.judge_relevance",
-        return_value=MagicMock(relevant=False, reason="different area of law"),
-    ), patch(WEB_SEARCH_PATH, return_value=_found()) as search:
+    with (
+        patch(
+            "policy_advisor.generation.case_reasoning.judge_relevance",
+            return_value=MagicMock(relevant=False, reason="different area of law"),
+        ),
+        patch(WEB_SEARCH_PATH, return_value=_found()) as search,
+    ):
         result = chain._analyze_issue("facts", "i", "m", None, "English", allow_web_fallback=True)
 
     search.assert_called_once()

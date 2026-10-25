@@ -42,8 +42,11 @@ Claude. Keep both under 200 lines; when they overlap, `AGENTS.md` wins.
 - `uv run mypy src` is a blocking CI check; keep it at zero errors.
 - The only product surface is the browser client in `web/` served by FastAPI. The
   Streamlit prototype was removed on 2026-10-24; do not reintroduce it.
-- Accounts: `uv run python -m scripts.add_user <username> "<Display Name>"`. There is no
-  sign-up endpoint yet.
+- Accounts: `uv run python -m scripts.add_user <username> "<Display Name>" [--tenant t --role r]`;
+  firms: `scripts.manage_tenants`. There is no sign-up endpoint yet. Every tenant-scoped
+  query runs under the database's row-level security (`docs/31`); tests run as the
+  `default` tenant and the test database must be reachable as a superuser (it creates the
+  application role).
 - Subagents live in `.claude/agents/` (`lead-architect`, `backend-developer`,
   `web-client-developer`, `rag-engineer`, `legal-research-engineer`,
   `qa-security-reviewer`). `.cursor/agents` is a symlink to it.

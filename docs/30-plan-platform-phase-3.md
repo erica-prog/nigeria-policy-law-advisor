@@ -134,3 +134,4 @@ merged.
 
 | Slice | Branch | Commit | Verification | Notes |
 |---|---|---|---|---|
+| P3-A | `platform/phase-3-a` | the slice commit (`Tenancy: ...`) | `ruff`, `mypy`, `pytest` green; `tests/test_tenancy.py` proves isolation on one pooled connection, the policy refusing a cross-tenant write, the worker running as the job's tenant, roles and shares | the worker uses an all-tenants view (`*`) the API never sets; shared-library writes are not yet restricted by the database; residency and retention columns exist without behaviour (P3-G) |

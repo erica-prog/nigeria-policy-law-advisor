@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # add-on. Optional here so tools that never touch the database still
     # import; db.py raises a clear error if it's missing when needed.
     database_url: SecretStr | None = None
+    # After connecting, the app switches to this role, which cannot bypass
+    # row-level security (migration 0009; docs/31). Empty keeps the connecting
+    # role, which bypasses the tenant policies: for emergencies only.
+    database_app_role: str = "policy_advisor_app"
     # Where uploaded originals are kept (storage.py). A mounted volume in the
     # container; an S3-compatible store is the planned alternative.
     originals_dir: Path = ORIGINALS_DIR

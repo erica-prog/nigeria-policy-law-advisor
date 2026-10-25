@@ -181,3 +181,11 @@ uv run pytest
 
 CI starts its own disposable Postgres with pgvector for every run and never
 touches your project.
+
+
+## Tenancy (since Phase 3, docs/31)
+
+Migration 0009 creates the role `policy_advisor_app` and grants it to the connecting
+`postgres` role, which has `CREATEROLE` on Supabase. The application switches to it on
+every connection, so the tenant policies apply even though `postgres` itself can bypass
+them. `scripts.check_database` verifies the role and the forced policies.

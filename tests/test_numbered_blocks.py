@@ -24,11 +24,7 @@ def test_splits_on_each_rule_and_keeps_sub_rules_attached():
 
 
 def test_heading_only_attaches_to_the_following_block_not_the_previous_one():
-    text = (
-        "1. First rule body.\n"
-        "A short heading\n"
-        "2. Second rule body.\n"
-    )
+    text = "1. First rule body.\nA short heading\n2. Second rule body.\n"
     blocks = split_numbered_blocks(text, RULE_START_RE)
 
     assert blocks[0].heading is None

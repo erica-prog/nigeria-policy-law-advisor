@@ -16,6 +16,7 @@ from policy_advisor.api.errors import install_error_handlers
 from policy_advisor.api.jobs import JobTable
 from policy_advisor.api.routers import advice, auth, chat, documents, keys, matters
 from policy_advisor.api.services import AdvisorServices
+from policy_advisor.api.tenant_middleware import TenantMiddleware
 from policy_advisor.config import PROJECT_ROOT, Settings, get_settings
 from policy_advisor.logging_utils import log_event
 
@@ -51,6 +52,8 @@ def create_app(settings: Settings | None = None, serve_static: bool = True) -> F
         app.state.chat_jobs.shutdown()
 
     app = FastAPI(title="Nigeria Policy & Law Advisor API", version="0.1.0", lifespan=lifespan)
+
+    app.add_middleware(TenantMiddleware)
     app.state.services = AdvisorServices()
     app.state.jobs = JobTable()
     app.state.chat_jobs = ChatJobTable()

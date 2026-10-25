@@ -38,6 +38,9 @@ APP_TABLES = (
     "sources",
     "agent_runs",
     "agent_tool_calls",
+    "tenants",
+    "tenant_users",
+    "matter_shares",
     "schema_migrations",
 )
 API_ROLES = ("anon", "authenticated")
@@ -126,6 +129,38 @@ def run_checks(url: str) -> tuple[list[str], list[str], list[str]]:
         else:
             facts.append(f"api roles checked: {', '.join(sorted(existing_roles))}")
 
+        # Tenancy (docs/31): the application role must exist and every
+        # tenant-scoped table must force its isolation policy.
+        role = conn.execute(
+            "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'policy_advisor_app'"
+        ).fetchone()
+        if role is None:
+            failures.append("Role policy_advisor_app is missing: migration 0009 has not run.")
+        elif role[0] or role[1]:
+            failures.append("Role policy_advisor_app can bypass row-level security.")
+        for table in (
+            "matters",
+            "chunks",
+            "documents",
+            "document_jobs",
+            "conversations",
+            "chat_exchanges",
+            "agent_runs",
+            "matter_shares",
+        ):
+            forced = conn.execute(
+                "SELECT relforcerowsecurity FROM pg_class WHERE oid = %s::regclass",
+                (f"public.{table}",),
+            ).fetchone()
+            policy = conn.execute(
+                "SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = %s "
+                "AND policyname = 'tenant_isolation'",
+                (table,),
+            ).fetchone()
+            if not (forced and forced[0]) or policy is None:
+                failures.append(f"Tenant isolation is not enforced on {table}.")
+        tenants = conn.execute("SELECT count(*) FROM tenants").fetchone()
+        facts.append(f"tenants: {tenants[0] if tenants else 0}")
         applied = [
             row[0] for row in conn.execute("SELECT version FROM schema_migrations ORDER BY version")
         ]

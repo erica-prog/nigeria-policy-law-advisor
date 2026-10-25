@@ -23,10 +23,13 @@ def _chunk(text: str) -> Chunk:
 def test_translates_english_chunk_into_french_and_retains_original():
     original = _chunk("The defendant shall file a defence within five days.")
 
-    with patch(f"{MODULE}.get_translation_llm", return_value="llm"), patch(
-        f"{MODULE}.detect_language", return_value="en"
-    ), patch(f"{MODULE}.translate_text", return_value="Le défendeur doit déposer une défense...") as translate_mock, patch(
-        f"{MODULE}.check_translation_fidelity", return_value=FidelityResult(flagged=False)
+    with (
+        patch(f"{MODULE}.get_translation_llm", return_value="llm"),
+        patch(f"{MODULE}.detect_language", return_value="en"),
+        patch(
+            f"{MODULE}.translate_text", return_value="Le défendeur doit déposer une défense..."
+        ) as translate_mock,
+        patch(f"{MODULE}.check_translation_fidelity", return_value=FidelityResult(flagged=False)),
     ):
         [result] = translate_chunks([original])
 
@@ -41,10 +44,13 @@ def test_translates_english_chunk_into_french_and_retains_original():
 def test_translates_french_chunk_into_english():
     original = _chunk("Le défendeur doit déposer une défense dans un délai de cinq jours.")
 
-    with patch(f"{MODULE}.get_translation_llm", return_value="llm"), patch(
-        f"{MODULE}.detect_language", return_value="fr"
-    ), patch(f"{MODULE}.translate_text", return_value="The defendant shall file a defence...") as translate_mock, patch(
-        f"{MODULE}.check_translation_fidelity", return_value=FidelityResult(flagged=False)
+    with (
+        patch(f"{MODULE}.get_translation_llm", return_value="llm"),
+        patch(f"{MODULE}.detect_language", return_value="fr"),
+        patch(
+            f"{MODULE}.translate_text", return_value="The defendant shall file a defence..."
+        ) as translate_mock,
+        patch(f"{MODULE}.check_translation_fidelity", return_value=FidelityResult(flagged=False)),
     ):
         [result] = translate_chunks([original])
 
@@ -55,11 +61,14 @@ def test_translates_french_chunk_into_english():
 def test_propagates_a_flagged_fidelity_check_onto_the_chunk():
     original = _chunk("The defendant shall file a defence within five days.")
 
-    with patch(f"{MODULE}.get_translation_llm", return_value="llm"), patch(
-        f"{MODULE}.detect_language", return_value="en"
-    ), patch(f"{MODULE}.translate_text", return_value="some translation"), patch(
-        f"{MODULE}.check_translation_fidelity",
-        return_value=FidelityResult(flagged=True, reason="number mismatch"),
+    with (
+        patch(f"{MODULE}.get_translation_llm", return_value="llm"),
+        patch(f"{MODULE}.detect_language", return_value="en"),
+        patch(f"{MODULE}.translate_text", return_value="some translation"),
+        patch(
+            f"{MODULE}.check_translation_fidelity",
+            return_value=FidelityResult(flagged=True, reason="number mismatch"),
+        ),
     ):
         [result] = translate_chunks([original])
 

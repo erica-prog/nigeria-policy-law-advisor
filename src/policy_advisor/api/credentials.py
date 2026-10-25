@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import bcrypt
 
 from policy_advisor.db import connect
+from policy_advisor.tenancy import Role
 
 # Used when the username is unknown so a failed login costs the same time either way.
 _DUMMY_HASH = bcrypt.hashpw(b"not-a-real-password", bcrypt.gensalt(rounds=12))
@@ -25,6 +26,10 @@ class UserExists(ValueError):
 class UserRecord:
     username: str
     display_name: str
+    # Filled by the request dependency from tenant_users (docs/31); None for a
+    # record straight from the credentials table.
+    tenant_id: str | None = None
+    role: Role | None = None
 
 
 def hash_password(password: str, rounds: int = 12) -> str:

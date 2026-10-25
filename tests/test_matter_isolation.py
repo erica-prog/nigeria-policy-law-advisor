@@ -38,12 +38,16 @@ def two_isolated_matters(tmp_path):
     doc_b = tmp_path / "b" / "contract.docx"
 
     docx_doc = DocxDocument()
-    docx_doc.add_paragraph("This contract between Acme Corp and Foxglove Ltd is confidential to matter A.")
+    docx_doc.add_paragraph(
+        "This contract between Acme Corp and Foxglove Ltd is confidential to matter A."
+    )
     docx_doc.add_paragraph("The exclusivity clause runs for eighteen months from signature.")
     docx_doc.save(doc_a)
 
     docx_doc_b = DocxDocument()
-    docx_doc_b.add_paragraph("This contract between Acme Corp and Foxglove Ltd is confidential to matter A.")
+    docx_doc_b.add_paragraph(
+        "This contract between Acme Corp and Foxglove Ltd is confidential to matter A."
+    )
     docx_doc_b.add_paragraph("The exclusivity clause runs for eighteen months from signature.")
     docx_doc_b.save(doc_b)
 
@@ -60,8 +64,12 @@ def test_query_in_one_matter_never_returns_another_matters_chunks(two_isolated_m
     matter_a, matter_b = two_isolated_matters
     retriever = HybridRetriever()
 
-    results_a = retriever.retrieve("How long does the exclusivity clause run for?", top_k=5, matter_id=matter_a)
-    results_b = retriever.retrieve("How long does the exclusivity clause run for?", top_k=5, matter_id=matter_b)
+    results_a = retriever.retrieve(
+        "How long does the exclusivity clause run for?", top_k=5, matter_id=matter_a
+    )
+    results_b = retriever.retrieve(
+        "How long does the exclusivity clause run for?", top_k=5, matter_id=matter_b
+    )
 
     assert results_a, "expected matter A's own document to be retrieved"
     assert results_b, "expected matter B's own document to be retrieved"

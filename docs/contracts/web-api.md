@@ -74,7 +74,7 @@ value outside the taxonomy is rejected with `422` (`unknown_jurisdiction` on upl
   No auth. `llm_configured` is the server-level view (is a key in `.env` at all);
   `shared_key_allowed` mirrors `ALLOW_SHARED_ANTHROPIC_KEY`. Whether a particular user
   can get answers is on `/api/me`.
-- `GET /api/me` -> `User = { "username": "jdoe", "display_name": "Jane Doe",
+- `GET /api/me` -> `User = { "username": "jdoe", "display_name": "Jane Doe", "tenant_id": "default", "role": "lawyer",
   "advisor_ready": true, "key_source": "user" | "shared" | null }`. `advisor_ready` is
   true when a key can be resolved for this user (revision 3); `key_source` says whose.
 - `GET /api/session` -> `{ "user": User | null }`. Always `200`, with or without a valid
@@ -370,3 +370,18 @@ and `key_source`, `Health.shared_key_allowed`, `GET /api/session`, the
 is deliberate and flagged: ask, analyze and chat now answer `403 claude_key_required`
 instead of `503 llm_unavailable` when the caller has no usable key; `503` remains the
 code for a failed model call.
+
+
+## Tenancy (docs/31)
+
+- `User` carries `tenant_id` and `role` (`admin` | `lawyer` | `reviewer`). Login fails
+  with `403 no_tenant` for an account that is in no firm.
+- A matter outside the caller's firm is `404 matter_not_found` everywhere, enforced by
+  the database policies, not only by the handlers.
+- `Matter.shared_with` lists the users of the same firm the matter is shared with.
+- `POST /api/matters/{id}/share` `{ "username": "kemi", "can_write": false }` -> `200
+  Matter`; owner only (`403 not_owner`); a user outside the firm is `404 user_not_found`.
+  `DELETE /api/matters/{id}/share/{username}` -> `204`.
+- A `reviewer` gets `403 role_forbidden` on `POST /api/matters` and `403
+  matter_read_only` on uploads and deletes; a share with `can_write` does not change
+  that.

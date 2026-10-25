@@ -36,7 +36,7 @@ Stack:
 | Backend             | Python 3.12, FastAPI, managed with `uv`                               |
 | Browser client      | Plain HTML, CSS and ES modules in `web/` (no build step)              |
 | Storage (today)     | Supabase Postgres + pgvector for matters, chunks and chat history (`docs/16-supabase-setup.md`); conversation logs, credentials and user keys still on disk under `data/`; uploaded originals are not retained |
-| Auth (today)        | bcrypt credentials file plus a signed HttpOnly session cookie         |
+| Auth (today)        | bcrypt credentials in Postgres, a signed HttpOnly session cookie carrying the tenant, roles per tenant (`docs/31`) |
 | Document processing | In-process background jobs (an MVP stand-in for a worker queue); BM25 held in memory per matter |
 | Tool integration    | MCP: one in-process client over stdio and HTTP behind a tool policy (`docs/26`); connectors under `connectors/` |
 | TypeScript          | The Nigeria MCP connector in `connectors/ng-sources/` (docs/27); taught in `docs/05-typescript-guide.md` |
@@ -102,6 +102,7 @@ rewriting it.
 | Nigeria connector (TypeScript MCP server) | `connectors/ng-sources/`, `docs/27-nigeria-connector.md`, TypeScript notes in `docs/05-typescript-guide.md` |
 | Research agent (tool runner, audit tables)  | `src/policy_advisor/agents/`, `docs/28-research-agent.md` |
 | Playbooks and routing (selector, routing evals) | `src/policy_advisor/playbooks/`, `eval/routing/`, `eval/run_routing_evals.py`, `docs/29-playbooks-and-routing.md` |
+| Tenancy (tenants, roles, shares, RLS policies) | `src/policy_advisor/tenancy.py`, `src/policy_advisor/api/tenant_middleware.py`, migration `0009`, `scripts/manage_tenants.py`, `docs/31-tenancy.md` |
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |

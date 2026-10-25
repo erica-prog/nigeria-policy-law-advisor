@@ -13,7 +13,7 @@ from policy_advisor import config
 from policy_advisor.api.credentials import create_user
 from policy_advisor.api.main import create_app
 from policy_advisor.config import get_settings
-from policy_advisor.db import connect, database_url
+from policy_advisor.db import database_url
 from policy_advisor.ingestion import matter_store
 from tests.conftest import _refuse_unsafe
 
@@ -22,8 +22,12 @@ USERS = {"alice": "alice-pass-123", "bob": "bob-pass-456"}
 
 def _create_users() -> None:
     # Same scheme as scripts/add_user.py (bcrypt); low cost for test speed.
+    # Everyone starts in the default tenant as a lawyer (docs/31).
+    from policy_advisor.tenancy import add_user_to_tenant
+
     for name, pw in USERS.items():
         create_user(name, name.title(), pw, rounds=4)
+        add_user_to_tenant(name, "default", "lawyer")
 
 
 @dataclass
@@ -88,11 +92,9 @@ def _build_harness(
     # Ownership and documents live in Postgres now. Each test gets an empty
     # database, the same way the file store used to get an empty temp directory.
     _refuse_unsafe(database_url())
-    with connect() as conn:
-        conn.execute(
-            "TRUNCATE chat_exchanges, chunks, documents, document_jobs, conversations, user_keys, users, matters, "
-            "index_meta, agent_tool_calls, agent_runs RESTART IDENTITY CASCADE"
-        )
+    from tests.conftest import reset_database
+
+    reset_database(database_url())
     monkeypatch.setattr(config, "AUTH_DIR", tmp_path / "auth")
     monkeypatch.setattr(matter_store, "MATTERS_DIR", tmp_path / "matters")
     _create_users()

@@ -74,6 +74,7 @@ Not "it runs on my machine." Specifically:
 - [28-research-agent.md](28-research-agent.md) — the research agent: Claude tool use over the chains, the web and the connectors, under the policy and budget, with audited runs and citations that resolve only to what the run saw
 - [29-playbooks-and-routing.md](29-playbooks-and-routing.md) — playbooks per practice area and country (investigations, immigration; NG, US), the selector that replaced decide_mode, and the routing evals
 - [30-plan-platform-phase-3.md](30-plan-platform-phase-3.md) — plan for ADR-001 Phase 3: bulk extraction with cost ceilings, grounded artefacts with provenance and review states, tenancy with row-level security, tracing and a cost ledger, the remaining CI gates; decisions pending
+- [31-tenancy.md](31-tenancy.md) — firms as rows, roles and matter sharing, the application role and forced row-level security policies, how the tenant travels through requests, jobs and scripts
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase
