@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     # External sources as MCP tools (docs/26). Local connector servers live
     # under CONNECTORS_DIR and run with NODE_COMMAND; every tool call has a
     # timeout and a run has a call budget (docs/23 D5). Connector credentials
-    # (REGULATIONS_GOV_API_KEY, COURTLISTENER_API_TOKEN, GOVINFO_API_KEY) are
+    # (REGULATIONS_GOV_API_KEY, COURTLISTENER_API_KEY, GOVINFO_API_KEY) are
     # read from the environment by the name the registry row gives.
     connectors_dir: Path = PROJECT_ROOT / "connectors"
     node_command: str = "node"

@@ -15,7 +15,9 @@ import shutil
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from policy_advisor.config import Settings, get_settings
+from dotenv import dotenv_values
+
+from policy_advisor.config import PROJECT_ROOT, Settings, get_settings
 from policy_advisor.sources import Source
 
 LOCAL_CONNECTORS = frozenset({"web_search", "library"})
@@ -36,6 +38,17 @@ class ConnectorSpec:
         return self.unavailable_reason is None
 
 
+def default_environ() -> Mapping[str, str]:
+    """The process environment over the repository's `.env`: credentials are
+    usually only in the file (Docker exports it; a local `uvicorn` does not),
+    and pydantic-settings reads the file only for declared settings."""
+    merged: dict[str, str] = {
+        key: value for key, value in dotenv_values(PROJECT_ROOT / ".env").items() if value
+    }
+    merged.update(os.environ)
+    return merged
+
+
 def _credential(config: dict, environ: Mapping[str, str]) -> tuple[str | None, str | None]:
     """(value, missing variable name)."""
     name = config.get("credential_env")
@@ -53,7 +66,7 @@ def spec_for(
     """One spec for the rows of a single connector, or None when the connector
     is served in-process (web search, the library) or has no transport."""
     settings = settings or get_settings()
-    env_map: Mapping[str, str] = os.environ if environ is None else environ
+    env_map: Mapping[str, str] = default_environ() if environ is None else environ
     name = sources[0].connector
     if name in LOCAL_CONNECTORS:
         return None

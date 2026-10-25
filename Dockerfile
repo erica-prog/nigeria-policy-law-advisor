@@ -5,6 +5,16 @@ COPY pyproject.toml uv.lock ./
 COPY src ./src
 RUN uv sync --frozen --no-dev
 
+# The Nigeria connector (connectors/ng-sources, TypeScript) is compiled here;
+# only its dist/ and production node_modules reach the runtime image.
+FROM node:20-slim AS connectors
+WORKDIR /build
+COPY connectors/ng-sources/package.json connectors/ng-sources/package-lock.json ./
+RUN npm ci
+COPY connectors/ng-sources/tsconfig.json ./
+COPY connectors/ng-sources/src ./src
+RUN npm run build && npm prune --omit=dev
+
 FROM python:3.12-slim
 
 # pytesseract and pdf2image (ingestion/pdf_text.py) shell out to these
@@ -25,8 +35,12 @@ RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY src ./src
-# MCP connector servers the API starts as child processes (docs/26).
-COPY connectors ./connectors
+# MCP connector servers the API starts as child processes (docs/26, docs/27):
+# the vendored US server as-is, the Nigeria connector from its build stage.
+COPY connectors/legal-ai-skills ./connectors/legal-ai-skills
+COPY --from=connectors /build/dist ./connectors/ng-sources/dist
+COPY --from=connectors /build/node_modules ./connectors/ng-sources/node_modules
+COPY --from=connectors /build/package.json ./connectors/ng-sources/package.json
 # Static browser client and avatar frames served by the FastAPI app
 # (docs/17-web-app-mvp.md).
 COPY web ./web

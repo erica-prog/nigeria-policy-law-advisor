@@ -112,7 +112,11 @@ async def call_tool(
         raise ConnectorError(
             f"{grant.connector}/{grant.tool}: unexpected result type {type(result).__name__}"
         )
-    return parse_call_result(result)
+    return parse_call_result(
+        result,
+        default_source=grant.source.name,
+        default_url=grant.source.config.get("url") or grant.source.licence.get("terms_url"),
+    )
 
 
 async def guarded_call(

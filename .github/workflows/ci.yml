@@ -39,6 +39,11 @@ jobs:
         run: uv python install 3.12
       - name: Install dependencies
         run: uv sync --frozen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build the Nigeria connector (tests/test_connectors.py starts it)
+        run: npm ci --prefix connectors/ng-sources && npm run build --prefix connectors/ng-sources
       - name: Lint
         run: uv run ruff check .
       - name: Type check
@@ -60,6 +65,12 @@ jobs:
         with:
           node-version: "20"
       - run: node --test connectors/legal-ai-skills/legal-research-server.test.mjs
+      - name: Nigeria connector (TypeScript)
+        run: |
+          npm ci --prefix connectors/ng-sources
+          npm run typecheck --prefix connectors/ng-sources
+          npm test --prefix connectors/ng-sources
+          npm run build --prefix connectors/ng-sources
 
   eval-gate:
     runs-on: ubuntu-latest

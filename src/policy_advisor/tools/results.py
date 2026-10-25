@@ -15,6 +15,7 @@ tests/test_connectors.py keeps it that way.
 """
 
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 from mcp.types import CallToolResult
@@ -51,10 +52,24 @@ def _text_of(result: CallToolResult) -> str:
     ).strip()
 
 
-def parse_call_result(result: CallToolResult) -> ConnectorResult:
-    """The validated envelope of one `tools/call` result. The structured
-    content wins when the server sends it; otherwise the text block must be
-    the same JSON object."""
+NO_PROVENANCE_WARNING = (
+    "The server returned no provenance fields; source and retrieval time were added by the "
+    "policy layer from the registry row. Verify against the official site before relying on it."
+)
+
+
+def parse_call_result(
+    result: CallToolResult, *, default_source: str | None = None, default_url: str | None = None
+) -> ConnectorResult:
+    """The validated envelope of one `tools/call` result.
+
+    The structured content wins when the server sends it; otherwise the text
+    block must be a JSON object. A hosted server that wraps its result as
+    `{"structuredContent": ..., "content": ...}` inside the text (GovInfo does)
+    is unwrapped. A server that returns no envelope at all gets one from the
+    registry row (`default_source`, `default_url`) with a warning that says
+    so, because the alternative is dropping a usable result on the floor;
+    without a default, the missing envelope is an error."""
     if result.is_error:
         raise ConnectorError(_text_of(result) or "connector returned an error without a message")
     data: Any = result.structured_content
@@ -64,8 +79,22 @@ def parse_call_result(result: CallToolResult) -> ConnectorResult:
             data = json.loads(text) if text else None
         except json.JSONDecodeError as exc:
             raise ConnectorError(f"connector result is not JSON: {text[:120]!r}") from exc
+    if (
+        isinstance(data, dict)
+        and isinstance(data.get("structuredContent"), dict)
+        and "source" not in data
+    ):
+        data = data["structuredContent"]
     if not isinstance(data, dict):
         raise ConnectorError("connector result is not a JSON object")
+    if "source" not in data and default_source:
+        data = {
+            "source": default_source,
+            "source_url": default_url,
+            "retrieved_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "coverage_warning": NO_PROVENANCE_WARNING,
+            **data,
+        }
     try:
         return ConnectorResult.model_validate(data)
     except ValidationError as exc:

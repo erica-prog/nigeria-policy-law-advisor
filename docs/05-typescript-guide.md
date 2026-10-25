@@ -106,3 +106,48 @@ resource-exhaustion and malformed-input risks mentioned in
 [04-mcp-integration.md](04-mcp-integration.md).
 
 Next: [06-production.md](06-production.md)
+
+
+## The first TypeScript in the repository: `connectors/ng-sources` (Phase 2, docs/27)
+
+The Nigeria connector is the project's first TypeScript. Everything below appears
+in its four source files; read them alongside this.
+
+**Why TypeScript here and nowhere else.** The MCP server SDK and its examples are
+TypeScript-first, and the plugin's US connectors are JavaScript. Keeping the
+connector in the same ecosystem means one toolchain for every server the Python
+side starts. Python stays the language of the API, retrieval and generation.
+
+**The toolchain.** `package.json` pins exact versions (`npm install --save-exact`)
+and `package-lock.json` makes `npm ci` reproducible; `tsconfig.json` sets
+`strict: true` (every variable has a type the compiler can prove) and
+`module: NodeNext`, which is why imports end in `.js` even though the files are
+`.ts`: the import path names the *compiled* file. `npm run typecheck` compiles
+without writing; `npm run build` writes `dist/`; `npm test` runs Vitest.
+
+**`as const` and literal types.** In `sites.ts`, `SITES = {...} as const` tells the
+compiler the object will never change, so `keyof typeof SITES` is the exact union
+`"ndpc" | "nis" | "fhc"`. Pass `"nigerialii"` and compilation fails; Zod rejects
+it at runtime too, from the same list.
+
+**Zod as validator and type.** `z.object({ url: z.string().url() })` is a runtime
+check *and* a type the handler's arguments carry. The MCP SDK also turns the
+schema into JSON Schema for the model, so the three never drift apart.
+
+**`typeof fetch` for dependency injection.** `wordpress.ts` takes
+`fetchImpl: FetchLike = fetch`. Tests pass a function with the same signature that
+returns recorded fixtures. The same idea as passing a session or client object in
+Python; the type system makes sure the fake has the right shape.
+
+**`async/await` and `Promise<T>`.** Identical in spirit to `asyncio`: an `async`
+function returns a `Promise<T>`, `await` waits for it, and `try/catch` around an
+`await` catches a rejected promise.
+
+**`unknown` versus `any`.** JSON parsed from the network is typed `unknown`: you
+must check its shape before using it (`Array.isArray`, property checks). `any`
+would switch the compiler off, which is exactly what you do not want at a trust
+boundary.
+
+**What the compiler cannot check.** Whether the site's JSON really has the fields
+the interfaces describe. That is why the reader filters items without an `id` or
+`url`, and why the Python side validates the envelope again.

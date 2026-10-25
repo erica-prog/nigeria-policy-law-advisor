@@ -71,7 +71,7 @@ evals with a real model.
 
 Settings (`.env.example`): `CONNECTORS_DIR`, `NODE_COMMAND`,
 `CONNECTOR_TIMEOUT_SECONDS`, `CONNECTOR_RESULT_MAX_CHARS`, `AGENT_MAX_TOOL_CALLS`,
-and the three credentials `REGULATIONS_GOV_API_KEY`, `COURTLISTENER_API_TOKEN`,
+and the three credentials `REGULATIONS_GOV_API_KEY`, `COURTLISTENER_API_KEY`,
 `GOVINFO_API_KEY`. Credentials are server-held and never per user (D7).
 
 Tests: `tests/test_connectors.py` drives the real MCP client against a fake
@@ -79,9 +79,19 @@ stdio server that answers from recorded fixtures, and starts the vendored Node
 server to list its tools (skipped where Node is absent). The vendored server's
 own tests run with `node --test`; CI runs both.
 
-Not yet verified: a live call to CourtListener or GovInfo. The smoke test
-needs credentials and network, is run by hand, and should record the result
-and the CourtListener terms (whether text may be stored) in docs/23.
+Verified live on 2026-10-24 with the two keys in `.env`: GovInfo's `searchGovInfo`
+(its `pageSize` is a string) and CourtListener's `search`. Neither hosted server
+returns our provenance envelope, so `parse_call_result` adds one from the registry
+row with a warning that says so; GovInfo additionally wraps its result inside the
+text block and is unwrapped. CourtListener exposes 19 tools; its row denies the
+alert and docket-subscription tools, `pray_for_document` and `withdraw_prayer`
+(RECAP purchase requests), `call_endpoint` (a generic REST call that can write)
+and `get_api_usage`. Whether opinion text may be stored is still a lawyer's read
+of CourtListener's terms; until then `may_store_text` is false.
+
+Credentials are read from the process environment first and then from the
+repository's `.env`, because a local `uvicorn` does not export the file the way
+Docker's `env_file` does.
 
 ## Teaching note: async Python
 

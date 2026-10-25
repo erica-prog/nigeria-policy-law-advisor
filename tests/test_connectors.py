@@ -26,9 +26,11 @@ from policy_advisor.tools import (
     render_untrusted,
 )
 from policy_advisor.tools.client import guarded_call
+from policy_advisor.tools.results import NO_PROVENANCE_WARNING
 
 FAKE_SERVER = Path(__file__).parent / "fixtures" / "fake_connector_server.py"
 VENDORED = PROJECT_ROOT / "connectors" / "legal-ai-skills" / "legal-research-server.mjs"
+NG_SERVER = PROJECT_ROOT / "connectors" / "ng-sources" / "dist" / "server.js"
 NODE = shutil.which("node")
 
 
@@ -253,10 +255,9 @@ def test_hosted_connectors_take_credentials_from_the_environment_only():
         and govinfo.headers == {"x-api-key": "k-1"}
     )
     assert (
-        not courtlistener.available
-        and "COURTLISTENER_API_TOKEN" in courtlistener.unavailable_reason
+        not courtlistener.available and "COURTLISTENER_API_KEY" in courtlistener.unavailable_reason
     )
-    with_token = connector_specs(seed, get_settings(), environ={"COURTLISTENER_API_TOKEN": "t"})
+    with_token = connector_specs(seed, get_settings(), environ={"COURTLISTENER_API_KEY": "t"})
     assert with_token["courtlistener"].headers == {"Authorization": "Token t"}
     assert "web_search" not in specs and "library" not in specs
     assert specs["legal-research"].env == {}  # no REGULATIONS_GOV_API_KEY in that environment
@@ -279,3 +280,126 @@ def test_unavailable_connector_is_refused_before_any_process_starts():
 
     with pytest.raises(ConnectorError, match="missing credential X"):
         asyncio.run(run())
+
+
+# --- results from hosted servers that do not speak our envelope ---
+
+
+def test_hosted_result_wrapped_in_text_is_unwrapped_and_given_a_default_envelope():
+    # GovInfo returns `{"structuredContent": {...}, "content": [...]}` as the text block.
+    wrapped = {
+        "structuredContent": {"count": 2, "results": [{"packageId": "CFR-2019-title8-vol1"}]},
+        "content": [],
+    }
+    result = parse_call_result(
+        _call_result(text=__import__("json").dumps(wrapped)),
+        default_source="GovInfo",
+        default_url="https://api.govinfo.gov/mcp",
+    )
+    assert result.source == "GovInfo" and result.source_url == "https://api.govinfo.gov/mcp"
+    assert result.coverage_warning == NO_PROVENANCE_WARNING and result.retrieved_at
+    assert result.count == 2 and result.results[0]["packageId"] == "CFR-2019-title8-vol1"
+    # Without a default the missing envelope is still an error.
+    with pytest.raises(ConnectorError, match="envelope"):
+        parse_call_result(_call_result(structured={"count": 2}))
+    # A server that does send the envelope keeps its own fields.
+    own = parse_call_result(
+        _call_result(structured={"source": "eCFR", "x": 1}), default_source="other"
+    )
+    assert own.source == "eCFR" and own.coverage_warning is None
+
+
+# --- the Nigeria connector (TypeScript, built to dist/) ---
+
+
+def test_registry_rows_for_nigeria_point_at_the_built_server_and_exclude_nigerialii():
+    seed = {s.source_id: s for s in sources.load_seed()}
+    assert seed["ng-nigerialii"].connector == "none" and seed["ng-nigerialii"].allowed is False
+    assert seed["ng-nigerialii"].licence["may_store_snippets"] is False
+    assert seed["ng-nass"].connector == "none"
+    ng_rows = [s for s in seed.values() if s.connector == "ng-sources"]
+    assert sorted(s.source_id for s in ng_rows) == ["ng-fhc", "ng-ndpc", "ng-nis"]
+    assert all(s.config["server"] == "ng-sources/dist/server.js" for s in ng_rows)
+    specs = connector_specs(list(seed.values()), get_settings(), environ={})
+    assert specs["ng-sources"].transport == "stdio" and specs["ng-sources"].command[1] == str(
+        NG_SERVER
+    )
+    assert "none" not in specs or not specs["none"].available
+
+
+@pytest.mark.skipif(
+    NODE is None or not NG_SERVER.exists(), reason="node or the built ng-sources server is missing"
+)
+def test_ng_sources_server_lists_its_three_tools_under_the_real_client_and_refuses_other_hosts():
+    seed = [sources.with_allowed(s, True, "A. Lawyer") for s in sources.load_seed()]
+    spec = connector_specs(seed, get_settings(), environ={})["ng-sources"]
+
+    async def run():
+        async with open_session(spec, timeout=20) as session:
+            tools = await list_tools(session)
+            policy = ToolPolicy(sources=seed)
+            visible = policy.visible_tools("ng-sources", tools)
+            grant = policy.grant("ng-sources", "fetch_ng_official")
+            try:
+                await call_tool(
+                    session, grant, {"url": "https://nigerialii.org/judgments/x"}, timeout=20
+                )
+            except ConnectorError as exc:
+                refused = str(exc)
+            else:
+                refused = ""
+            return [t.name for t in tools], [t.name for t, _ in visible], refused
+
+    names, visible, refused = asyncio.run(run())
+    assert sorted(names) == ["cite_ng_official", "fetch_ng_official", "search_ng_official"]
+    assert sorted(visible) == sorted(
+        names
+    )  # all three are claimed by the ng rows and none is deny-listed
+    assert "Refused" in refused and "nigerialii.org" in refused
+
+
+def test_courtlistener_row_denies_every_writing_tool_it_exposes():
+    # The live server listed these 19 tools on 2026-10-24 (docs/23 record).
+    live_tools = [
+        "search",
+        "get_endpoint_schema",
+        "call_endpoint",
+        "get_endpoint_item",
+        "get_choices",
+        "get_counts",
+        "get_more_results",
+        "read_document",
+        "search_document",
+        "extract_citations",
+        "analyze_citations",
+        "resume_citation_analysis",
+        "create_search_alert",
+        "delete_search_alert",
+        "subscribe_to_docket_alert",
+        "unsubscribe_from_docket_alert",
+        "pray_for_document",
+        "withdraw_prayer",
+        "get_api_usage",
+    ]
+    seed = [sources.with_allowed(s, True, "A. Lawyer") for s in sources.load_seed()]
+    policy = ToolPolicy(sources=seed)
+    granted = []
+    for name in live_tools:
+        try:
+            policy.grant("courtlistener", name)
+            granted.append(name)
+        except ToolDenied:
+            pass
+    assert granted == [
+        "search",
+        "get_endpoint_schema",
+        "get_endpoint_item",
+        "get_choices",
+        "get_counts",
+        "get_more_results",
+        "read_document",
+        "search_document",
+        "extract_citations",
+        "analyze_citations",
+        "resume_citation_analysis",
+    ]
