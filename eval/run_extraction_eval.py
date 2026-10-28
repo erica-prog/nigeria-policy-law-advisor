@@ -167,6 +167,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     if report["missing_records"]:
         print(f"missing records: {len(report['missing_records'])}")
+    if report["job_status"] == "done" and report["error"]:
+        print(f"documents skipped: {report['error']}")
     LAST_RUN.write_text(
         json.dumps({"scores": scores.as_dict(), **report, "limit": args.limit}, indent=1) + "\n",
         encoding="utf-8",

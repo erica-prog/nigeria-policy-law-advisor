@@ -14,10 +14,17 @@ it, and a new version re-extracts rather than silently reinterpreting old rows.
 
 from pydantic import BaseModel, Field
 
+from policy_advisor.tool_input import ToolInputModel
+
 SCHEMA_VERSION = 1
 
 
-class EvidenceRef(BaseModel):
+class ExtractionRecord(ToolInputModel):
+    """The base of every extraction model: a list sent as a JSON string is
+    read as that list (policy_advisor.tool_input)."""
+
+
+class EvidenceRef(ExtractionRecord):
     locator: str = Field(
         description="The clause or section locator exactly as marked in the document, e.g. 'Clause 12.3'"
     )
@@ -26,7 +33,7 @@ class EvidenceRef(BaseModel):
     )
 
 
-class Obligation(BaseModel):
+class Obligation(ExtractionRecord):
     obligor: str = Field(description="Who owes the obligation, by defined term")
     obligee: str = Field(description="Who it is owed to, by defined term")
     obligation: str = Field(description="What performance discharges it, in one sentence")
@@ -47,7 +54,7 @@ class Obligation(BaseModel):
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class Party(BaseModel):
+class Party(ExtractionRecord):
     name: str
     role: str = Field(default="", description="Buyer, Supplier, Licensor, Guarantor...")
     defined_as: str = Field(
@@ -56,19 +63,19 @@ class Party(BaseModel):
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class KeyDate(BaseModel):
+class KeyDate(ExtractionRecord):
     label: str = Field(description="Effective date, Term, Expiry, Notice period, Longstop...")
     date_text: str = Field(description="The date or period exactly as written")
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class DefinedTerm(BaseModel):
+class DefinedTerm(ExtractionRecord):
     term: str
     definition: str
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class RiskClause(BaseModel):
+class RiskClause(ExtractionRecord):
     kind: str = Field(
         description="indemnity, limitation of liability, termination, change of control, exclusivity, non-compete, assignment, governing law, dispute resolution, data protection, other"
     )
@@ -77,7 +84,7 @@ class RiskClause(BaseModel):
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class ContractExtraction(BaseModel):
+class ContractExtraction(ExtractionRecord):
     classification: str = Field(
         description="complete executed agreement, complete draft, excerpt, single schedule, or other"
     )

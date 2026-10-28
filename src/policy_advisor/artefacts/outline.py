@@ -3,21 +3,24 @@
 A document is sections of paragraphs. Each paragraph names the locators or
 URLs that support it; a paragraph with no sources is allowed only when it
 is the lawyer's own instruction restated (facts, scope, conclusions of the
-brief) and must say so with `kind: "instruction"`. The model ends its run
-with this as JSON; `parse_outline` tolerates a fenced block or prose around
-it but nothing less than a valid object.
+brief) and must say so with `kind: "instruction"`. The model hands the
+outline in through the `submit_outline` tool, so the API returns it as
+well-formed JSON; `parse_outline` reads a JSON object at the end of the reply
+as a fallback for a run that never called the tool.
 """
 
 import json
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import Field, ValidationError
+
+from policy_advisor.tool_input import ToolInputModel
 
 ParagraphKind = Literal["authority", "instruction"]
 
 
-class Paragraph(BaseModel):
+class Paragraph(ToolInputModel):
     text: str = Field(min_length=1)
     kind: ParagraphKind = "authority"
     sources: list[str] = Field(
@@ -25,12 +28,12 @@ class Paragraph(BaseModel):
     )
 
 
-class Section(BaseModel):
+class Section(ToolInputModel):
     heading: str = Field(min_length=1)
     paragraphs: list[Paragraph] = Field(default_factory=list)
 
 
-class Outline(BaseModel):
+class Outline(ToolInputModel):
     title: str = Field(min_length=1)
     audience: str = ""
     summary: str = ""
@@ -43,8 +46,7 @@ class Outline(BaseModel):
 
 OUTLINE_INSTRUCTIONS = """You are drafting for a practising lawyer. Use the tools to find authority (statutes, regulations, judgments, guidance, the firm's own precedents) and write the document as an outline. Every paragraph that states law must list, in `sources`, the exact locators or URLs the tools showed you; a paragraph that restates the lawyer's own instructions (the facts, the scope, the conclusion asked for) carries no sources and `kind: "instruction"`. Never cite a locator or URL the tools did not show; never present a fact of the case as authority; never invent a case, section or quotation. Put what the sources did not settle in `limitations`.
 
-When you are done, end your reply with one JSON object and nothing after it, matching this schema exactly:
-{"title": str, "audience": str, "summary": str, "sections": [{"heading": str, "paragraphs": [{"text": str, "kind": "authority" | "instruction", "sources": [str]}]}], "limitations": [str]}"""
+When you are done, call the submit_outline tool once with the whole outline: title, audience, summary, sections (each a heading and its paragraphs, each paragraph its text, kind "authority" or "instruction", and sources) and limitations. If it rejects the outline, fix what it names and call it again. If a tool says the budget is exhausted, call submit_outline at once with what you have and say in limitations what you could not check. After the outline is recorded, reply with one short sentence."""
 
 
 class OutlineError(ValueError):
@@ -69,9 +71,23 @@ def parse_outline(text: str) -> Outline:
                 if depth == 0:
                     candidates.append(text[start : index + 1])
                     break
+    problems: list[str] = []
     for candidate in candidates:
         try:
             return Outline.model_validate(json.loads(candidate))
-        except (json.JSONDecodeError, ValidationError):
-            continue
-    raise OutlineError("the drafting run did not end with a valid outline")
+        except json.JSONDecodeError as exc:
+            problems.append(f"JSON error at character {exc.pos}: {exc.msg}")
+        except ValidationError as exc:
+            problems.append(validation_summary(exc))
+    detail = "; ".join(problems) if problems else "no JSON object in the reply"
+    raise OutlineError(
+        f"the drafting run did not end with a valid outline (reply of {len(text)} characters: {detail})"
+    )
+
+
+def validation_summary(exc: ValidationError, limit: int = 6) -> str:
+    """Where and why an outline failed, never the text it contained."""
+    return "; ".join(
+        f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+        for error in exc.errors()[:limit]
+    )

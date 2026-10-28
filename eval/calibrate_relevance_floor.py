@@ -62,7 +62,7 @@ def _best_distance(retriever, question: dict, top_k: int) -> float | None:
     return min(distances) if distances else None
 
 
-def main() -> None:
+def _main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--top-k", type=int, default=8)
     args = parser.parse_args()
@@ -162,6 +162,15 @@ def main() -> None:
         "Widen the band if either fills up."
     )
 
+
+
+def main() -> None:
+    """Run as the default tenant, so the ledger can charge this run's model
+    and tool calls (docs/32); without a tenant every ledger row is refused."""
+    from policy_advisor.tenancy import DEFAULT_TENANT, tenant_context
+
+    with tenant_context(DEFAULT_TENANT):
+        _main()
 
 if __name__ == "__main__":
     main()

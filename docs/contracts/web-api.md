@@ -406,6 +406,9 @@ code for a failed model call.
   "backend", "triage_model", "escalation_model", "ceiling_tokens", "spent_tokens",
   "done_documents", "flagged_documents", "error", "created_at", "finished_at" }`. Writable
   matter and the caller's key required; `400 unknown_schema | unknown_documents | no_documents`.
+  `error` on a `done` job names the documents that were not extracted
+  (`"N of M documents not extracted: doc (reason); ..."`); a job is `failed` only when no
+  document could be extracted (docs/33, "When one document fails").
 - `GET /api/matters/{id}/bulk` -> `{ "jobs": [BulkJob] }`; `GET /api/matters/{id}/bulk/{job_id}`
   -> `BulkJob`.
 - `POST /api/matters/{id}/bulk/{job_id}/resume` `{ "ceiling_tokens": 4000000 }` -> `202 BulkJob`

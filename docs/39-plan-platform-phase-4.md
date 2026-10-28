@@ -135,7 +135,32 @@ canary job in `.github/workflows/nightly.yml` reads) and one nightly run with ke
 code precedes it. Next action: merge the remaining Phase 3 commits, add the secrets, and
 let the nightly workflow run once.
 
+## 9a. The first nightly run (2026-10-28)
+
+Run 40765323626 on the merge of pull request 23 (`5587486`). Every job reported success;
+two of the three measurements P4-A needed were empty because of defects, not model
+quality, so no threshold is set from this run.
+
+| Job | Measured |
+|---|---|
+| Nigerian golden set | recall@8 1.0, MRR@8 0.875, faithfulness 11 of 12 (g11 unfaithful), correct refusals 10 of 10 |
+| US golden set | recall@8 1.0, MRR@8 0.759 on 14 scored questions; generation skipped, so no faithfulness |
+| Relevance-floor calibration | margin +0.0007 between the worst positive and the best negative; the two-band configuration stays |
+| Case-reasoning invariants | 3 seed cases, 0 failing |
+| Extraction F1 (12 contracts) | not measured: one field sent as a JSON string failed the whole job (fixed, `bb9aedd`) |
+| Drafting rubric (3 drafts) | not measured: no draft ended with a valid outline (fixed, `3524c61`) |
+| Connector canaries | `legal-research` and `ng-sources` pass; CourtListener and GovInfo skipped for missing secrets |
+| Cost ledger | no rows from the golden-set, case-reasoning, calibration or canary runners: no tenant set (fixed, `062a9e1`) |
+
+Still owed for P4-A: a nightly run on these fixes, the two thresholds from it (D3: the
+median of three runs), the CourtListener and GovInfo secrets, a US faithfulness
+measurement (the US step runs with `--skip-generation`), and a live Batch API run, which
+the nightly job does not exercise (it extracts twelve contracts on the sync path).
+
 ## 10. Implementation record
 
 | Slice | Branch | Commit | Verification | Notes |
 |---|---|---|---|---|
+| P4-A (part) | `platform/phase-4-a` | `062a9e1` cost ledger tenant for eval runners | `pytest` green; the two new tests fail with the controls removed | API and worker paths were not affected |
+| P4-A (part) | `platform/phase-4-a` | `bb9aedd` per-document extraction failures, JSON-string lists, failed parses counted | `pytest` green; oracle gate 1.0 on 48 contracts; new tests fail without the fix | contract note on `error` for a `done` job |
+| P4-A (part) | `platform/phase-4-a` | `3524c61` drafting hands in its outline through `submit_outline` | `pytest` green; new tests fail without the fix | not reproduced against the live model (no local key); the next nightly run is the check |

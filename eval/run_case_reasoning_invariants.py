@@ -115,7 +115,7 @@ def _check_advisory(advisory) -> list[str]:
     return violations
 
 
-def main() -> None:
+def _main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default=None, help="run only the seed case with this id")
     parser.add_argument("--with-advisory", action="store_true", help="also check advisory mode")
@@ -155,6 +155,15 @@ def main() -> None:
     if all_violations:
         raise SystemExit(f"Structural invariants violated in: {', '.join(sorted(all_violations))}")
 
+
+
+def main() -> None:
+    """Run as the default tenant, so the ledger can charge this run's model
+    and tool calls (docs/32); without a tenant every ledger row is refused."""
+    from policy_advisor.tenancy import DEFAULT_TENANT, tenant_context
+
+    with tenant_context(DEFAULT_TENANT):
+        _main()
 
 if __name__ == "__main__":
     main()
