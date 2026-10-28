@@ -42,6 +42,20 @@ the record forced out as a tool call whose input schema is the extraction schema
 worker records the batch id, polls on later passes, stores the results when the batch has
 ended, then runs escalations synchronously. Small jobs call the model per document.
 
+## When one document fails
+
+A document that cannot be read, or whose record does not validate, costs that document
+and not the job. The worker logs `bulk_document_failed`, moves to the next document, and
+finishes the job as `done` with `error` naming what was skipped
+(`"1 of 12 documents not extracted: lease.docx (reason)"`). The job is `failed` only when
+no document could be extracted. A failed escalation keeps the triage record. A call whose
+record did not validate still spent tokens, and they count toward the ceiling.
+
+Tool use sometimes sends a nested array as a JSON-encoded string. Every extraction model
+inherits `ExtractionRecord`, which reads a string that decodes to a list as that list and
+refuses anything else. The first nightly run (2026-10-28) lost all twelve documents of the
+extraction eval to one such field before these two changes.
+
 ## Cross-document checks
 
 Deterministic where strings can be compared: the same party under different defined

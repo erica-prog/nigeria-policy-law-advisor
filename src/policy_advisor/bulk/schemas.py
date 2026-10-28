@@ -12,12 +12,40 @@ Schemas are versioned; a record is stored with the version that produced
 it, and a new version re-extracts rather than silently reinterpreting old rows.
 """
 
-from pydantic import BaseModel, Field
+import json
+from typing import Any, get_origin
+
+from pydantic import BaseModel, Field, model_validator
 
 SCHEMA_VERSION = 1
 
 
-class EvidenceRef(BaseModel):
+class ExtractionRecord(BaseModel):
+    """The base of every extraction model. Tool use sometimes returns a nested
+    array as a JSON-encoded string (`"[{\"locator\": ...}]"`) rather than an
+    array; the first nightly run (2026-10-28) lost a whole job to one such
+    field. A string that decodes to a list is accepted as that list; anything
+    else still fails validation."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _decode_json_lists(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        decoded = dict(data)
+        for name, field in cls.model_fields.items():
+            value = decoded.get(name)
+            if get_origin(field.annotation) is list and isinstance(value, str):
+                try:
+                    parsed = json.loads(value)
+                except ValueError:
+                    continue
+                if isinstance(parsed, list):
+                    decoded[name] = parsed
+        return decoded
+
+
+class EvidenceRef(ExtractionRecord):
     locator: str = Field(
         description="The clause or section locator exactly as marked in the document, e.g. 'Clause 12.3'"
     )
@@ -26,7 +54,7 @@ class EvidenceRef(BaseModel):
     )
 
 
-class Obligation(BaseModel):
+class Obligation(ExtractionRecord):
     obligor: str = Field(description="Who owes the obligation, by defined term")
     obligee: str = Field(description="Who it is owed to, by defined term")
     obligation: str = Field(description="What performance discharges it, in one sentence")
@@ -47,7 +75,7 @@ class Obligation(BaseModel):
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class Party(BaseModel):
+class Party(ExtractionRecord):
     name: str
     role: str = Field(default="", description="Buyer, Supplier, Licensor, Guarantor...")
     defined_as: str = Field(
@@ -56,19 +84,19 @@ class Party(BaseModel):
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class KeyDate(BaseModel):
+class KeyDate(ExtractionRecord):
     label: str = Field(description="Effective date, Term, Expiry, Notice period, Longstop...")
     date_text: str = Field(description="The date or period exactly as written")
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class DefinedTerm(BaseModel):
+class DefinedTerm(ExtractionRecord):
     term: str
     definition: str
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class RiskClause(BaseModel):
+class RiskClause(ExtractionRecord):
     kind: str = Field(
         description="indemnity, limitation of liability, termination, change of control, exclusivity, non-compete, assignment, governing law, dispute resolution, data protection, other"
     )
@@ -77,7 +105,7 @@ class RiskClause(BaseModel):
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
-class ContractExtraction(BaseModel):
+class ContractExtraction(ExtractionRecord):
     classification: str = Field(
         description="complete executed agreement, complete draft, excerpt, single schedule, or other"
     )

@@ -13,7 +13,9 @@ import re
 from collections import defaultdict
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from policy_advisor.bulk.schemas import ExtractionRecord
 
 _NOISE = re.compile(r"\b(limited|ltd\.?|llc|inc\.?|plc|the|of|and)\b|[^a-z0-9 ]")
 
@@ -140,7 +142,7 @@ def deterministic_findings(extractions: list[dict[str, Any]]) -> list[dict[str, 
     return findings
 
 
-class ObligationConflict(BaseModel):
+class ObligationConflict(ExtractionRecord):
     documents: list[str] = Field(description="The documents whose obligations conflict")
     summary: str = Field(
         description="What pulls against what, in one or two sentences, quoting the obligations' own words"
@@ -150,7 +152,7 @@ class ObligationConflict(BaseModel):
     )
 
 
-class ObligationConflicts(BaseModel):
+class ObligationConflicts(ExtractionRecord):
     conflicts: list[ObligationConflict] = Field(default_factory=list)
 
 

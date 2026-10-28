@@ -5,10 +5,16 @@ returns canned records; nothing calls Claude."""
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from policy_advisor import tenancy
 from policy_advisor.bulk import checks, evidence
-from policy_advisor.bulk.extract import Extractor, ModelResult, run_pending
+from policy_advisor.bulk.extract import (
+    ExtractionParseError,
+    Extractor,
+    ModelResult,
+    run_pending,
+)
 from policy_advisor.bulk.jobs import (
     BulkJobTable,
     list_extractions,
@@ -344,6 +350,68 @@ def test_unknown_document_text_fails_the_job_cleanly(matter):
     job = _job(table, ["missing.docx"])
     final = Extractor(settings=_settings(), caller=FakeCaller({}), jobs=table).run(job)
     assert final.status == "failed" and "no indexed text" in final.error
+
+
+def test_a_list_field_sent_as_a_json_string_is_read_as_the_list():
+    # The nightly run of 2026-10-28: the model sent governing_law_evidence as
+    # a JSON-encoded string and the whole record was refused.
+    record = ContractExtraction.model_validate(
+        {
+            "classification": "complete executed agreement",
+            "governing_law": "the laws of the Federal Republic of Nigeria",
+            "governing_law_evidence": '[{"locator": "Clause 8", "quote": "governed by the laws '
+            'of the Federal Republic of Nigeria"}]',
+            "parties": [
+                {"name": "Acme", "evidence": '[{"locator": "Clause 1", "quote": "Acme Ltd"}]'}
+            ],
+        }
+    )
+    assert record.governing_law_evidence[0].locator == "Clause 8"
+    assert record.parties[0].evidence[0].quote == "Acme Ltd"
+    with pytest.raises(ValidationError):
+        ContractExtraction.model_validate(
+            {"classification": "x", "governing_law_evidence": "Clause 8 says Nigerian law"}
+        )
+
+
+def test_one_unparseable_document_is_skipped_named_and_charged_not_the_whole_job(matter):
+    table = BulkJobTable()
+    inner = FakeCaller(
+        {
+            ("supply.docx", None): _record("supply.docx"),
+            ("amendment.docx", None): _record("amendment.docx", days="sixty"),
+        }
+    )
+
+    def caller(*, model, schema, document_text, api_key):
+        if schema.schema_id == "contract" and "sixty days" in document_text:
+            raise ExtractionParseError(
+                "the model returned no parseable record: governing_law_evidence",
+                input_tokens=900,
+                output_tokens=100,
+            )
+        return inner(model=model, schema=schema, document_text=document_text, api_key=api_key)
+
+    job = _job(table, ["supply.docx", "amendment.docx"])
+    final = Extractor(settings=_settings(), caller=caller, jobs=table).run(job)
+    assert final.status == "done" and final.done_documents == 1
+    assert final.error.startswith("1 of 2 documents not extracted: amendment.docx (")
+    assert "governing_law_evidence" in final.error
+    stored = {r["source_document"] for r in list_extractions("case-1", schema_id="contract")}
+    assert stored == {"supply.docx"}
+    assert final.spent_tokens == 1200 + 1000  # the failed call still counts toward the ceiling
+
+
+def test_a_job_where_no_document_could_be_extracted_fails(matter):
+    table = BulkJobTable()
+
+    def caller(*, model, schema, document_text, api_key):
+        raise ExtractionParseError("the model returned no parseable record", input_tokens=10)
+
+    job = _job(table, ["supply.docx", "amendment.docx"])
+    final = Extractor(settings=_settings(), caller=caller, jobs=table).run(job)
+    assert final.status == "failed"
+    assert final.error.startswith("2 of 2 documents not extracted")
 
 
 # --- findings and the query tool ---

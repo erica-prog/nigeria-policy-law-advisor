@@ -62,6 +62,15 @@ class ModelCaller(Protocol):
     ) -> ModelResult: ...
 
 
+class ExtractionParseError(ValueError):
+    """The model answered but its record did not validate. The call still
+    spent tokens, which the job's ceiling must count."""
+
+    def __init__(self, message: str, *, input_tokens: int = 0, output_tokens: int = 0) -> None:
+        super().__init__(message)
+        self.tokens = input_tokens + output_tokens
+
+
 class CeilingReached(RuntimeError):
     pass
 
@@ -113,13 +122,15 @@ def langchain_caller(settings: Settings | None = None) -> ModelCaller:
         out = call_with_retry(lambda: structured.invoke(_messages(schema, document_text)))
         raw = out.get("raw") if isinstance(out, dict) else None
         parsed = out.get("parsed") if isinstance(out, dict) else out
+        usage = getattr(raw, "usage_metadata", None) or {}
         if parsed is None:
-            raise ValueError(
-                f"the model returned no parseable record: {out.get('parsing_error') if isinstance(out, dict) else 'unknown'}"
+            raise ExtractionParseError(
+                f"the model returned no parseable record: {out.get('parsing_error') if isinstance(out, dict) else 'unknown'}",
+                input_tokens=int(usage.get("input_tokens", 0)),
+                output_tokens=int(usage.get("output_tokens", 0)),
             )
         if isinstance(parsed, dict):
             parsed = schema.model.model_validate(parsed)
-        usage = getattr(raw, "usage_metadata", None) or {}
         return ModelResult(
             record=parsed,
             input_tokens=int(usage.get("input_tokens", 0)),
@@ -246,9 +257,13 @@ class Extractor:
         self._reserve(job, estimate_tokens(text))
         started = time.perf_counter()
         with span("bulk.extract", job_id=job.job_id, document=source_document, model=model):
-            result = self._caller(
-                model=model, schema=schema, document_text=text, api_key=self._api_key
-            )
+            try:
+                result = self._caller(
+                    model=model, schema=schema, document_text=text, api_key=self._api_key
+                )
+            except ExtractionParseError as exc:
+                self._jobs.add_spend(job.job_id, exc.tokens)
+                raise
         self._jobs.add_spend(job.job_id, result.tokens)
         return self._store(
             job,
@@ -339,10 +354,26 @@ class Extractor:
 
     def _run_sync(self, job: BulkJob, schema: ExtractionSchema) -> BulkJob:
         done = self._already_done(job, schema)
+        failures: dict[str, str] = {}
         for document in job.documents:
             if document in done:
                 continue
-            outcome = self.extract_document(job, document, job.triage_model, schema)
+            try:
+                outcome = self.extract_document(job, document, job.triage_model, schema)
+            except CeilingReached:
+                raise
+            except Exception as exc:
+                # One unreadable document or one malformed record costs that
+                # document, not the other eleven; a resume or a new job retries it.
+                failures[document] = str(exc)
+                log_event(
+                    self._logger,
+                    "bulk_document_failed",
+                    job_id=job.job_id,
+                    document=document,
+                    error=str(exc)[:300],
+                )
+                continue
             done[document] = {
                 "flagged": outcome["flagged"],
                 "confidence": outcome["confidence"],
@@ -353,7 +384,9 @@ class Extractor:
                 done_documents=len(done),
                 flagged_documents=sum(1 for d in done.values() if d.get("flagged")),
             )
-        return self._escalate_and_check(job, schema)
+        if failures and not done:
+            raise RuntimeError(_failure_summary(failures, len(job.documents)))
+        return self._escalate_and_check(job, schema, failures)
 
     def _run_batch(self, job: BulkJob, schema: ExtractionSchema) -> BulkJob:
         client = self._batch_client_factory(self._api_key)
@@ -422,14 +455,29 @@ class Extractor:
         )
         return self._escalate_and_check(self._jobs.get(job.job_id) or job, schema)
 
-    def _escalate_and_check(self, job: BulkJob, schema: ExtractionSchema) -> BulkJob:
+    def _escalate_and_check(
+        self, job: BulkJob, schema: ExtractionSchema, failures: dict[str, str] | None = None
+    ) -> BulkJob:
         rows = self._already_done(job, schema)
         escalation = job.escalation_model
         if escalation and escalation != job.triage_model:
             for document, row in rows.items():
                 if row.get("flagged") and row.get("model") == job.triage_model:
                     before = float(row.get("confidence", 0))
-                    outcome = self.extract_document(job, document, escalation, schema)
+                    try:
+                        outcome = self.extract_document(job, document, escalation, schema)
+                    except CeilingReached:
+                        raise
+                    except Exception as exc:
+                        # The triage record stays; it is already stored and flagged.
+                        log_event(
+                            self._logger,
+                            "bulk_escalation_failed",
+                            job_id=job.job_id,
+                            document=document,
+                            error=str(exc)[:300],
+                        )
+                        continue
                     if outcome["confidence"] < before:
                         # Keep the better record: re-store the triage one.
                         text, chunks = document_text(
@@ -474,7 +522,7 @@ class Extractor:
             done_documents=len(rows),
             flagged_documents=sum(1 for r in rows.values() if r.get("flagged")),
             finished_at=datetime.now().astimezone(),
-            error=None,
+            error=_failure_summary(failures, len(job.documents)) if failures else None,
         )
         log_event(
             self._logger,
@@ -508,3 +556,10 @@ def run_pending(
             extractor.run(job)
         ran += 1
     return ran
+
+
+def _failure_summary(failures: dict[str, str], total: int) -> str:
+    """The job's `error` when some documents were not extracted: how many,
+    which, and why, cut to the column's length."""
+    named = "; ".join(f"{doc} ({reason[:160]})" for doc, reason in failures.items())
+    return f"{len(failures)} of {total} documents not extracted: {named}"[:1000]
