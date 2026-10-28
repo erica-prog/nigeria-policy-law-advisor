@@ -73,7 +73,7 @@ async def probe(name: str, spec: Any, policy: ToolPolicy, timeout: float) -> dic
     return row
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -117,6 +117,15 @@ def main(argv: list[str] | None = None) -> int:
         f"\n{sum(1 for r in rows if r.get('ok'))} passed, {len(failed)} failed, {sum(1 for r in rows if r.get('ok') is None)} skipped"
     )
     return 1 if failed else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run as the default tenant, so the ledger can charge this run's model
+    and tool calls (docs/32); without a tenant every ledger row is refused."""
+    from policy_advisor.tenancy import DEFAULT_TENANT, tenant_context
+
+    with tenant_context(DEFAULT_TENANT):
+        return _main(argv)
 
 
 if __name__ == "__main__":

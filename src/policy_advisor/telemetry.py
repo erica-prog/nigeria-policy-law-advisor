@@ -173,10 +173,24 @@ def record_cost(
     duration_ms: int | None = None,
     attribution_override: Attribution | None = None,
 ) -> None:
-    """Write one ledger row for the current attribution. Never raises."""
+    """Write one ledger row for the current attribution. Never raises.
+
+    A row belongs to one tenant, and the database takes it from the
+    connection's tenant (`app_tenant()`). With no tenant set, or with the
+    worker's all-tenants view, there is no tenant to charge: the row is not
+    written and the warning says why, rather than surfacing later as a
+    row-level security error that reads like a database fault."""
     from policy_advisor.db import connect
+    from policy_advisor.tenancy import ALL_TENANTS, current_tenant
 
     who = attribution_override or _attribution.get()
+    tenant = current_tenant()
+    if not tenant or tenant == ALL_TENANTS:
+        logger.warning(
+            "cost_ledger_no_tenant",
+            extra={"fields": {"kind": kind, "model": model, "tool": tool, "tenant": tenant}},
+        )
+        return
     try:
         with connect() as conn:
             conn.execute(

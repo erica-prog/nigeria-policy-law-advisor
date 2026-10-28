@@ -136,6 +136,23 @@ def test_a_failing_ledger_write_is_logged_not_raised(monkeypatch, caplog):
     assert any("cost_ledger_write_failed" in r.message for r in caplog.records)
 
 
+def test_a_call_outside_any_tenant_is_named_in_the_log_and_writes_no_row(fresh_db, caplog):
+    # The nightly run on 2026-10-28 lost every ledger row of the golden set,
+    # case-reasoning and canary jobs: those runners set no tenant, and the
+    # insert failed row-level security under a generic "write failed" line.
+    from policy_advisor.tenancy import ALL_TENANTS, tenant_context
+
+    with caplog.at_level("WARNING", logger="policy_advisor.telemetry"):
+        with tenant_context(None):
+            telemetry.record_cost("model", model="m", input_tokens=1, output_tokens=1)
+        with tenant_context(ALL_TENANTS):
+            telemetry.record_cost("tool", connector="govinfo", tool="search")
+    messages = [r.message for r in caplog.records]
+    assert messages.count("cost_ledger_no_tenant") == 2
+    assert "cost_ledger_write_failed" not in messages
+    assert _rows() == []
+
+
 def test_a_research_run_leaves_a_model_row_with_its_run_id(fresh_db):
     async def script(tools, system, prompt):
         await tools["search_case_documents"].call({"question": "q"})
