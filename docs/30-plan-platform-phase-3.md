@@ -144,3 +144,7 @@ merged.
 | P3-H | `platform/phase-3-a` | the slice commit (`CI gates: ...`) | `ruff`, `mypy`, `pytest` green; the fixture rubric gate passes (good 1.0, defects under their maxima); both workflow files parse | the extraction F1 and drafting thresholds are owed from the first nightly measurement; canaries need the connector secrets in the repository |
 
 Phase 3 is complete as planned on 2026-10-25; the owed items are the two thresholds, the lawyer reviews carried from Phase 2, a live drafting run and a live Batch API run.
+
+The first nightly run (2026-10-28) is recorded in docs/39 §9a. It measured neither
+threshold: the extraction job and all three drafts failed on defects fixed on
+`platform/phase-4-a`. Both thresholds remain owed and are now tracked in docs/39 (P4-A).
