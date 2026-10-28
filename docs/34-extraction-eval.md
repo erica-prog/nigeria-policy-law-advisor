@@ -21,11 +21,21 @@ is committed, so the score is reproducible. Every party, term and clause is inve
 (AGENTS.md rule 7). About a third of the contracts omit a payment deadline on purpose,
 so the extractor's gap reporting is exercised.
 
+The labels follow the schema's own descriptions, not a narrower reading of them. They
+cover every risk-clause kind the schema lists that the text contains, including
+termination and governing law, and every duty a "shall" clause imposes, including those
+in risk clauses. They also cover every defined term a deadline depends on: the Effective
+Date and the Term as well as Business Day. This is version 2 of the set. Version 1
+labelled only some of these, so a model that followed the schema was scored wrong for
+it (docs/39 §9a). Version 2 changed the labels only; the contract text is the same.
+
 ## The score
 
 Eight fields, each precision, recall and F1 over item sets, micro-averaged across
-documents (`eval/extraction/score.py`): parties, governing law, key dates, obligations
-(matched on obligor, deadline and half the obligation's words), obligation evidence (the
+documents (`eval/extraction/score.py`): parties, governing law, key dates
+matched on the date text alone (a label such as "Notice period" is a description; the
+date as written is what a lawyer relies on), obligations (matched on obligor, deadline
+and half the obligation's words), obligation evidence (the
 labelled locator among the predicted ones for each matched obligation), defined terms,
 risk clauses, classification. The headline number is the mean of the eight F1 values.
 Normalisation is deliberately forgiving of articles and company suffixes and
@@ -46,16 +56,19 @@ uv run python -m eval.run_extraction_eval --limit 12
 ```
 
 The real run uses the configured triage and escalation models on the lawyer's or the
-server's key, scores the records, and writes `eval/extraction/last_run.json`. CI runs it
-in the eval-gate job on 12 documents and reports; it does not yet fail the build.
+server's key, scores the records, and writes `eval/extraction/last_run.json`. The file
+holds the scores and every predicted record, so a scorer or label question can be settled
+by rescoring rather than by another paid run. The nightly `extraction-f1` job runs it on
+12 documents, uploads that file as the `extraction-last-run` artifact (kept 30 days) and
+reports; it does not yet fail the build.
 
 ## The threshold
 
-docs/30 says the threshold is set after the first measurement. No measurement has been
-made yet: this machine holds no server key. The first CI run of the eval-gate job will
-print the table; the person who reads it sets `--fail-below` in the workflow from what
-the models actually achieve, and records the number in the docs/30 implementation
-record. Until then the oracle gate stands and the real run is advisory.
+The threshold is set by docs/39 D3: the median of three nightly measurements, recorded
+with the date, then `--fail-below` in the workflow. The first measurement (the second
+nightly run, mean F1 0.699) was taken on version 1 of the labels and does not count;
+docs/39 §9a says why. The count starts with the first run on version 2. Until three
+exist, the oracle gate stands and the real run is advisory.
 
 ## Limits
 
@@ -63,6 +76,8 @@ record. Until then the oracle gate stands and the real run is advisory.
   real contract's side letter, schedule or badly scanned page. The set is the floor the
   pipeline must clear, not a claim about real documents.
 - Obligation matching is lenient on wording and strict on obligor and deadline, which
-  is where a wrong extraction does harm.
+  is where a wrong extraction does harm. A deadline agrees when one text contains the
+  other as whole words ("within thirty Business Days of receipt" and "thirty Business
+  Days"); "thirty days" never agrees with "thirty Business Days".
 - `gaps` is not scored: free text with one correct reading, which a rubric, not a
   set comparison, should judge (Phase 3 drafting rubric work).

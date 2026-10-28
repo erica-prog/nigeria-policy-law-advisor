@@ -173,6 +173,14 @@ jobs:
       - run: uv sync --frozen
       - run: uv run python -m eval.run_extraction_eval --limit 12
         continue-on-error: true
+      - name: Keep the scores and the predicted records for rescoring
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extraction-last-run
+          path: eval/extraction/last_run.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   drafting-rubric:
     # docs/38: live drafts against the shared libraries, scored by the rubric.
@@ -202,6 +210,14 @@ jobs:
         run: uv run python -m policy_advisor.ingestion.build_index
       - run: uv run python -m eval.run_drafting_eval
         continue-on-error: true
+      - name: Keep the rubric scores and section headings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drafting-last-run
+          path: eval/drafting/last_run.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   connector-canaries:
     # docs/38: each live source listed and probed once through the policy. A

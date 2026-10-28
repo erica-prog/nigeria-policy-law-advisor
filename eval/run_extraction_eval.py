@@ -133,6 +133,18 @@ def run(
         "triage_model": job.triage_model,
         "escalation_model": job.escalation_model,
         "oracle": oracle,
+        # What the model returned, so a question about the scorer or the labels
+        # can be settled by rescoring instead of paying for another run. The
+        # set is synthetic (AGENTS.md rule 7), so the records are safe to keep.
+        "records": {
+            name: {
+                "model": row["model"],
+                "confidence": float(row["confidence"]),
+                "flagged": row["flagged"],
+                "record": row["record"],
+            }
+            for name, row in records.items()
+        },
     }
     return scores, report
 
