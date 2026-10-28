@@ -24,7 +24,15 @@ from typing import Any
 
 from policy_advisor.agents.research import ResearchAgent
 from policy_advisor.api.citations import find_chunk_for_locator
-from policy_advisor.artefacts.outline import OUTLINE_INSTRUCTIONS, Outline, parse_outline
+from anthropic.lib.tools import beta_async_tool
+from pydantic import ValidationError
+
+from policy_advisor.artefacts.outline import (
+    OUTLINE_INSTRUCTIONS,
+    Outline,
+    validation_summary,
+    parse_outline,
+)
 from policy_advisor.artefacts.provenance import Manifest, build_manifest
 from policy_advisor.artefacts.render import render_docx, render_pptx
 from policy_advisor.artefacts.store import (
@@ -155,6 +163,7 @@ class DraftingAgent:
             attributed(username=username, matter_id=matter_id),
             span("artefact.draft", matter_id=matter_id, kind=kind),
         ):
+            submitted: list[Outline] = []
             result = await self._agent.arun(
                 f"{instruction}\n\n{OUTLINE_INSTRUCTIONS}",
                 matter_id=matter_id,
@@ -163,8 +172,9 @@ class DraftingAgent:
                 allow_web=allow_web,
                 playbook=DRAFT_PLAYBOOK,
                 authority_only=True,
+                extra_tools=[submit_outline_tool(submitted)],
             )
-            outline = parse_outline(result.answer)
+            outline = submitted[-1] if submitted else parse_outline(result.answer)
             recorded = {r.url: r for r in getattr(result, "recorded", [])}
             manifest = build_manifest(outline, result.retrieved, recorded)
             self._judge_sections(outline, manifest, result.retrieved)
@@ -273,3 +283,28 @@ class DraftingAgent:
 
 def template_for(template_id: str | None) -> Template | None:
     return get_template(template_id or DEFAULT_MEMO_TEMPLATE)
+
+
+def submit_outline_tool(submitted: list[Outline]) -> Any:
+    """The tool a drafting run hands its outline in through. The API returns
+    tool input as well-formed JSON, which an outline written into the reply is
+    not guaranteed to be (quotation marks in legal text break it). A rejected
+    outline goes back to the model with the fields to fix."""
+
+    async def submit_outline(**fields: Any) -> str:
+        try:
+            outline = Outline.model_validate(fields)
+        except ValidationError as exc:
+            return (
+                "Outline rejected; fix these and call submit_outline again: "
+                + validation_summary(exc)
+            )
+        submitted.append(outline)
+        return "Outline recorded. Reply with one short sentence; do not repeat the outline."
+
+    return beta_async_tool(
+        submit_outline,
+        name="submit_outline",
+        description="Hand in the finished outline of the memo or deck. Call once when the research is done; call again only if it is rejected.",
+        input_schema=Outline,
+    )

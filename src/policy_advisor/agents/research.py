@@ -32,7 +32,7 @@ import json
 import re
 import time
 from fnmatch import fnmatchcase
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any
@@ -198,7 +198,10 @@ class ResearchAgent:
         playbook_allow: Iterable[str] | None = None,
         playbook: Playbook | None = None,
         authority_only: bool = False,
+        extra_tools: Sequence[Any] = (),
     ) -> ResearchResult:
+        """`extra_tools` are offered beside the research tools and spend no
+        budget; the drafting agent hands its outline in through one."""
         sources = self._sources if self._sources is not None else list_sources()
         # A playbook narrows the tools (its allow-list) and extends the brief
         # (its checklist); an explicit allow-list wins over the playbook's.
@@ -234,6 +237,7 @@ class ResearchAgent:
                 playbook,
                 usage,
                 authority_only,
+                extra_tools,
             )
 
     async def _arun_attributed(
@@ -247,6 +251,7 @@ class ResearchAgent:
         playbook: Playbook | None,
         usage: dict[str, int],
         authority_only: bool = False,
+        extra_tools: Sequence[Any] = (),
     ) -> ResearchResult:
         run_id = state.run_id
         try:
@@ -259,6 +264,7 @@ class ResearchAgent:
                 if allow_web:
                     tools.append(self._web_tool(state, conversation_language))
                 tools.extend(await self._connector_tools(state, stack))
+                tools.extend(extra_tools)
                 language = LANGUAGE_NAMES.get(conversation_language, "English")
                 system = SYSTEM_PROMPT.replace("{language}", language)
                 if playbook is not None:
@@ -330,7 +336,10 @@ class ResearchAgent:
             system=system,
             tools=tools,
             messages=[{"role": "user", "content": prompt}],
-            max_iterations=settings.agent_max_tool_calls + 2,
+            # Turns beyond the tool budget: refused calls, a hand-in tool and
+            # the closing reply. The first nightly drafting run spent its last
+            # two turns on refused searches and ended without an outline.
+            max_iterations=settings.agent_max_tool_calls + 4,
         )
         usage = {"input_tokens": 0, "output_tokens": 0}
         final: Any = None

@@ -25,6 +25,19 @@ verified; a locator that resolves only to a matter-tier chunk is **rejected**, a
 renderers replace the paragraph with a marker (AGENTS.md rule 4). Anything else is
 unverified and marked in the text.
 
+## Handing the outline in
+
+The run hands its outline in through a `submit_outline` tool whose input schema is the
+outline model, passed to the research agent as an extra tool that spends no budget. The
+API returns tool input as well-formed JSON; an outline written into the reply is not,
+because quotation marks in legal text break it. A rejected outline goes back to the
+model with the fields to fix (never their text), and a list sent as a JSON string is
+read as the list (`policy_advisor.tool_input`). A reply that ends with a JSON object is
+still read as a fallback. When neither yields an outline, the error says why (JSON error
+position, or the failing fields) without quoting the reply. The runner allows four turns
+beyond the tool budget so a run that spends its budget can still hand in. The first
+nightly run (2026-10-28) ended all three drafts without an outline before this change.
+
 ## The provenance manifest
 
 One entry per cited source per paragraph, in the plugin's fields: proposition,

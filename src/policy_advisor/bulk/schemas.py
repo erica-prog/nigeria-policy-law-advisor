@@ -12,37 +12,16 @@ Schemas are versioned; a record is stored with the version that produced
 it, and a new version re-extracts rather than silently reinterpreting old rows.
 """
 
-import json
-from typing import Any, get_origin
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel, Field, model_validator
+from policy_advisor.tool_input import ToolInputModel
 
 SCHEMA_VERSION = 1
 
 
-class ExtractionRecord(BaseModel):
-    """The base of every extraction model. Tool use sometimes returns a nested
-    array as a JSON-encoded string (`"[{\"locator\": ...}]"`) rather than an
-    array; the first nightly run (2026-10-28) lost a whole job to one such
-    field. A string that decodes to a list is accepted as that list; anything
-    else still fails validation."""
-
-    @model_validator(mode="before")
-    @classmethod
-    def _decode_json_lists(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        decoded = dict(data)
-        for name, field in cls.model_fields.items():
-            value = decoded.get(name)
-            if get_origin(field.annotation) is list and isinstance(value, str):
-                try:
-                    parsed = json.loads(value)
-                except ValueError:
-                    continue
-                if isinstance(parsed, list):
-                    decoded[name] = parsed
-        return decoded
+class ExtractionRecord(ToolInputModel):
+    """The base of every extraction model: a list sent as a JSON string is
+    read as that list (policy_advisor.tool_input)."""
 
 
 class EvidenceRef(ExtractionRecord):

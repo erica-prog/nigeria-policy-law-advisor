@@ -135,7 +135,7 @@ def test_drafting_run_is_authority_only_and_stores_files_and_manifest(fresh_db, 
         assert "search_case_documents" not in tools and "analyze_case" not in tools
         assert (
             "Playbook: Drafting (authority only)" in system
-            and "end your reply with one JSON object" in prompt
+            and "call the submit_outline tool" in prompt
         )
         found = await tools["search_authority"].call({"question": "time to file a defence"})
         assert "Order 5 Rule 3" in found
@@ -189,3 +189,72 @@ def test_drafting_run_is_authority_only_and_stores_files_and_manifest(fresh_db, 
         "search_case_documents"
     )
     assert [t.template_id for t in list_templates()] == ["memo-default", "slides-default"]
+
+
+def _drafter(script, tmp_path, *, max_calls=12):
+    from policy_advisor.ingestion import matter_store
+
+    matter_store.set_matter_owner("case-1", "alice")
+
+    def judge(text, chunks):
+        return StepCheckOutcome(faithful=True, judge_flagged=False, judge_notes="")
+
+    return DraftingAgent(
+        _agent(script, max_calls=max_calls),
+        blob_store=LocalBlobStore(tmp_path / "blobs"),
+        judge=judge,
+    )
+
+
+def test_the_outline_handed_in_through_the_tool_is_used_and_a_rejected_one_is_retried(
+    fresh_db, tmp_path
+):
+    # The first nightly run (2026-10-28) ended all three drafts without a
+    # valid outline when the outline was JSON written into the reply.
+    replies = []
+
+    async def script(tools, system, prompt):
+        await tools["search_authority"].call({"question": "time to file a defence"})
+        bad = _outline().model_dump()
+        bad["sections"][0]["paragraphs"][0]["kind"] = "evidence"
+        replies.append(await tools["submit_outline"].call(bad))
+        good = _outline().model_dump()
+        good["sections"] = json.dumps(good["sections"])  # a list sent as a JSON string
+        replies.append(await tools["submit_outline"].call(good))
+        return "Outline submitted.", {"input_tokens": 50, "output_tokens": 5}
+
+    result = _drafter(script, tmp_path).draft(
+        "Memo on a day-40 defence.", matter_id="case-1", username="alice", kind="memo"
+    )
+    assert replies[0].startswith("Outline rejected") and "kind" in replies[0]
+    assert replies[1].startswith("Outline recorded")
+    assert result.outline == _outline()
+    assert get_artefact(result.artefact.artefact_id).docx_key
+
+
+def test_the_outline_can_be_handed_in_after_the_tool_budget_is_spent(fresh_db, tmp_path):
+    async def script(tools, system, prompt):
+        await tools["search_authority"].call({"question": "time to file a defence"})
+        refused = await tools["search_authority"].call({"question": "anything else"})
+        assert "budget exhausted" in refused
+        recorded = await tools["submit_outline"].call(_outline().model_dump())
+        assert recorded.startswith("Outline recorded")
+        return "Done.", {}
+
+    result = _drafter(script, tmp_path, max_calls=1).draft(
+        "Memo on a day-40 defence.", matter_id="case-1", username="alice", kind="memo"
+    )
+    assert result.outline.title == _outline().title
+
+
+def test_a_run_with_no_outline_says_why_without_quoting_the_reply(fresh_db, tmp_path):
+    async def script(tools, system, prompt):
+        return (
+            'Here it is: {"title": "Memo", "sections": [{"heading": "A", "paragraphs": [{"text": "He said "no" twice"}]}]}',
+            {},
+        )
+
+    with pytest.raises(outline_module.OutlineError) as caught:
+        _drafter(script, tmp_path).draft("Memo.", matter_id="case-1", username="alice", kind="memo")
+    message = str(caught.value)
+    assert "JSON error at character" in message and "He said" not in message
