@@ -65,6 +65,7 @@ and the United States; deployment infrastructure beyond stating what the image n
 | D8 | Bulk and template screens | Routine | A bulk panel (start, progress, ceiling, resume, records, findings link to the review queue) and template upload (admin, DOCX with a style block) in the plain client; browser-driven checks through the `verify-policy-advisor` skill. |
 | D9 | Cost ceilings per tenant | Routine | A monthly token ceiling per tenant on the ledger; the research agent and bulk jobs refuse to start when the month's spend has reached it; an admin raises it; shown on `/api/usage`. |
 | D10 | Documentation reconciliation | Routine | Rewrite `docs/product-brief.md` and `docs/architecture/web-mvp.md` against the code as of this phase; retire or mark superseded docs 07, 10, 12 to 15 where they describe abandoned surfaces; one pass, one commit. |
+| D11 | What the bulk extractor escalates | **Pending** | The second nightly run (§9a) showed the implementation re-reads the *whole document* with the escalation model whenever the triage record reports any risk clause. D3 of docs/30 accepted escalating *flagged clauses*. Almost every contract has a risk clause, so all 12 documents were escalated, about two thirds of the 127,000 tokens went on the second read, and the cheaper triage tier saved nothing. The confidence floor never fired either: confidence measures whether the evidence quotes are verbatim, and it was 1.0 on every record. **Recommended:** (b) below, decided on a measurement. First run the extraction step once with `BULK_ESCALATION_MODEL=claude-haiku-5-5` (escalation equal to triage, so none happens) and compare its F1 with the escalated run's. If escalation adds less than 0.02 mean F1, take (a); otherwise take (b). (a) Escalate on the confidence floor only; risk clauses flag the record for the lawyer but do not trigger a second read. Cheapest. (b) Re-read only the flagged risk clauses with the escalation model and merge them into the triage record; this matches D3 as accepted. Moderate code in `bulk/extract.py`. (c) Keep the whole-document re-read; about three times the triage cost for an unmeasured gain. |
 
 ## 4. Acceptance criteria
 
@@ -135,7 +136,9 @@ canary job in `.github/workflows/nightly.yml` reads) and one nightly run with ke
 code precedes it. Next action: merge the remaining Phase 3 commits, add the secrets, and
 let the nightly workflow run once.
 
-## 9a. The first nightly run (2026-10-28)
+## 9a. The nightly runs
+
+### The first nightly run (2026-10-28)
 
 Run 40765323626 on the merge of pull request 23 (`5587486`). Every job reported success;
 two of the three measurements P4-A needed were empty because of defects, not model
@@ -157,10 +160,66 @@ median of three runs), the CourtListener and GovInfo secrets, a US faithfulness
 measurement (the US step runs with `--skip-generation`), and a live Batch API run, which
 the nightly job does not exercise (it extracts twelve contracts on the sync path).
 
+### The second nightly run (2026-10-28)
+
+Run 40781057006 on the merge of pull request 24 (`4057014`). Every job reported success,
+and all three fixes from the first run held. The extraction job finished `done` with no
+skipped documents. All three drafts produced an outline, including one written after its
+tool budget was spent. No `cost_ledger_no_tenant` line appeared in any job.
+
+| Job | Measured |
+|---|---|
+| Nigerian golden set | identical to the first run: recall@8 1.0, MRR@8 0.875, faithfulness 11 of 12, refusals 10 of 10. g11 was unfaithful again, so it is consistent, not noise |
+| US golden set | identical to the first run: recall@8 1.0, MRR@8 0.759; generation still skipped |
+| Relevance-floor calibration | identical: margin +0.0007 |
+| Case-reasoning invariants | 3 seed cases, 0 failing |
+| Extraction F1 (12 contracts) | mean F1 0.699 under version 1 of the labels: parties 0.792, governing law 1.000, key dates 0.261, obligations 0.529, obligation evidence 1.000, defined terms 0.500, risk clauses 0.590, classification 0.917. 127,000 tokens; all 12 escalated (D11) |
+| Drafting rubric (3 drafts) | mean 0.890: ng-late-defence-memo 0.943, us-adjustment-eligibility-memo 0.871 (the judge flagged 3 sections), ng-consent-judgment-slides 0.857 |
+| Connector canaries | unchanged: two pass, CourtListener and GovInfo skipped for missing secrets |
+
+**The extraction figure is not a baseline.** Most of the lost precision came from the
+answer key, not the model. Version 1 labelled one defined term per contract (Business
+Day). The schema asks for every term a deadline depends on, and every contract also
+defines the Effective Date and the Term; the model returned 36 terms for 12 labelled. The
+key also left out the termination and governing-law clauses, both kinds the schema lists
+and both in every contract: 43 risk clauses returned for 18 labelled. It left out the
+duties that risk clauses impose ("shall indemnify", "shall not carry on any business
+competing"). Key dates were matched on the exact wording of their label, so "Termination
+notice" did not match "Notice period" for the same "ninety days". Version 2 of the set
+(this branch) labels all of these from the schema's own descriptions and matches dates
+and deadlines on the words as written. The contract text is unchanged. Version 1's 0.699
+is therefore not counted toward the D3 median. The extraction count starts at the next
+run, which uploads the predicted records (`extraction-last-run` artifact) so a scorer
+question can be settled by rescoring.
+
+**The drafting figure counts as the first of three**, with one known defect. The rubric
+checks every case against the memo headings (Question, Short answer, Authority, Analysis,
+Next steps). `instructions.yaml` says each case names its expected sections, but none
+does and the runner ignores the field. The slides case scored 0 on structure for that
+reason alone. The memos scored 0.6, two of five headings missing; the next run uploads
+the headings (`drafting-last-run` artifact) to show which. Which sections a client deck
+must have is a question for the lawyer review (D4 lists the drafting rubric criteria).
+
+Still owed for P4-A:
+
+- the extraction threshold, from three runs on version 2 of the set;
+- the drafting threshold, from two more runs;
+- D11;
+- the deck's expected sections;
+- why g11 is unfaithful in both runs;
+- the CourtListener and GovInfo secrets;
+- a US faithfulness measurement;
+- a live Batch API run.
+
+A smaller defect: `research_finished` logs `citations: 0` for every drafting run, because
+the drafts now hand in their sources through `submit_outline` rather than the final
+answer. The artefact manifest (`manifest_verified`) is the figure to read.
+
 ## 10. Implementation record
 
 | Slice | Branch | Commit | Verification | Notes |
 |---|---|---|---|---|
 | P4-A (part) | `platform/phase-4-a` | `062a9e1` cost ledger tenant for eval runners | `pytest` green; the two new tests fail with the controls removed | API and worker paths were not affected |
 | P4-A (part) | `platform/phase-4-a` | `bb9aedd` per-document extraction failures, JSON-string lists, failed parses counted | `pytest` green; oracle gate 1.0 on 48 contracts; new tests fail without the fix | contract note on `error` for a `done` job |
-| P4-A (part) | `platform/phase-4-a` | `3524c61` drafting hands in its outline through `submit_outline` | `pytest` green; new tests fail without the fix | not reproduced against the live model (no local key); the next nightly run is the check |
+| P4-A (part) | `platform/phase-4-a` | `3524c61` drafting hands in its outline through `submit_outline` | `pytest` green; new tests fail without the fix; the second nightly run drafted all three cases | one draft was handed in after its tool budget was spent, the path this fix added |
+| P4-A (part) | `platform/phase-4-a-2` | extraction set version 2, matcher on dates and deadlines as written, records and headings uploaded | `pytest` green; oracle gate 1.0 on 48 contracts; the two new tests fail on version 1 and on the old matcher | contract text unchanged; first run's 0.699 not counted toward D3 |
