@@ -399,12 +399,12 @@ Phase 2 — sources, agent loop, playbooks (weeks)
 13. [x] Playbook registry; investigations playbooks for NG and US adapted from the plugin's skills; immigration playbooks written new; behavioural routing evals. *(done: docs/29, slice P2-F)*
 
 Phase 3 — bulk analysis (weeks)
-14. [ ] Extraction schemas per document type with evidence spans; batch workers; cross-document checks; review queue; cost ceilings; extraction F1 eval on a labelled set.
+14. [x] Extraction schemas per document type with evidence spans; batch workers; cross-document checks; review queue; cost ceilings; extraction F1 eval on a labelled set. *(done: docs/33 and docs/34)*
 
 Phase 4 — artefacts (weeks)
-15. [ ] Template registry, drafting agent restricted to firm and authority tiers, DOCX/PPTX rendering, provenance manifest, review states, generated-document rubric in eval.
+15. [x] Template registry, drafting agent restricted to firm and authority tiers, DOCX/PPTX rendering, provenance manifest, review states, generated-document rubric in eval. *(done: docs/35 and docs/36)*
 
 Cross-cutting
-16. [ ] Tenancy, roles, row-level security per tenant, audit, residency and retention settings.
-17. [ ] OpenTelemetry tracing and a cost ledger per user and matter.
-18. [ ] Expand CI gates: NG and US retrieval, extraction F1, drafting rubric, connector canaries, routing evals.
+16. [x] Tenancy, roles, row-level security per tenant, audit, residency and retention settings. *(done: docs/31 and docs/37)*
+17. [x] OpenTelemetry tracing and a cost ledger per user and matter. *(done: docs/32)*
+18. [x] Expand CI gates: NG and US retrieval, extraction F1, drafting rubric, connector canaries, routing evals. *(done: docs/38)*

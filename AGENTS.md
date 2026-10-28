@@ -111,9 +111,9 @@ rewriting it.
 | Web API and browser client               | `src/policy_advisor/api/`, `web/`, `docs/17-web-app-mvp.md`     |
 | Architecture and API contracts           | `docs/architecture/web-mvp.md`, `docs/contracts/web-api.md`     |
 | Accounts (credential store), database tools | `src/policy_advisor/api/credentials.py`, `scripts/add_user.py`, `scripts/check_database.py`, `scripts/migrate_to_postgres.py` |
-| Evaluation (golden sets NG and US, routing evals, extraction F1, rubric) | `eval/`, `docs/34-extraction-eval.md` |
+| Evaluation (golden sets, routing evals, extraction F1, drafting rubric, canaries) | `eval/`, `docs/34-extraction-eval.md`, `docs/38-ci-gates-and-canaries.md` |
 | Tests                                    | `tests/`                                                        |
-| CI                                       | `.github/workflows/ci.yml`                                      |
+| CI (pull-request gates) and nightly keyed evals | `.github/workflows/ci.yml`, `.github/workflows/nightly.yml`, `docs/38-ci-gates-and-canaries.md` |
 | Design documents                         | `docs/` (numbered; start at `docs/00-overview.md`)              |
 | Role subagents                           | `.claude/agents/` (canonical; `.cursor/agents` is a symlink)    |
 | Verification skills (API smoke checks)   | `.claude/skills/` (canonical; `.cursor/skills` and `.agents/skills` are symlinks) |

@@ -1,0 +1,26 @@
+# Drafting instructions for the live nightly run (docs/38). Synthetic
+# matters; the drafts cite only the shared libraries. Each case names the
+# playbook sections the rubric expects and the minimum score it should reach
+# once a threshold is set.
+version: 1
+cases:
+  - id: ng-late-defence-memo
+    instruction: >-
+      Memo for the partner: a defence was filed on day 40 after service of the writ in the
+      Federal High Court. Is it out of time under the Federal High Court (Civil Procedure)
+      Rules, and what are the options? Cite the rules.
+    jurisdiction: ng-federal
+    kind: memo
+  - id: us-adjustment-eligibility-memo
+    instruction: >-
+      Memo for a supervising attorney: client entered on a B-2 visa, married a US citizen,
+      and asks whether she is eligible to adjust status. State the governing provisions in
+      8 CFR 245 and the USCIS Policy Manual and the bars to check.
+    jurisdiction: us-federal
+    kind: memo
+  - id: ng-consent-judgment-slides
+    instruction: >-
+      Five slides for a client briefing on what the Meta v NDPC consent judgment requires of
+      a data controller, with the paragraphs of the judgment relied on.
+    jurisdiction: ng-federal
+    kind: slides

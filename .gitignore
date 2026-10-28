@@ -20,3 +20,5 @@ data/backups/
 # OS
 .DS_Store
 eval/extraction/last_run.json
+eval/connector_canaries.json
+eval/drafting/last_run.json

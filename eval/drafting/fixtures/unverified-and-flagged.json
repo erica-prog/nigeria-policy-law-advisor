@@ -1,0 +1,129 @@
+{
+ "outline": {
+  "title": "Memo",
+  "audience": "Partner",
+  "summary": "s",
+  "sections": [
+   {
+    "heading": "Question",
+    "paragraphs": [
+     {
+      "text": "Whether a day-40 defence is out of time.",
+      "kind": "instruction",
+      "sources": [
+       "Order 1 Rule 1"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Short answer",
+    "paragraphs": [
+     {
+      "text": "Yes, absent an extension.",
+      "kind": "authority",
+      "sources": [
+       "Order 5 Rule 3"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Authority",
+    "paragraphs": [
+     {
+      "text": "A defence is filed within 30 days.",
+      "kind": "authority",
+      "sources": [
+       "Order 99 Rule 1"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Analysis",
+    "paragraphs": [
+     {
+      "text": "Day 40 is beyond the period.",
+      "kind": "authority",
+      "sources": [
+       "Order 5 Rule 3"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Next steps",
+    "paragraphs": [
+     {
+      "text": "Apply for extension of time.",
+      "kind": "authority",
+      "sources": [
+       "Order 5 Rule 4"
+      ]
+     }
+    ]
+   }
+  ],
+  "limitations": []
+ },
+ "manifest": {
+  "entries": [
+   {
+    "section": 0,
+    "paragraph": 0,
+    "proposition": "x",
+    "pinpoint": "",
+    "status": "instruction"
+   },
+   {
+    "section": 1,
+    "paragraph": 0,
+    "proposition": "x",
+    "pinpoint": "Order 5 Rule 3",
+    "status": "verified"
+   },
+   {
+    "section": 2,
+    "paragraph": 0,
+    "proposition": "x",
+    "pinpoint": "Order 99 Rule 1",
+    "status": "unverified"
+   },
+   {
+    "section": 3,
+    "paragraph": 0,
+    "proposition": "x",
+    "pinpoint": "Order 5 Rule 3",
+    "status": "verified"
+   },
+   {
+    "section": 4,
+    "paragraph": 0,
+    "proposition": "x",
+    "pinpoint": "Order 5 Rule 4",
+    "status": "verified"
+   }
+  ],
+  "judge": [
+   {
+    "section": 1,
+    "verdict": "ALLOWED"
+   },
+   {
+    "section": 2,
+    "verdict": "FLAGGED",
+    "notes": "no such rule"
+   },
+   {
+    "section": 3,
+    "verdict": "ALLOWED"
+   },
+   {
+    "section": 4,
+    "verdict": "ALLOWED"
+   }
+  ]
+ },
+ "expected_max": 0.9
+}
