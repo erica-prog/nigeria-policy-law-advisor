@@ -1,7 +1,8 @@
 # 39 — Plan: platform Phase 4: owed items, a live model evaluation harness, and the next ranked gaps
 
-**Phase:** implementation plan (planning only; nothing below is built). Same format as
-[20](20-plan-claude-layout-and-streamlit-removal.md), [22](22-plan-platform-phase-0-1.md),
+**Phase:** implementation plan (decisions accepted 2026-10-28; nothing below is built
+yet). Same format as [20](20-plan-claude-layout-and-streamlit-removal.md),
+[22](22-plan-platform-phase-0-1.md),
 [23](23-plan-platform-phase-2.md) and [30](30-plan-platform-phase-3.md). **Base:**
 `platform/phase-3-a` at `a36f49a` (Phases 0 to 3 complete as planned). **Owner:** product
 owner. **Date:** 2026-10-25.
@@ -54,11 +55,11 @@ and the United States; deployment infrastructure beyond stating what the image n
 
 | ID | Decision | Status | Alternatives and recommendation |
 |---|---|---|---|
-| D1 | How the live evaluation harness grades | **Pending (yours)** | **Recommended:** a graded-case format in the plugin's eval shape extended with `grader` (`deterministic`, `rubric`, `judge`) and `must_cite`; one runner (`eval/run_live_evals.py`) that drives the real chat and research paths through the API harness, applies the deterministic checks first, then Claude-as-judge with a fixed rubric prompt per case kind, and records per-case verdicts with the model and prompt versions. Alternative: a hosted eval product; adds a dependency and moves the record off the repository. |
-| D2 | Which model judges | **Pending (yours)** | **Recommended:** the strongest model the deployment allows (`claude-opus-5-5` through `JUDGE_MODEL`), distinct from the model under test, with the judge's prompt and version recorded on every verdict. Alternative: the same model judging itself; cheaper and systematically kinder. |
+| D1 | How the live evaluation harness grades | **Accepted 2026-10-28** | **Accepted (recommended):** a graded-case format in the plugin's eval shape extended with `grader` (`deterministic`, `rubric`, `judge`) and `must_cite`; one runner (`eval/run_live_evals.py`) that drives the real chat and research paths through the API harness, applies the deterministic checks first, then Claude-as-judge with a fixed rubric prompt per case kind, and records per-case verdicts with the model and prompt versions. Alternative: a hosted eval product; adds a dependency and moves the record off the repository. |
+| D2 | Which model judges | **Accepted 2026-10-28** | **Accepted (recommended):** the strongest model the deployment allows (`claude-opus-5-5` through `JUDGE_MODEL`), distinct from the model under test, with the judge's prompt and version recorded on every verdict. Alternative: the same model judging itself; cheaper and systematically kinder. |
 | D3 | Threshold policy | Routine | A threshold is set from the first three nightly measurements (median), recorded in the phase record with the date, and raised only by a decision recorded the same way; a drop below it fails the nightly job and opens an issue (the canary pattern). |
-| D4 | Lawyer review mechanics | **Pending (yours)** | **Recommended:** a review packet per subject (taxonomy, registry rows, playbooks, the NigeriaLII reading, the drafting rubric criteria) generated from the data files into one Markdown file under `docs/review/`, signed off by editing `reviewed_by` fields in the data, so the review leaves a diff. Alternative: an in-app review screen; more code for a one-time act. |
-| D5 | Account lifecycle | **Pending (yours)** | **Recommended:** admin-driven invitations (an admin creates the account and a one-time link; the user sets their password), password reset by the same one-time link mechanism, no public sign-up; one tenant per user stays. Alternative: self-service sign-up with email verification (docs/10 explored it); more surface for a product sold to firms. |
+| D4 | Lawyer review mechanics | **Accepted 2026-10-28** | **Accepted (recommended):** a review packet per subject (taxonomy, registry rows, playbooks, the NigeriaLII reading, the drafting rubric criteria) generated from the data files into one Markdown file under `docs/review/`, signed off by editing `reviewed_by` fields in the data, so the review leaves a diff. Alternative: an in-app review screen; more code for a one-time act. |
+| D5 | Account lifecycle | **Accepted 2026-10-28** | **Accepted (recommended):** admin-driven invitations (an admin creates the account and a one-time link; the user sets their password), password reset by the same one-time link mechanism, no public sign-up; one tenant per user stays. Alternative: self-service sign-up with email verification (docs/10 explored it); more surface for a product sold to firms. |
 | D6 | Contract clause parser | Routine | `ingestion/parse_contract.py` producing `contract_clause` locators (`Clause 12.3`, `Article 4`), classified by cue (numbered clauses with defined terms), falling back to the generic chunker; the extraction schema's locators then name clauses the lawyer recognises. |
 | D7 | Golden set growth and the embedding candidate | Routine | A second Nigerian matter (synthetic commercial dispute with evidence documents) and a firm-tier collection in the golden set; BGE-M3 evaluated with the existing harness against both sets and adopted only if recall and MRR improve on both. |
 | D8 | Bulk and template screens | Routine | A bulk panel (start, progress, ceiling, resume, records, findings link to the review queue) and template upload (admin, DOCX with a style block) in the plain client; browser-driven checks through the `verify-policy-advisor` skill. |
@@ -123,10 +124,16 @@ security review of P4-D (one-time links) and the shared-write restriction in P4-
 
 ## 9. Readiness and next action
 
-D3 and D6 to D10 are routine. D1, D2, D4 and D5 wait on you; the recommendations are one
-answer. P4-A needs the three connector secrets added to the repository and one nightly
-run; it can start now. Next action: decide D1, D2, D4 and D5, add the secrets, and let the
-nightly workflow run once.
+All ten decisions are settled: D1, D2, D4 and D5 were accepted with the recommended
+answers on 2026-10-28; D3 and D6 to D10 are routine. The plan is ready within its scope.
+
+Pull request 22 merged Phase 3 into `main` up to P3-G (`bf16790`); P3-H (`a36f49a`) and
+this plan are on `platform/phase-3-a` and reach `main` with the next pull request. P4-A
+starts once they have merged. It needs three connector secrets added to the repository
+(`COURTLISTENER_API_KEY`, `GOVINFO_API_KEY` and `REGULATIONS_GOV_API_KEY`, which the
+canary job in `.github/workflows/nightly.yml` reads) and one nightly run with keys; no
+code precedes it. Next action: merge the remaining Phase 3 commits, add the secrets, and
+let the nightly workflow run once.
 
 ## 10. Implementation record
 
