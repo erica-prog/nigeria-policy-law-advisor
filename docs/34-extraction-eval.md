@@ -70,11 +70,13 @@ one database cannot mix.
 
 ## The threshold
 
-The threshold is set by docs/39 D3: the median of three nightly measurements, recorded
-with the date, then `--fail-below` in the workflow. The first measurement (the second
-nightly run, mean F1 0.699) was taken on version 1 of the labels and does not count;
-docs/39 §9a says why. The count starts with the first run on version 2. Until three
-exist, the oracle gate stands and the real run is advisory.
+The threshold is 0.908, set on 2026-10-29 by docs/39 D3 as amended: the median of the
+first three nightly measurements on version 2 of the labels (0.949, 0.915, 0.938; median
+0.938) less 0.03. The nightly `extraction-f1` job runs with `--fail-below 0.908`; a drop
+opens or comments on an "Extraction F1 below threshold" issue (label `eval-gate`) and fails
+the job. A job that does not finish fails it too. The measurement on version 1 of the
+labels (0.699) does not count; docs/39 §9a says why. The oracle gate on pull requests is
+unchanged.
 
 ## Limits
 

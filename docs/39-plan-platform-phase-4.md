@@ -303,22 +303,47 @@ appears to carry no risk. Risk-clause recall was 0.762 (0.82 without the skipped
 drafting runs had the headings defect and this one did not; the means stayed close because
 the memo that gained on structure lost on the judge.
 
+### The fifth nightly run (2026-10-29)
+
+Run 40820503356 on the merge of pull request 27 (`e3b7ff4`). Every job reported success,
+and the drafting gate (0.855) passed on its first night. Both artifacts were read.
+
+| Job | Measured |
+|---|---|
+| Nigerian golden set | recall@8 1.0, MRR@8 0.875, refusals 10 of 10; faithfulness 11 of 12: g11 unfaithful for the fifth time |
+| US golden set | unchanged: recall@8 1.0, MRR@8 0.759; generation still skipped |
+| Relevance-floor calibration | unchanged: margin +0.0007 |
+| Case-reasoning invariants | 3 seed cases, 0 failing |
+| Extraction F1 (12 contracts, triage only) | mean F1 0.938; 69,198 tokens; all 12 extracted; no retry and no re-read |
+| Drafting rubric (3 drafts) | mean 0.927: ng-late-defence-memo 1.000, us-adjustment-eligibility-memo 0.952 (the judge flagged 3 sections), ng-consent-judgment-slides 0.829 |
+| Connector canaries | unchanged |
+
+**Neither new extraction path fired.** Every record validated on the first read, so the
+retry was not needed, and `distribution-005` reported its four risk clauses on the first
+read, so the re-read was not needed either. Both paths are proven by tests, not yet by a
+live run. One weakness shows in the records: the re-read applies only to a contract
+classified as complete, and the triage model classified `distribution-005` as "other" this
+time and `lease-006` as an excerpt in three runs out of three. A misclassified contract
+with no risk clauses would still escape the re-read. Classification F1 was 0.833 in all
+three runs on version 2.
+
+**Extraction threshold set: 0.908.** The three runs on version 2 are 0.949, 0.915 and
+0.938; the median is 0.938, and amended D3 sets the gate 0.03 below it. The nightly
+`extraction-f1` job now fails below 0.908 and opens or comments on an "Extraction F1 below
+threshold" issue.
+
 Still owed for P4-A:
 
-- the extraction threshold, from one more run on version 2 of the set;
-- the drafting threshold: 0.855 under amended D3, gated in `nightly.yml` (done on this branch);
-- a record that fails validation is retried once with where it failed (accepted
-  2026-10-29, done on this branch); confirm on the next nightly run that no contract is skipped;
-- a complete agreement with no risk clauses is flagged and re-read (accepted 2026-10-29,
-  D11 amendment, done on this branch); confirm on the next nightly run that
-  `distribution-005` reports its risk clauses;
 - the deck's expected sections;
+- classification: the triage model calls complete agreements an excerpt or "other" (F1
+  0.833 in all three runs), which also limits the no-risk re-read;
 - what a party's `role` holds: the schema's examples (Buyer, Supplier, Licensor) invite a
   category, the key holds the defined term, and neither model filled `defined_as`;
 - `BULK_ESCALATION_MODEL` is blank, so escalation falls back to `ANTHROPIC_MODEL`
-  (`claude-sonnet-4-6`), older than the triage model. Under (a) it fires only below the
-  confidence floor, which no record has reached yet;
-- why g11 is unfaithful in all four runs (g09 and g05 once each);
+  (`claude-sonnet-4-6`), older than the triage model. It fires only below the confidence
+  floor or for a complete agreement with no risk clause, neither of which has occurred on
+  a live run since D11 was decided;
+- why g11 is unfaithful in all five runs (g09 and g05 once each);
 - the CourtListener and GovInfo secrets;
 - a US faithfulness measurement;
 - a live Batch API run.
@@ -341,3 +366,4 @@ answer. The artefact manifest (`manifest_verified`) is the figure to read.
 | P4-A (part) | `platform/phase-4-a-4` | `5f0af58` drafting gated at 0.855; D3 amended to the median less 0.03; fourth run recorded | workflow YAML parses; the gate uses the runner's existing `--fail-below` | a drop opens or comments on the "Drafting rubric below threshold" issue |
 | P4-A (part) | `platform/phase-4-a-4` | `7bbce86` one corrective retry for a record that fails validation, sync and batch | `pytest` green; the new test fails with the retry removed | the batch path now charges an invalid item to the ledger |
 | P4-A (part) | `platform/phase-4-a-4` | a complete agreement with no risk clause is flagged and re-read (D11 amendment) | `pytest` green; the new test fails with the check disabled | excerpts and schedules are left alone |
+| P4-A (part) | `platform/phase-4-a-5` | extraction gated at 0.908 (D3: median 0.938 less 0.03); fifth run recorded | workflow YAML parses; the gate uses the runner's existing `--fail-below` | a drop opens or comments on the "Extraction F1 below threshold" issue |
