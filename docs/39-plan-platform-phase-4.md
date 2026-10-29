@@ -57,7 +57,7 @@ and the United States; deployment infrastructure beyond stating what the image n
 |---|---|---|---|
 | D1 | How the live evaluation harness grades | **Accepted 2026-10-28** | **Accepted (recommended):** a graded-case format in the plugin's eval shape extended with `grader` (`deterministic`, `rubric`, `judge`) and `must_cite`; one runner (`eval/run_live_evals.py`) that drives the real chat and research paths through the API harness, applies the deterministic checks first, then Claude-as-judge with a fixed rubric prompt per case kind, and records per-case verdicts with the model and prompt versions. Alternative: a hosted eval product; adds a dependency and moves the record off the repository. |
 | D2 | Which model judges | **Accepted 2026-10-28** | **Accepted (recommended):** the strongest model the deployment allows (`claude-opus-5-5` through `JUDGE_MODEL`), distinct from the model under test, with the judge's prompt and version recorded on every verdict. Alternative: the same model judging itself; cheaper and systematically kinder. |
-| D3 | Threshold policy | Routine | A threshold is set from the first three nightly measurements (median), recorded in the phase record with the date, and raised only by a decision recorded the same way; a drop below it fails the nightly job and opens an issue (the canary pattern). |
+| D3 | Threshold policy | Routine; **amended 2026-10-29** | A threshold is set from the first three nightly measurements, recorded in the phase record with the date, and raised only by a decision recorded the same way; a drop below it fails the nightly job and opens an issue (the canary pattern). **Amendment (accepted 2026-10-29):** the threshold is the median less 0.03, not the median itself. A gate at the median fails about half of ordinary nights: the three drafting means were 0.890, 0.881 and 0.885, while one draft alone moved by up to 0.09 between runs. 0.03 is about one of three drafts dropping by 0.1. Drafting: 0.855. Extraction: after its third run on version 2. |
 | D4 | Lawyer review mechanics | **Accepted 2026-10-28** | **Accepted (recommended):** a review packet per subject (taxonomy, registry rows, playbooks, the NigeriaLII reading, the drafting rubric criteria) generated from the data files into one Markdown file under `docs/review/`, signed off by editing `reviewed_by` fields in the data, so the review leaves a diff. Alternative: an in-app review screen; more code for a one-time act. |
 | D5 | Account lifecycle | **Accepted 2026-10-28** | **Accepted (recommended):** admin-driven invitations (an admin creates the account and a one-time link; the user sets their password), password reset by the same one-time link mechanism, no public sign-up; one tenant per user stays. Alternative: self-service sign-up with email verification (docs/10 explored it); more surface for a product sold to firms. |
 | D6 | Contract clause parser | Routine | `ingestion/parse_contract.py` producing `contract_clause` locators (`Clause 12.3`, `Article 4`), classified by cue (numbered clauses with defined terms), falling back to the generic chunker; the extraction schema's locators then name clauses the lawyer recognises. |
@@ -65,7 +65,7 @@ and the United States; deployment infrastructure beyond stating what the image n
 | D8 | Bulk and template screens | Routine | A bulk panel (start, progress, ceiling, resume, records, findings link to the review queue) and template upload (admin, DOCX with a style block) in the plain client; browser-driven checks through the `verify-policy-advisor` skill. |
 | D9 | Cost ceilings per tenant | Routine | A monthly token ceiling per tenant on the ledger; the research agent and bulk jobs refuse to start when the month's spend has reached it; an admin raises it; shown on `/api/usage`. |
 | D10 | Documentation reconciliation | Routine | Rewrite `docs/product-brief.md` and `docs/architecture/web-mvp.md` against the code as of this phase; retire or mark superseded docs 07, 10, 12 to 15 where they describe abandoned surfaces; one pass, one commit. |
-| D11 | What the bulk extractor escalates | **Accepted 2026-10-28: measure first. Decided 2026-10-29: (a)** | **Outcome:** the first pair (run 40809993154, §9a), rescored with the governing-law fix, gave escalated 0.944 and triage only 0.949 mean F1: escalation added −0.004, under 0.02, so (a). Implemented in `9c3e766`, which also removed the triage-only step. **Accepted (recommended):** the nightly `extraction-f1` job runs the same 12 contracts twice, once escalated and once with `--no-escalation` (no record read twice). It uploads both reports. The first such pair on version 2 of the labels decides. If escalation adds less than 0.02 mean F1, take (a); otherwise take (b). The triage-only step is removed in the commit that implements the choice. Twelve contracts make one pair a noisy measure; a gain close to 0.02 is worth a second pair before choosing. Options: (a) escalate on the confidence floor only; risk clauses flag the record for the lawyer but do not trigger a second read. Cheapest. (b) re-read only the flagged risk clauses with the escalation model and merge them into the triage record; this matches docs/30 D3 as accepted. Moderate code in `bulk/extract.py`. (c) keep the whole-document re-read; about three times the triage cost for an unmeasured gain. Background: the second nightly run (§9a) showed the implementation re-reads the *whole document* with the escalation model whenever the triage record reports any risk clause. Docs/30 D3 accepted escalating *flagged clauses*. Almost every contract has a risk clause, so all 12 were escalated and about two thirds of the 127,000 tokens went on the second read. The confidence floor never fired: confidence measures whether the evidence quotes are verbatim, and it was 1.0 on every record. |
+| D11 | What the bulk extractor escalates | **Accepted 2026-10-28: measure first. Decided 2026-10-29: (a)** | **Outcome:** the first pair (run 40809993154, §9a), rescored with the governing-law fix, gave escalated 0.944 and triage only 0.949 mean F1: escalation added −0.004, under 0.02, so (a). Implemented in `9c3e766`, which also removed the triage-only step. **Amended 2026-10-29 (accepted):** a complete agreement that reports no risk clause is flagged and re-read by the escalation model, the one miss (a) would otherwise hide (fourth nightly run, §9a). **Accepted (recommended):** the nightly `extraction-f1` job runs the same 12 contracts twice, once escalated and once with `--no-escalation` (no record read twice). It uploads both reports. The first such pair on version 2 of the labels decides. If escalation adds less than 0.02 mean F1, take (a); otherwise take (b). The triage-only step is removed in the commit that implements the choice. Twelve contracts make one pair a noisy measure; a gain close to 0.02 is worth a second pair before choosing. Options: (a) escalate on the confidence floor only; risk clauses flag the record for the lawyer but do not trigger a second read. Cheapest. (b) re-read only the flagged risk clauses with the escalation model and merge them into the triage record; this matches docs/30 D3 as accepted. Moderate code in `bulk/extract.py`. (c) keep the whole-document re-read; about three times the triage cost for an unmeasured gain. Background: the second nightly run (§9a) showed the implementation re-reads the *whole document* with the escalation model whenever the triage record reports any risk clause. Docs/30 D3 accepted escalating *flagged clauses*. Almost every contract has a risk clause, so all 12 were escalated and about two thirds of the 127,000 tokens went on the second read. The confidence floor never fired: confidence measures whether the evidence quotes are verbatim, and it was 1.0 on every record. |
 
 ## 4. Acceptance criteria
 
@@ -263,19 +263,62 @@ outline instruction in the user turn (`OUTLINE_INSTRUCTIONS`) asks for sections 
 naming them, and the answer is now a one-line reply after `submit_outline`. The deck's
 headings shared a word with one of the five memo headings; its expected sections are still for the lawyer review.
 
+### The fourth nightly run (2026-10-29)
+
+Run 40815006421 on the merge of pull request 26 (`935f4ba`). Every job reported success.
+This is the first run with D11 (a) and the named memo sections. Both artifacts were read.
+
+| Job | Measured |
+|---|---|
+| Nigerian golden set | recall@8 1.0, MRR@8 0.875, refusals 10 of 10; faithfulness 10 of 12: g11 unfaithful for the fourth time, g05 for the first (g09 passed) |
+| US golden set | unchanged: recall@8 1.0, MRR@8 0.759; generation still skipped |
+| Relevance-floor calibration | unchanged: margin +0.0007 |
+| Case-reasoning invariants | 3 seed cases, 0 failing |
+| Extraction F1 (12 contracts, triage only) | mean F1 0.915; 68,802 tokens; none re-read; one contract skipped (below) |
+| Drafting rubric (3 drafts) | mean 0.885: ng-late-defence-memo 0.856, us-adjustment-eligibility-memo 1.000, ng-consent-judgment-slides 0.800 |
+| Connector canaries | unchanged |
+
+**The memo sections held.** Both memos used Question, Short answer, Authority, one or more
+"Analysis: ..." sections and Next steps, and scored 1.0 on structure (0.4 and 0.6 before).
+The Nigerian memo lost instead on the judge, which flagged 5 of its 8 sections, and on
+grounding: 3 paragraphs had unverified or missing sources. The deck scored 0 on structure,
+as expected while no deck sections are named.
+
+**One contract was dropped for one missing field.** The triage model left `obligee` out of
+one obligation in `distribution-011`. Validation rejected the whole record, so the contract
+was skipped and scored as all misses: 3 risk clauses, 2 parties, 1 governing law and the
+rest. A lawyer would see the contract listed as not extracted. Nothing retries a record
+that fails validation, under (a) or before it.
+
+**`distribution-005` returned no risk clauses in two runs running, so it was not flagged.**
+The contract has termination, data-protection, indemnity and governing-law clauses. The
+record shows the model read them: its gaps discuss Clauses 5, 6, 7 and 9, its obligations
+include the indemnity and the data-protection duty, and its governing law is right. Only the
+`risk_clauses` list came back empty. Under (a) nothing re-reads it, and with no risk clause
+and full confidence the record is not flagged, so a lawyer would see a contract that
+appears to carry no risk. Risk-clause recall was 0.762 (0.82 without the skipped contract).
+
+**Counts toward D3.** Extraction: 0.915 is the second of three (0.949, 0.915). Drafting:
+0.885 is the third of three (0.890, 0.881, 0.885), so its median is 0.885. The first two
+drafting runs had the headings defect and this one did not; the means stayed close because
+the memo that gained on structure lost on the judge.
+
 Still owed for P4-A:
 
-- the extraction threshold, from two more runs on version 2 of the set;
-- the drafting threshold, from one more run;
-- the memo headings: named in the outline instruction for memos on `platform/phase-4-a-3`;
-  confirm on the next nightly run that both memos score 1.0 on structure;
+- the extraction threshold, from one more run on version 2 of the set;
+- the drafting threshold: 0.855 under amended D3, gated in `nightly.yml` (done on this branch);
+- a record that fails validation is retried once with where it failed (accepted
+  2026-10-29, done on this branch); confirm on the next nightly run that no contract is skipped;
+- a complete agreement with no risk clauses is flagged and re-read (accepted 2026-10-29,
+  D11 amendment, done on this branch); confirm on the next nightly run that
+  `distribution-005` reports its risk clauses;
 - the deck's expected sections;
 - what a party's `role` holds: the schema's examples (Buyer, Supplier, Licensor) invite a
   category, the key holds the defined term, and neither model filled `defined_as`;
 - `BULK_ESCALATION_MODEL` is blank, so escalation falls back to `ANTHROPIC_MODEL`
   (`claude-sonnet-4-6`), older than the triage model. Under (a) it fires only below the
   confidence floor, which no record has reached yet;
-- why g11 is unfaithful in all three runs, and g09 in this one;
+- why g11 is unfaithful in all four runs (g09 and g05 once each);
 - the CourtListener and GovInfo secrets;
 - a US faithfulness measurement;
 - a live Batch API run.
@@ -295,3 +338,6 @@ answer. The artefact manifest (`manifest_verified`) is the figure to read.
 | P4-A (part) | `platform/phase-4-a-3` | `5517c20` governing law matched on the law named | `pytest` green; the new test fails on the old scorer | rescores the third run's triage-only 0.876 to 0.949 |
 | P4-A (part) | `platform/phase-4-a-3` | `9c3e766` D11 (a): re-read only below the confidence floor; nightly triage-only step removed | `pytest` green; the sync job test fails on the previous code | risk clauses still flag a record for review |
 | P4-A (part) | `platform/phase-4-a-3` | memo sections named in the drafting prompt (`drafting_prompt`) | `pytest` green; the new test fails for memo and both on the previous prompt | decks unchanged until the lawyer review; the next nightly run confirms |
+| P4-A (part) | `platform/phase-4-a-4` | `5f0af58` drafting gated at 0.855; D3 amended to the median less 0.03; fourth run recorded | workflow YAML parses; the gate uses the runner's existing `--fail-below` | a drop opens or comments on the "Drafting rubric below threshold" issue |
+| P4-A (part) | `platform/phase-4-a-4` | `7bbce86` one corrective retry for a record that fails validation, sync and batch | `pytest` green; the new test fails with the retry removed | the batch path now charges an invalid item to the ledger |
+| P4-A (part) | `platform/phase-4-a-4` | a complete agreement with no risk clause is flagged and re-read (D11 amendment) | `pytest` green; the new test fails with the check disabled | excerpts and schedules are left alone |

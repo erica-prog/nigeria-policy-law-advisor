@@ -32,7 +32,13 @@ Every document is first read by the triage model (`BULK_TRIAGE_MODEL`, the cheap
 one). A record below the confidence floor is read again by the escalation model, and the
 better record is kept. A record that reports risk clauses is flagged for the lawyer's review
 but not read again (docs/39 D11: on the paired nightly run the second read added no F1 for
-about 1.8 times the tokens). Before every model call the
+about 1.8 times the tokens). One exception: a complete agreement (classification starting
+"complete") that reports no risk clause is flagged and read again by the escalation model.
+Every complete contract has at least a termination or governing-law clause, so an empty list
+means the read missed them, and without the exception the record would be neither flagged
+nor re-read. On the third and fourth nightly runs `distribution-005` came back that way while
+its own gaps and obligations discussed four risk clauses. An excerpt or a schedule may truly
+have none and is left alone. Before every model call the
 worker estimates the call (document characters over four plus an output allowance) and
 pauses the job when the estimate would cross the ceiling: status `paused_ceiling`, no
 failure, no spend. A lawyer resumes it with a higher ceiling (`POST .../resume`). Spend is
@@ -46,12 +52,19 @@ ended, then runs escalations synchronously. Small jobs call the model per docume
 
 ## When one document fails
 
-A document that cannot be read, or whose record does not validate, costs that document
-and not the job. The worker logs `bulk_document_failed`, moves to the next document, and
+A record that does not validate is retried once: the model is told where it failed
+(field paths and the reason, such as `obligations.1.obligee: Field required`, never the
+values) and reads the document again (`bulk_record_retried`). A batch item that does not
+validate gets the same retry, run synchronously. The fourth nightly run (docs/39 §9a) lost a
+whole contract to one obligation without an obligee before this retry existed.
+
+A document that cannot be read, or whose record still does not validate, costs that
+document and not the job. The worker logs `bulk_document_failed`, moves to the next document, and
 finishes the job as `done` with `error` naming what was skipped
 (`"1 of 12 documents not extracted: lease.docx (reason)"`). The job is `failed` only when
 no document could be extracted. A failed escalation keeps the triage record. A call whose
-record did not validate still spent tokens, and they count toward the ceiling.
+record did not validate still spent tokens, and they count toward the ceiling and the cost
+ledger, in the batch path too.
 
 Tool use sometimes sends a nested array as a JSON-encoded string. Every extraction model
 inherits `ExtractionRecord`, which reads a string that decodes to a list as that list and
