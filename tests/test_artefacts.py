@@ -258,3 +258,24 @@ def test_a_run_with_no_outline_says_why_without_quoting_the_reply(fresh_db, tmp_
         _drafter(script, tmp_path).draft("Memo.", matter_id="case-1", username="alice", kind="memo")
     message = str(caught.value)
     assert "JSON error at character" in message and "He said" not in message
+
+
+@pytest.mark.parametrize("kind", ["memo", "both", "slides"])
+def test_a_memo_run_names_the_playbook_sections_in_the_outline_instruction(
+    fresh_db, tmp_path, kind
+):
+    # The third nightly run (docs/39 §9a): the headings reached only the
+    # system prompt, and both memos used topic headings instead.
+    prompts = []
+
+    async def script(tools, system, prompt):
+        prompts.append(prompt)
+        await tools["submit_outline"].call(_outline().model_dump())
+        return "Done.", {}
+
+    _drafter(script, tmp_path).draft("Memo.", matter_id="case-1", username="alice", kind=kind)
+    named = "these headings: " + "; ".join(DRAFT_PLAYBOOK.output_sections)
+    if kind == "slides":
+        assert named not in prompts[0], "a deck's sections await the lawyer review"
+    else:
+        assert named in prompts[0] and prompts[0].index("submit_outline") < prompts[0].index(named)

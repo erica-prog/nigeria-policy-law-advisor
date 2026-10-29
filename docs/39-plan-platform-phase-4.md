@@ -267,8 +267,8 @@ Still owed for P4-A:
 
 - the extraction threshold, from two more runs on version 2 of the set;
 - the drafting threshold, from one more run;
-- the memo headings: name the playbook's sections in the outline instruction for memos,
-  then confirm on a nightly run;
+- the memo headings: named in the outline instruction for memos on `platform/phase-4-a-3`;
+  confirm on the next nightly run that both memos score 1.0 on structure;
 - the deck's expected sections;
 - what a party's `role` holds: the schema's examples (Buyer, Supplier, Licensor) invite a
   category, the key holds the defined term, and neither model filled `defined_as`;
@@ -294,3 +294,4 @@ answer. The artefact manifest (`manifest_verified`) is the figure to read.
 | P4-A (part) | `platform/phase-4-a-2` | extraction set version 2, matcher on dates and deadlines as written, records and headings uploaded | `pytest` green; oracle gate 1.0 on 48 contracts; the two new tests fail on version 1 and on the old matcher | contract text unchanged; first run's 0.699 not counted toward D3 |
 | P4-A (part) | `platform/phase-4-a-3` | `5517c20` governing law matched on the law named | `pytest` green; the new test fails on the old scorer | rescores the third run's triage-only 0.876 to 0.949 |
 | P4-A (part) | `platform/phase-4-a-3` | `9c3e766` D11 (a): re-read only below the confidence floor; nightly triage-only step removed | `pytest` green; the sync job test fails on the previous code | risk clauses still flag a record for review |
+| P4-A (part) | `platform/phase-4-a-3` | memo sections named in the drafting prompt (`drafting_prompt`) | `pytest` green; the new test fails for memo and both on the previous prompt | decks unchanged until the lawyer review; the next nightly run confirms |
