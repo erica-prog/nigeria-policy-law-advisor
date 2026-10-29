@@ -143,7 +143,8 @@ class Settings(BaseSettings):
     # Bulk analysis (docs/33). Triage with the cheaper model; a record below the
     # confidence floor is re-read by the escalation model (blank =
     # ANTHROPIC_MODEL), and one that reports risk clauses is flagged for review
-    # only (docs/39 D11); jobs over BULK_BATCH_THRESHOLD documents use the
+    # only (docs/39 D11), except a complete agreement with none, which is flagged
+    # and re-read; jobs over BULK_BATCH_THRESHOLD documents use the
     # Batch API; a job stops at its token ceiling and waits to be resumed.
     bulk_triage_model: str = "claude-haiku-5-5"
     bulk_escalation_model: str = ""

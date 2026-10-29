@@ -15,6 +15,7 @@ from policy_advisor.bulk.extract import (
     ModelResult,
     correction_note,
     field_errors,
+    lacks_risk_clauses,
     run_pending,
 )
 from policy_advisor.bulk.jobs import (
@@ -245,6 +246,41 @@ def test_sync_job_re_reads_only_low_confidence_records_and_writes_findings(matte
     )
 
 
+def test_a_complete_agreement_with_no_risk_clause_is_flagged_and_re_read(matter):
+    """docs/39 §9a: distribution-005 came back with no risk clauses in two
+    nightly runs although its record discussed four, so under D11 (a) it was
+    neither flagged nor re-read. An excerpt may truly have none."""
+    table = BulkJobTable()
+    excerpt = _record("amendment.docx", days="sixty").model_copy(
+        update={"classification": "excerpt"}
+    )
+    caller = FakeCaller(
+        {
+            ("supply.docx", "triage-model"): _record("supply.docx"),  # complete, no risk clause
+            ("supply.docx", "strong-model"): _record("supply.docx", risk=True),
+            ("amendment.docx", None): excerpt,
+        }
+    )
+    job = _job(table, ["supply.docx", "amendment.docx"])
+    final = Extractor(settings=_settings(), caller=caller, jobs=table).run(job)
+    assert final.status == "done" and final.done_documents == 2
+    reads = [(m, s) for m, s in caller.calls if s == "contract"]
+    assert reads == [
+        ("triage-model", "contract"),
+        ("triage-model", "contract"),
+        ("strong-model", "contract"),
+    ], "only the complete agreement is read twice"
+    records = {r["source_document"]: r for r in list_extractions("case-1", schema_id="contract")}
+    assert records["supply.docx"]["model"] == "strong-model"
+    assert records["supply.docx"]["record"]["risk_clauses"]
+    assert records["supply.docx"]["flagged"] is True
+    assert records["amendment.docx"]["model"] == "triage-model"
+    assert records["amendment.docx"]["flagged"] is False
+    assert lacks_risk_clauses(_record("supply.docx").model_dump())
+    assert not lacks_risk_clauses(excerpt.model_dump())
+    assert not lacks_risk_clauses({"classification": "complete executed agreement"})
+
+
 def test_ceiling_pauses_the_job_without_spending_and_resume_continues_it(matter):
     table = BulkJobTable()
     caller = FakeCaller(
@@ -317,8 +353,8 @@ def test_batch_backend_submits_once_polls_then_stores_results(matter):
     table = BulkJobTable()
     client = FakeBatchClient(
         {
-            "supply.docx": _record("supply.docx"),
-            "amendment.docx": _record("amendment.docx", days="sixty"),
+            "supply.docx": _record("supply.docx", risk=True),
+            "amendment.docx": _record("amendment.docx", days="sixty", risk=True),
         }
     )
     caller = FakeCaller({})
@@ -385,7 +421,7 @@ def test_one_unparseable_document_is_skipped_named_and_charged_not_the_whole_job
     table = BulkJobTable()
     inner = FakeCaller(
         {
-            ("supply.docx", None): _record("supply.docx"),
+            ("supply.docx", None): _record("supply.docx", risk=True),
             ("amendment.docx", None): _record("amendment.docx", days="sixty"),
         }
     )
@@ -427,8 +463,8 @@ def test_a_record_that_fails_validation_is_retried_once_with_where_it_failed(mat
     table = BulkJobTable()
     inner = FakeCaller(
         {
-            ("supply.docx", None): _record("supply.docx"),
-            ("amendment.docx", None): _record("amendment.docx", days="sixty"),
+            ("supply.docx", None): _record("supply.docx", risk=True),
+            ("amendment.docx", None): _record("amendment.docx", days="sixty", risk=True),
         }
     )
 
@@ -459,10 +495,14 @@ def test_a_record_that_fails_validation_is_retried_once_with_where_it_failed(mat
 
     # The Batch API path: an invalid item gets the same retry, run sync.
     table = BulkJobTable()
-    bad = _record("amendment.docx", days="sixty").model_dump()
+    bad = _record("amendment.docx", days="sixty", risk=True).model_dump()
     del bad["obligations"][0]["obligee"]
-    client = FakeBatchClient({"supply.docx": _record("supply.docx"), "amendment.docx": bad})
-    retried = FakeCaller({("amendment.docx", None): _record("amendment.docx", days="sixty")})
+    client = FakeBatchClient(
+        {"supply.docx": _record("supply.docx", risk=True), "amendment.docx": bad}
+    )
+    retried = FakeCaller(
+        {("amendment.docx", None): _record("amendment.docx", days="sixty", risk=True)}
+    )
     extractor = Extractor(
         settings=_settings(bulk_escalation_model="triage-model"),
         caller=retried,

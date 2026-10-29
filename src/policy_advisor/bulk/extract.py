@@ -6,6 +6,8 @@ triage model; a record whose confidence is below the floor is re-extracted
 by the escalation model and the better record is kept. A record that reports
 risk clauses is flagged for the lawyer's review but not re-read: the paired
 nightly run showed the second read added no F1 for about 1.8 times the tokens.
+A complete agreement that reports no risk clause is flagged and re-read: the
+empty list is the one miss the flag would otherwise hide.
 Ceiling: before each call the worker estimates the call's tokens (document
 characters over four plus the output allowance); when the estimate would
 cross the ceiling the job pauses rather than fails, and a lawyer resumes it
@@ -106,6 +108,19 @@ def correction_note(fields: str) -> str:
 
 class CeilingReached(RuntimeError):
     pass
+
+
+def lacks_risk_clauses(record: dict[str, Any]) -> bool:
+    """A complete agreement that reports no risk clause. Every complete
+    contract has at least a termination or governing-law clause, so an empty
+    list means the read missed them: on the third and fourth nightly runs the
+    triage model returned none for a contract whose gaps and obligations
+    discussed four (docs/39 §9a). Excerpts and schedules may have none."""
+    return (
+        "risk_clauses" in record
+        and not record["risk_clauses"]
+        and str(record.get("classification") or "").lower().startswith("complete")
+    )
 
 
 def estimate_tokens(text: str) -> int:
@@ -369,7 +384,11 @@ class Extractor:
     ) -> dict[str, Any]:
         spans, confidence = verify_record(record, chunks)
         data = record.model_dump()
-        flagged = confidence < self._settings.bulk_flag_confidence or bool(data.get("risk_clauses"))
+        flagged = (
+            confidence < self._settings.bulk_flag_confidence
+            or bool(data.get("risk_clauses"))
+            or lacks_risk_clauses(data)
+        )
         save_extraction(
             matter_id=job.matter_id,
             source_document=source_document,
@@ -556,10 +575,10 @@ class Extractor:
         if escalation and escalation != job.triage_model:
             for document, row in rows.items():
                 before = float(row.get("confidence", 0))
-                if (
-                    before < self._settings.bulk_flag_confidence
-                    and row.get("model") == job.triage_model
-                ):
+                second_read = before < self._settings.bulk_flag_confidence or lacks_risk_clauses(
+                    row.get("record") or {}
+                )
+                if second_read and row.get("model") == job.triage_model:
                     try:
                         outcome = self.extract_document(job, document, escalation, schema)
                     except CeilingReached:

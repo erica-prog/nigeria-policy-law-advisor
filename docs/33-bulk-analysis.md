@@ -32,7 +32,13 @@ Every document is first read by the triage model (`BULK_TRIAGE_MODEL`, the cheap
 one). A record below the confidence floor is read again by the escalation model, and the
 better record is kept. A record that reports risk clauses is flagged for the lawyer's review
 but not read again (docs/39 D11: on the paired nightly run the second read added no F1 for
-about 1.8 times the tokens). Before every model call the
+about 1.8 times the tokens). One exception: a complete agreement (classification starting
+"complete") that reports no risk clause is flagged and read again by the escalation model.
+Every complete contract has at least a termination or governing-law clause, so an empty list
+means the read missed them, and without the exception the record would be neither flagged
+nor re-read. On the third and fourth nightly runs `distribution-005` came back that way while
+its own gaps and obligations discussed four risk clauses. An excerpt or a schedule may truly
+have none and is left alone. Before every model call the
 worker estimates the call (document characters over four plus an output allowance) and
 pauses the job when the estimate would cross the ceiling: status `paused_ceiling`, no
 failure, no spend. A lawyer resumes it with a higher ceiling (`POST .../resume`). Spend is
