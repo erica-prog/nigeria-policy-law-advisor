@@ -74,6 +74,28 @@ def test_dates_and_deadlines_match_on_the_words_as_written_not_the_label():
     assert scores.fields["key_dates"].fp == scores.fields["key_dates"].fn == len(label["key_dates"])
 
 
+def test_governing_law_matches_on_the_law_named_not_the_sentence_around_it():
+    """The schema asks for the governing law "as written". On the third
+    nightly run the triage model returned the whole clause ("This Agreement is
+    governed by the laws of England and Wales.") for 7 of 12 contracts and was
+    scored wrong on every one (docs/39 §9a)."""
+    label = _label()
+    law = label["governing_law"]
+    for written in (f"This Agreement is governed by {law}.", law.upper(), law.replace("the ", "")):
+        scores = Scores()
+        score_document(scores, dict(label, governing_law=written), label)
+        assert scores.fields["governing_law"].f1 == 1.0, written
+    for wrong in (
+        "the laws of Mars",
+        "",
+        "the laws of Wales" if "England" in law else "the laws of England",
+    ):
+        scores = Scores()
+        score_document(scores, dict(label, governing_law=wrong), label)
+        field = scores.fields["governing_law"]
+        assert field.tp == 0 and field.fn == 1 and field.fp == (1 if wrong else 0), wrong
+
+
 def test_scorer_is_forgiving_of_articles_and_suffixes_and_strict_on_substance():
     label = _label()
     scores = Scores()

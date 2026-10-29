@@ -32,7 +32,9 @@ it (docs/39 §9a). Version 2 changed the labels only; the contract text is the s
 ## The score
 
 Eight fields, each precision, recall and F1 over item sets, micro-averaged across
-documents (`eval/extraction/score.py`): parties, governing law, key dates
+documents (`eval/extraction/score.py`): parties, governing law (agrees when either
+text contains the other as whole words, because the schema asks for it "as written" and a
+model may return the whole clause), key dates
 matched on the date text alone (a label such as "Notice period" is a description; the
 date as written is what a lawyer relies on), obligations (matched on obligor, deadline
 and half the obligation's words), obligation evidence (the

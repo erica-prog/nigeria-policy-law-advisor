@@ -6,7 +6,7 @@ then micro-averaged across the documents of a run:
 | field | an item is |
 |---|---|
 | parties | (normalised name, normalised role) |
-| governing_law | the normalised law text (one item per document) |
+| governing_law | the normalised law text (one item per document), matched when either contains the other as whole words, so "This Agreement is governed by the laws of England and Wales." agrees with "the laws of England and Wales" and "the laws of Wales" does not |
 | key_dates | the normalised date text, matched one to one when either text contains the other as whole words; the label is a description, not the substance |
 | obligations | (normalised obligor, normalised deadline, obligation words), matched when the obligors agree, the deadlines agree (one contains the other as whole words, or both are empty) and the obligation text shares at least half its words |
 | obligation_evidence | of the obligations matched, the labelled locator is among the predicted evidence locators |
@@ -155,9 +155,12 @@ def _match_obligations(
 def score_document(scores: Scores, predicted: dict[str, Any], labelled: dict[str, Any]) -> None:
     scores.documents += 1
     scores.fields["parties"].add_sets(_party_items(predicted), _party_items(labelled))
-    scores.fields["governing_law"].add_sets(
-        {norm(predicted.get("governing_law"))} - {""}, {norm(labelled.get("governing_law"))} - {""}
-    )
+    law, wanted = predicted.get("governing_law"), labelled.get("governing_law")
+    if norm(law) and norm(wanted) and agrees(law, wanted):
+        scores.fields["governing_law"].tp += 1
+    else:
+        scores.fields["governing_law"].fp += 1 if norm(law) else 0
+        scores.fields["governing_law"].fn += 1 if norm(wanted) else 0
     predicted_dates = [d for d in predicted.get("key_dates", []) if norm(d.get("date_text"))]
     labelled_dates = [d for d in labelled.get("key_dates", []) if norm(d.get("date_text"))]
     dates = scores.fields["key_dates"]
