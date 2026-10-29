@@ -8,7 +8,7 @@
 | Workflow | Runs on | Needs | Jobs |
 |---|---|---|---|
 | `ci.yml` | every pull request, push to main | nothing beyond package installs and a local Postgres | lint, mypy, the unit tests, the Node connector tests, routing evals, the extraction oracle, the drafting rubric on recorded fixtures |
-| `nightly.yml` | 03:00 UTC daily, push to main, by hand | the repository's Anthropic key, connector credentials, the network | retrieval golden sets (NG and US), case-reasoning invariants, extraction F1 (advisory), live drafting scored by the rubric (advisory), connector canaries |
+| `nightly.yml` | 03:00 UTC daily, push to main, by hand | the repository's Anthropic key, connector credentials, the network | retrieval golden sets (NG and US), case-reasoning invariants, extraction F1 (advisory), live drafting scored by the rubric (gated at 0.855), connector canaries |
 
 A pull request is gated only by what a contributor can run locally without a key. The
 keyed runs still happen on every push to main, so a regression reaches the log the
@@ -28,8 +28,11 @@ Two ways to run it. `--fixtures` scores recorded artefacts under
 a good memo must reach 1.0 and each defective one must stay under its maximum. That
 is the pull-request gate: a scorer that stops noticing a defect fails the build. The
 live run drafts the instructions in `eval/drafting/instructions.yaml` with the real
-models against the shared libraries and scores the artefacts; it is nightly and
-advisory until a threshold is set from what the models achieve.
+models against the shared libraries and scores the artefacts. It runs nightly and fails
+below a mean of 0.855 (docs/39 D3: the median of the first three runs, 0.885, less 0.03).
+A drop opens an issue titled "Drafting rubric below threshold" with the `eval-gate` label,
+or comments on the open one, with the last lines of the run, and then fails the job: a
+drafting drop is a defect to fix, unlike a source being down.
 
 ## Connector canaries
 
@@ -47,8 +50,9 @@ something to know, not a defect in this repository.
 
 ## What was decided and what is still open
 
-- The extraction F1 threshold and the drafting threshold are set from the first nightly
-  measurements and recorded in docs/30, as planned. Both runs are advisory until then.
+- The drafting threshold is 0.855, set on 2026-10-29 (docs/39 D3). The extraction F1
+  threshold follows the same rule after its third run on version 2 of the set; that run
+  is advisory until then.
 - The canary issue needs the three connector secrets in the repository to probe the
   hosted servers; without them those rows are skipped, not failed.
 - Locally: `uv run python -m eval.run_drafting_eval --fixtures`,
