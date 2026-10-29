@@ -13,6 +13,8 @@ from policy_advisor.bulk.extract import (
     ExtractionParseError,
     Extractor,
     ModelResult,
+    correction_note,
+    field_errors,
     run_pending,
 )
 from policy_advisor.bulk.jobs import (
@@ -132,9 +134,11 @@ class FakeCaller:
         self.records = records
         self.tokens = tokens
         self.calls = []
+        self.corrections = []
 
-    def __call__(self, *, model, schema, document_text, api_key):
+    def __call__(self, *, model, schema, document_text, api_key, correction=None):
         self.calls.append((model, schema.schema_id))
+        self.corrections.append(correction)
         if schema.schema_id == "obligation_conflicts":
             return ModelResult(
                 record=checks.ObligationConflicts(
@@ -303,7 +307,7 @@ class FakeBatchClient:
                 "type": "succeeded",
                 "input_tokens": 700,
                 "output_tokens": 100,
-                "tool_input": record.model_dump(),
+                "tool_input": record.model_dump() if hasattr(record, "model_dump") else record,
             }
             for name, record in self.records.items()
         ] + [{"custom_id": "ghost.docx", "type": "errored", "error": "no such document"}]
@@ -386,7 +390,7 @@ def test_one_unparseable_document_is_skipped_named_and_charged_not_the_whole_job
         }
     )
 
-    def caller(*, model, schema, document_text, api_key):
+    def caller(*, model, schema, document_text, api_key, correction=None):
         if schema.schema_id == "contract" and "sixty days" in document_text:
             raise ExtractionParseError(
                 "the model returned no parseable record: governing_law_evidence",
@@ -402,13 +406,85 @@ def test_one_unparseable_document_is_skipped_named_and_charged_not_the_whole_job
     assert "governing_law_evidence" in final.error
     stored = {r["source_document"] for r in list_extractions("case-1", schema_id="contract")}
     assert stored == {"supply.docx"}
-    assert final.spent_tokens == 1200 + 1000  # the failed call still counts toward the ceiling
+    # Both failed calls (the read and its one retry) count toward the ceiling.
+    assert final.spent_tokens == 1200 + 2 * 1000
+
+
+def test_a_record_that_fails_validation_is_retried_once_with_where_it_failed(matter):
+    """The fourth nightly run (docs/39 §9a) skipped a whole contract because
+    one obligation came back without an obligee."""
+    with pytest.raises(ValidationError) as caught:
+        ContractExtraction.model_validate(
+            {
+                "classification": "complete executed agreement",
+                "obligations": [{"obligor": "the Buyer", "obligation": "pay SECRET-TEXT"}],
+            }
+        )
+    fields = field_errors(caught.value)
+    assert "obligations.0.obligee: Field required" in fields and "SECRET-TEXT" not in fields
+    assert fields in correction_note(fields)
+
+    table = BulkJobTable()
+    inner = FakeCaller(
+        {
+            ("supply.docx", None): _record("supply.docx"),
+            ("amendment.docx", None): _record("amendment.docx", days="sixty"),
+        }
+    )
+
+    def caller(*, model, schema, document_text, api_key, correction=None):
+        if schema.schema_id == "contract" and "sixty days" in document_text and not correction:
+            raise ExtractionParseError(
+                "the model returned no parseable record",
+                input_tokens=900,
+                output_tokens=100,
+                fields="obligations.1.obligee: Field required",
+            )
+        return inner(
+            model=model,
+            schema=schema,
+            document_text=document_text,
+            api_key=api_key,
+            correction=correction,
+        )
+
+    job = _job(table, ["supply.docx", "amendment.docx"])
+    final = Extractor(
+        settings=_settings(bulk_escalation_model="triage-model"), caller=caller, jobs=table
+    ).run(job)
+    assert final.status == "done" and final.done_documents == 2 and not final.error
+    [note] = [c for c in inner.corrections if c]
+    assert "obligations.1.obligee: Field required" in note and "sixty" not in note
+    assert final.spent_tokens == 1000 + 2 * 1200 + 350  # the failed read is charged too
+
+    # The Batch API path: an invalid item gets the same retry, run sync.
+    table = BulkJobTable()
+    bad = _record("amendment.docx", days="sixty").model_dump()
+    del bad["obligations"][0]["obligee"]
+    client = FakeBatchClient({"supply.docx": _record("supply.docx"), "amendment.docx": bad})
+    retried = FakeCaller({("amendment.docx", None): _record("amendment.docx", days="sixty")})
+    extractor = Extractor(
+        settings=_settings(bulk_escalation_model="triage-model"),
+        caller=retried,
+        jobs=table,
+        batch_client_factory=lambda key: client,
+    )
+    job = _job(table, ["supply.docx", "amendment.docx"], backend="batch")
+    extractor.run(job)
+    extractor.run(table.get(job.job_id))
+    final = extractor.run(table.get(job.job_id))
+    assert final.status == "done" and final.done_documents == 2
+    assert [c for c in retried.corrections if c] and "obligee" in retried.corrections[0]
+    assert {r["source_document"] for r in list_extractions("case-1")} == {
+        "supply.docx",
+        "amendment.docx",
+    }
 
 
 def test_a_job_where_no_document_could_be_extracted_fails(matter):
     table = BulkJobTable()
 
-    def caller(*, model, schema, document_text, api_key):
+    def caller(*, model, schema, document_text, api_key, correction=None):
         raise ExtractionParseError("the model returned no parseable record", input_tokens=10)
 
     job = _job(table, ["supply.docx", "amendment.docx"])
