@@ -1,9 +1,11 @@
 """The extractor (docs/33): one document in, one verified record out, under
 the job's ceiling, with the cheaper model first.
 
-Tiering (docs/30 D3): every document is extracted by the triage model; a
-record whose confidence is below the floor, or that reports risk clauses,
-is re-extracted by the escalation model and the better record is kept.
+Tiering (docs/30 D3, docs/39 D11): every document is extracted by the
+triage model; a record whose confidence is below the floor is re-extracted
+by the escalation model and the better record is kept. A record that reports
+risk clauses is flagged for the lawyer's review but not re-read: the paired
+nightly run showed the second read added no F1 for about 1.8 times the tokens.
 Ceiling: before each call the worker estimates the call's tokens (document
 characters over four plus the output allowance); when the estimate would
 cross the ceiling the job pauses rather than fails, and a lawyer resumes it
@@ -462,8 +464,11 @@ class Extractor:
         escalation = job.escalation_model
         if escalation and escalation != job.triage_model:
             for document, row in rows.items():
-                if row.get("flagged") and row.get("model") == job.triage_model:
-                    before = float(row.get("confidence", 0))
+                before = float(row.get("confidence", 0))
+                if (
+                    before < self._settings.bulk_flag_confidence
+                    and row.get("model") == job.triage_model
+                ):
                     try:
                         outcome = self.extract_document(job, document, escalation, schema)
                     except CeilingReached:
