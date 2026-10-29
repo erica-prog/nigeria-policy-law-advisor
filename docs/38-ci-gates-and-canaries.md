@@ -8,7 +8,7 @@
 | Workflow | Runs on | Needs | Jobs |
 |---|---|---|---|
 | `ci.yml` | every pull request, push to main | nothing beyond package installs and a local Postgres | lint, mypy, the unit tests, the Node connector tests, routing evals, the extraction oracle, the drafting rubric on recorded fixtures |
-| `nightly.yml` | 03:00 UTC daily, push to main, by hand | the repository's Anthropic key, connector credentials, the network | retrieval golden sets (NG and US), case-reasoning invariants, extraction F1 (advisory), live drafting scored by the rubric (gated at 0.855), connector canaries |
+| `nightly.yml` | 03:00 UTC daily, push to main, by hand | the repository's Anthropic key, connector credentials, the network | retrieval golden sets (NG and US), case-reasoning invariants, extraction F1 (gated at 0.908), live drafting scored by the rubric (gated at 0.855), connector canaries |
 
 A pull request is gated only by what a contributor can run locally without a key. The
 keyed runs still happen on every push to main, so a regression reaches the log the
@@ -50,9 +50,9 @@ something to know, not a defect in this repository.
 
 ## What was decided and what is still open
 
-- The drafting threshold is 0.855, set on 2026-10-29 (docs/39 D3). The extraction F1
-  threshold follows the same rule after its third run on version 2 of the set; that run
-  is advisory until then.
+- The drafting threshold is 0.855 and the extraction F1 threshold 0.908, both set on
+  2026-10-29 (docs/39 D3: the median of three runs less 0.03). A drop in either opens or
+  comments on its own `eval-gate` issue and fails the job.
 - The canary issue needs the three connector secrets in the repository to probe the
   hosted servers; without them those rows are skipped, not failed.
 - Locally: `uv run python -m eval.run_drafting_eval --fixtures`,
