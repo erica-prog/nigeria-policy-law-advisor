@@ -116,3 +116,16 @@ def test_oracle_scores_one_through_the_pipeline(fresh_db):
     assert scores.documents == 6 and scores.mean_f1 == 1.0
     assert report["mean_confidence"] == 1.0, "every labelled quote is found in its clause"
     assert OracleCaller(documents)._by_first_clause
+
+
+def test_the_triage_only_run_reads_no_record_twice(fresh_db):
+    """docs/39 D11 compares an escalated run with a triage-only one over the
+    same contracts in the same database; each must score its own records."""
+    documents = load_set()[:4]
+    _, escalated = run(documents, oracle=True)
+    assert escalated["escalated"] == 4, "every contract reports a risk clause"
+    scores, triage = run(documents, oracle=True, escalate=False)
+    assert triage["escalation_model"] == triage["triage_model"]
+    assert triage["escalated"] == 0 and triage["missing_records"] == []
+    assert {r["model"] for r in triage["records"].values()} == {triage["triage_model"]}
+    assert scores.documents == 4 and scores.mean_f1 == 1.0

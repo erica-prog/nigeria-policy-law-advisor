@@ -181,6 +181,19 @@ jobs:
           path: eval/extraction/last_run.json
           if-no-files-found: ignore
           retention-days: 30
+      # docs/39 D11: the same contracts with no second read, so the F1 escalation
+      # adds can be weighed against its tokens. Remove when D11 is decided.
+      - name: Triage only (no escalation)
+        run: uv run python -m eval.run_extraction_eval --limit 12 --no-escalation --out eval/extraction/last_run_triage.json
+        continue-on-error: true
+      - name: Keep the triage-only scores and records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extraction-last-run-triage
+          path: eval/extraction/last_run_triage.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   drafting-rubric:
     # docs/38: live drafts against the shared libraries, scored by the rubric.
