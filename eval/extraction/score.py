@@ -7,8 +7,8 @@ then micro-averaged across the documents of a run:
 |---|---|
 | parties | (normalised name, normalised role) |
 | governing_law | the normalised law text (one item per document) |
-| key_dates | (normalised label, normalised date text) |
-| obligations | (normalised obligor, normalised deadline, obligation words), matched when obligor and deadline agree and the obligation text shares at least half its words |
+| key_dates | the normalised date text, matched one to one when either text contains the other as whole words; the label is a description, not the substance |
+| obligations | (normalised obligor, normalised deadline, obligation words), matched when the obligors agree, the deadlines agree (one contains the other as whole words, or both are empty) and the obligation text shares at least half its words |
 | obligation_evidence | of the obligations matched, the labelled locator is among the predicted evidence locators |
 | defined_terms | the normalised term |
 | risk_clauses | the normalised kind |
@@ -106,12 +106,30 @@ def _party_items(record: dict[str, Any]) -> set[tuple[str, str]]:
     }
 
 
-def _date_items(record: dict[str, Any]) -> set[tuple[str, str]]:
-    return {
-        (norm(d.get("label")), norm(d.get("date_text")))
-        for d in record.get("key_dates", [])
-        if norm(d.get("label"))
-    }
+def agrees(predicted: Any, labelled: Any) -> bool:
+    """Equal after normalisation, or one contains the other as whole words, so
+    "within thirty Business Days of receipt" agrees with "thirty Business
+    Days", while "thirty days" does not agree with "thirty Business Days".
+    Empty agrees only with empty."""
+    a, b = norm(predicted), norm(labelled)
+    if not a or not b:
+        return a == b
+    return f" {a} " in f" {b} " or f" {b} " in f" {a} "
+
+
+def _match_dates(predicted: list[dict[str, Any]], labelled: list[dict[str, Any]]) -> int:
+    """Greedy one-to-one matches on the date text alone. The model and the
+    label may describe the same period differently ("Notice period",
+    "Termination notice"); what the lawyer relies on is the date as written."""
+    unused = [d for d in predicted if norm(d.get("date_text"))]
+    matched = 0
+    for label in labelled:
+        for candidate in unused:
+            if agrees(candidate.get("date_text"), label.get("date_text")):
+                unused.remove(candidate)
+                matched += 1
+                break
+    return matched
 
 
 def _match_obligations(
@@ -124,7 +142,7 @@ def _match_obligations(
         label_words = _words(label.get("obligation"))
         for candidate in unused:
             same_obligor = norm(candidate.get("obligor")) == norm(label.get("obligor"))
-            same_deadline = norm(candidate.get("deadline")) == norm(label.get("deadline"))
+            same_deadline = agrees(candidate.get("deadline"), label.get("deadline"))
             words = _words(candidate.get("obligation"))
             overlap = len(words & label_words) / max(1, len(label_words))
             if same_obligor and same_deadline and overlap >= 0.5:
@@ -140,7 +158,13 @@ def score_document(scores: Scores, predicted: dict[str, Any], labelled: dict[str
     scores.fields["governing_law"].add_sets(
         {norm(predicted.get("governing_law"))} - {""}, {norm(labelled.get("governing_law"))} - {""}
     )
-    scores.fields["key_dates"].add_sets(_date_items(predicted), _date_items(labelled))
+    predicted_dates = [d for d in predicted.get("key_dates", []) if norm(d.get("date_text"))]
+    labelled_dates = [d for d in labelled.get("key_dates", []) if norm(d.get("date_text"))]
+    dates = scores.fields["key_dates"]
+    matched = _match_dates(predicted_dates, labelled_dates)
+    dates.tp += matched
+    dates.fp += len(predicted_dates) - matched
+    dates.fn += len(labelled_dates) - matched
     pairs = _match_obligations(predicted.get("obligations", []), labelled.get("obligations", []))
     obligations = scores.fields["obligations"]
     obligations.tp += len(pairs)

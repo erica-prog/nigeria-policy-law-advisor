@@ -87,6 +87,7 @@ def score_live() -> list[dict[str, Any]]:
                         "id": case["id"],
                         "artefact_id": result.artefact.artefact_id,
                         "run_id": result.artefact.run_id,
+                        "headings": [section.heading for section in result.outline.sections],
                         **scored.as_dict(),
                     }
                 )

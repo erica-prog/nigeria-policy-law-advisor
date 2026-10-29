@@ -7,6 +7,14 @@ Each document is a list of clauses with `Clause N` locators and a label
 record in the contract schema's shape (bulk/schemas.py), derived from the
 same choices that wrote the text, so the labels are exact by construction.
 
+The labels follow the schema's own descriptions, not a narrower reading of
+them: every risk-clause kind the schema lists that the text contains
+(termination and governing law included), every obligation a "shall" clause
+imposes (risk clauses included), and every defined term a deadline depends
+on (the Effective Date and the Term as well as Business Day). Version 2 of
+the set; version 1 labelled only some of these and scored correct answers as
+false positives (docs/39 §9a, the second nightly run).
+
 Usage:
   uv run python -m eval.extraction.generate_set            # writes contracts.json
   uv run python -m eval.extraction.generate_set --count 60 --seed 11
@@ -95,6 +103,36 @@ RISKS = {
     "assignment": "Neither party may assign this Agreement without the prior written consent of the other party.",
     "data protection": "Each party shall process personal data under this Agreement in accordance with the Nigeria Data Protection Act 2023.",
     "dispute resolution": "Any dispute arising from this Agreement shall be referred to arbitration seated in Lagos under the Arbitration and Mediation Act 2023.",
+}
+# The risk clauses that impose a duty on a party: (obligor, obligee,
+# obligation, deadline), with {a} and {b} the two roles. Limitation of
+# liability, change of control, assignment and dispute resolution restrict or
+# permit; they oblige no one to perform.
+RISK_OBLIGATIONS = {
+    "indemnity": (
+        "the {a}",
+        "the {b}",
+        "indemnify the {b} against all losses arising from any breach of this Agreement by the {a}",
+        "",
+    ),
+    "exclusivity": (
+        "the {b}",
+        "the {a}",
+        "not purchase goods or services of the kind supplied under this Agreement from any person other than the {a}",
+        "during the Term",
+    ),
+    "non-compete": (
+        "the {b}",
+        "the {a}",
+        "not carry on any business competing with the {a} in the Territory",
+        "for twelve months after termination",
+    ),
+    "data protection": (
+        "each party",
+        "the other party",
+        "process personal data under this Agreement in accordance with the Nigeria Data Protection Act 2023",
+        "",
+    ),
 }
 
 
@@ -238,9 +276,15 @@ def make_contract(index: int, rng: random.Random) -> dict:
                 ],
             }
         )
-    add(
-        "Clause 5",
-        f"Either party may terminate this Agreement on {notice_days} days written notice delivered to the registered office of the other party.",
+    termination = f"Either party may terminate this Agreement on {notice_days} days written notice delivered to the registered office of the other party."
+    add("Clause 5", termination)
+    risk_rows.append(
+        {
+            "kind": "termination",
+            "summary": termination,
+            "mutual": True,
+            "evidence": [{"locator": "Clause 5", "quote": termination[:80]}],
+        }
     )
     key_dates.append(
         {
@@ -261,6 +305,24 @@ def make_contract(index: int, rng: random.Random) -> dict:
                 "evidence": [{"locator": f"Clause {locator_n}", "quote": text[:80]}],
             }
         )
+        if risk in RISK_OBLIGATIONS:
+            obligor, obligee, duty, deadline = (
+                part.format(a=role_a, b=role_b) for part in RISK_OBLIGATIONS[risk]
+            )
+            obligations.append(
+                {
+                    "obligor": obligor,
+                    "obligee": obligee,
+                    "obligation": duty,
+                    "trigger": "",
+                    "deadline": deadline,
+                    "conditions": "",
+                    "consequence": "",
+                    "recurring": False,
+                    "survives_termination": True if risk == "non-compete" else None,
+                    "evidence": [{"locator": f"Clause {locator_n}", "quote": text[:80]}],
+                }
+            )
         locator_n += 1
     if survival:
         add(
@@ -270,6 +332,14 @@ def make_contract(index: int, rng: random.Random) -> dict:
         locator_n += 1
     add(f"Clause {locator_n}", f"This Agreement is governed by {law}.")
     law_locator = f"Clause {locator_n}"
+    risk_rows.append(
+        {
+            "kind": "governing law",
+            "summary": f"This Agreement is governed by {law}.",
+            "mutual": None,
+            "evidence": [{"locator": law_locator, "quote": f"governed by {law}"}],
+        }
+    )
 
     record = {
         "classification": "complete executed agreement",
@@ -294,12 +364,29 @@ def make_contract(index: int, rng: random.Random) -> dict:
         "obligations": obligations,
         "defined_terms": [
             {
+                "term": "Effective Date",
+                "definition": effective,
+                "evidence": [
+                    {"locator": "Clause 1", "quote": f"made on {effective} (the Effective Date)"}
+                ],
+            },
+            {
                 "term": "Business Day",
                 "definition": business_day,
                 "evidence": [
                     {"locator": "Clause 2", "quote": f"Business Day means {business_day}"}
                 ],
-            }
+            },
+            {
+                "term": "Term",
+                "definition": f"the period of {term} from the Effective Date",
+                "evidence": [
+                    {
+                        "locator": "Clause 2",
+                        "quote": f"The Term means the period of {term} from the Effective Date",
+                    }
+                ],
+            },
         ],
         "risk_clauses": risk_rows,
         "gaps": ["the obligation to pay invoices has no stated deadline"] if omit_deadline else [],
@@ -322,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     documents = [make_contract(i + 1, rng) for i in range(args.count)]
     args.out.write_text(
         json.dumps(
-            {"version": 1, "seed": args.seed, "documents": documents}, indent=1, ensure_ascii=False
+            {"version": 2, "seed": args.seed, "documents": documents}, indent=1, ensure_ascii=False
         )
         + "\n",
         encoding="utf-8",

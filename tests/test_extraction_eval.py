@@ -4,7 +4,8 @@ degraded answer loses points in the fields it got wrong."""
 
 import copy
 
-from eval.extraction.score import FIELDS, Scores, norm, score_document
+from eval.extraction.generate_set import RISK_OBLIGATIONS
+from eval.extraction.score import FIELDS, Scores, agrees, norm, score_document
 from eval.run_extraction_eval import OracleCaller, load_set, run
 
 
@@ -22,6 +23,55 @@ def test_set_is_large_and_labelled_with_evidence():
         locators = {c["locator"] for c in document["clauses"]}
         for obligation in labels["obligations"]:
             assert all(e["locator"] in locators for e in obligation["evidence"])
+
+
+def test_labels_follow_the_schema_descriptions_not_a_narrower_reading():
+    """Version 1 labelled one defined term, no termination or governing-law
+    clause and no duty a risk clause imposes, so a model that followed the
+    schema was scored wrong for it (docs/39 §9a, second nightly run)."""
+    for document in load_set():
+        labels = document["labels"]
+        texts = {c["locator"]: c["text"] for c in document["clauses"]}
+        kinds = {r["kind"] for r in labels["risk_clauses"]}
+        assert {"termination", "governing law"} <= kinds
+        assert {"Effective Date", "Business Day", "Term"} <= {
+            t["term"] for t in labels["defined_terms"]
+        }
+        duty_locators = {e["locator"] for o in labels["obligations"] for e in o["evidence"]}
+        for risk in labels["risk_clauses"]:
+            if risk["kind"] in RISK_OBLIGATIONS:
+                assert risk["evidence"][0]["locator"] in duty_locators, (document["name"], risk)
+        for field in ("obligations", "defined_terms", "risk_clauses", "key_dates"):
+            for item in labels[field]:
+                for e in item["evidence"]:
+                    assert e["quote"] in texts[e["locator"]], (document["name"], field, e)
+
+
+def test_dates_and_deadlines_match_on_the_words_as_written_not_the_label():
+    label = _label()
+    predicted = copy.deepcopy(label)
+    for date in predicted["key_dates"]:
+        date["label"] = "Described differently"
+        date["date_text"] = f"within {date['date_text']} as stated"
+    for obligation in predicted["obligations"]:
+        if obligation["deadline"]:
+            obligation["deadline"] = f"{obligation['deadline']} of the Agreement"
+    scores = Scores()
+    score_document(scores, predicted, label)
+    assert scores.fields["key_dates"].f1 == 1.0
+    assert scores.fields["obligations"].f1 == 1.0
+
+    assert agrees("within thirty Business Days of receipt", "thirty Business Days")
+    assert not agrees("thirty days", "thirty Business Days")
+    assert not agrees("thirty days", "one hundred and thirty-one days")
+    assert agrees("", "") and not agrees("", "thirty days")
+
+    wrong = copy.deepcopy(label)
+    wrong["key_dates"] = [dict(d, date_text="1 January 1999") for d in wrong["key_dates"]]
+    scores = Scores()
+    score_document(scores, wrong, label)
+    assert scores.fields["key_dates"].tp == 0
+    assert scores.fields["key_dates"].fp == scores.fields["key_dates"].fn == len(label["key_dates"])
 
 
 def test_scorer_is_forgiving_of_articles_and_suffixes_and_strict_on_substance():
@@ -46,9 +96,12 @@ def test_scorer_is_forgiving_of_articles_and_suffixes_and_strict_on_substance():
     score_document(scores, degraded, label)
     assert scores.fields["parties"].recall == 0.5 and scores.fields["parties"].precision == 1.0
     assert scores.fields["governing_law"].f1 == 0.0
-    assert scores.fields["obligations"].tp == 1 and scores.fields["obligations"].fn == 1
+    wanted = len(label["obligations"])
+    assert scores.fields["obligations"].tp == wanted - 1
+    assert scores.fields["obligations"].fn == 1
+    # Of the matched obligations, only the one moved to Clause 99 misses its locator.
     assert (
-        scores.fields["obligation_evidence"].tp == 0
+        scores.fields["obligation_evidence"].tp == wanted - 2
         and scores.fields["obligation_evidence"].fn == 1
     )
     assert scores.fields["risk_clauses"].f1 == 1.0 and scores.fields["classification"].f1 == 1.0
@@ -63,3 +116,16 @@ def test_oracle_scores_one_through_the_pipeline(fresh_db):
     assert scores.documents == 6 and scores.mean_f1 == 1.0
     assert report["mean_confidence"] == 1.0, "every labelled quote is found in its clause"
     assert OracleCaller(documents)._by_first_clause
+
+
+def test_the_triage_only_run_reads_no_record_twice(fresh_db):
+    """docs/39 D11 compares an escalated run with a triage-only one over the
+    same contracts in the same database; each must score its own records."""
+    documents = load_set()[:4]
+    _, escalated = run(documents, oracle=True)
+    assert escalated["escalated"] == 4, "every contract reports a risk clause"
+    scores, triage = run(documents, oracle=True, escalate=False)
+    assert triage["escalation_model"] == triage["triage_model"]
+    assert triage["escalated"] == 0 and triage["missing_records"] == []
+    assert {r["model"] for r in triage["records"].values()} == {triage["triage_model"]}
+    assert scores.documents == 4 and scores.mean_f1 == 1.0
