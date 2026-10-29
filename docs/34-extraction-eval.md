@@ -32,7 +32,9 @@ it (docs/39 §9a). Version 2 changed the labels only; the contract text is the s
 ## The score
 
 Eight fields, each precision, recall and F1 over item sets, micro-averaged across
-documents (`eval/extraction/score.py`): parties, governing law, key dates
+documents (`eval/extraction/score.py`): parties, governing law (agrees when either
+text contains the other as whole words, because the schema asks for it "as written" and a
+model may return the whole clause), key dates
 matched on the date text alone (a label such as "Notice period" is a description; the
 date as written is what a lawyer relies on), obligations (matched on obligor, deadline
 and half the obligation's words), obligation evidence (the
@@ -60,11 +62,11 @@ server's key, scores the records, and writes `eval/extraction/last_run.json`. Th
 holds the scores and every predicted record, so a scorer or label question can be settled
 by rescoring rather than by another paid run. The nightly `extraction-f1` job runs it on
 12 documents, uploads that file as the `extraction-last-run` artifact (kept 30 days) and
-reports; it does not yet fail the build. Until docs/39 D11 is decided, the job also runs
-the same contracts with `--no-escalation`, which sets the escalation model to the triage
-model so that no record is read twice. That run writes `last_run_triage.json` and uploads it
-as `extraction-last-run-triage`. Each run scores only its own job's records, so the two
-cannot mix.
+reports; it does not yet fail the build. `--no-escalation` sets the escalation model to
+the triage model so that no record is read twice, and `--out` names the report file; the
+pair is how docs/39 D11 was measured, and how it would be measured again (for example after
+the escalation model changes). Each run scores only its own job's records, so two runs in
+one database cannot mix.
 
 ## The threshold
 

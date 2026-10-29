@@ -74,6 +74,28 @@ def test_dates_and_deadlines_match_on_the_words_as_written_not_the_label():
     assert scores.fields["key_dates"].fp == scores.fields["key_dates"].fn == len(label["key_dates"])
 
 
+def test_governing_law_matches_on_the_law_named_not_the_sentence_around_it():
+    """The schema asks for the governing law "as written". On the third
+    nightly run the triage model returned the whole clause ("This Agreement is
+    governed by the laws of England and Wales.") for 7 of 12 contracts and was
+    scored wrong on every one (docs/39 §9a)."""
+    label = _label()
+    law = label["governing_law"]
+    for written in (f"This Agreement is governed by {law}.", law.upper(), law.replace("the ", "")):
+        scores = Scores()
+        score_document(scores, dict(label, governing_law=written), label)
+        assert scores.fields["governing_law"].f1 == 1.0, written
+    for wrong in (
+        "the laws of Mars",
+        "",
+        "the laws of Wales" if "England" in law else "the laws of England",
+    ):
+        scores = Scores()
+        score_document(scores, dict(label, governing_law=wrong), label)
+        field = scores.fields["governing_law"]
+        assert field.tp == 0 and field.fn == 1 and field.fp == (1 if wrong else 0), wrong
+
+
 def test_scorer_is_forgiving_of_articles_and_suffixes_and_strict_on_substance():
     label = _label()
     scores = Scores()
@@ -118,14 +140,15 @@ def test_oracle_scores_one_through_the_pipeline(fresh_db):
     assert OracleCaller(documents)._by_first_clause
 
 
-def test_the_triage_only_run_reads_no_record_twice(fresh_db):
-    """docs/39 D11 compares an escalated run with a triage-only one over the
+def test_two_runs_in_one_database_each_score_their_own_records(fresh_db):
+    """docs/39 D11 was measured by an escalated and a triage-only run over the
     same contracts in the same database; each must score its own records."""
     documents = load_set()[:4]
-    _, escalated = run(documents, oracle=True)
-    assert escalated["escalated"] == 4, "every contract reports a risk clause"
+    _, first = run(documents, oracle=True)
+    assert first["escalated"] == 0, "risk clauses flag a record but no longer re-read it"
     scores, triage = run(documents, oracle=True, escalate=False)
     assert triage["escalation_model"] == triage["triage_model"]
     assert triage["escalated"] == 0 and triage["missing_records"] == []
     assert {r["model"] for r in triage["records"].values()} == {triage["triage_model"]}
+    assert all(r["flagged"] for r in triage["records"].values()), "every contract has a risk clause"
     assert scores.documents == 4 and scores.mean_f1 == 1.0

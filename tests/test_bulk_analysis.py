@@ -202,13 +202,15 @@ def test_evidence_quotes_are_located_in_their_chunks_and_confidence_follows(matt
 # --- the job ---
 
 
-def test_sync_job_extracts_every_document_escalates_flagged_ones_and_writes_findings(matter):
+def test_sync_job_re_reads_only_low_confidence_records_and_writes_findings(matter):
+    """docs/39 D11 (a): a risk clause flags the record for the lawyer but does
+    not buy a second read; only a record below the confidence floor does."""
     table = BulkJobTable()
     caller = FakeCaller(
         {
             ("supply.docx", "triage-model"): _record(
                 "supply.docx", risk=True
-            ),  # risk clause: flagged for escalation
+            ),  # risk clause: flagged for review, not re-read
             ("supply.docx", "strong-model"): _record("supply.docx", risk=True),
             ("amendment.docx", "triage-model"): _record(
                 "amendment.docx", days="sixty", bad_quote=True
@@ -220,7 +222,7 @@ def test_sync_job_extracts_every_document_escalates_flagged_ones_and_writes_find
     final = Extractor(settings=_settings(), caller=caller, jobs=table).run(job)
     assert final.status == "done" and final.done_documents == 2
     models = [m for m, s in caller.calls if s == "contract"]
-    assert models == ["triage-model", "triage-model", "strong-model", "strong-model"]
+    assert models == ["triage-model", "triage-model", "strong-model"]
     assert [s for _, s in caller.calls].count("obligation_conflicts") == 1
     records = {r["source_document"]: r for r in list_extractions("case-1", schema_id="contract")}
     assert (
@@ -228,7 +230,8 @@ def test_sync_job_extracts_every_document_escalates_flagged_ones_and_writes_find
         and float(records["amendment.docx"]["confidence"]) == 1.0
     )
     assert records["supply.docx"]["flagged"] is True  # risk clauses stay flagged for review
-    assert final.spent_tokens == 4 * 1200 + 350
+    assert records["supply.docx"]["model"] == "triage-model"
+    assert final.spent_tokens == 3 * 1200 + 350
     kinds = {f["kind"] for f in list_findings("case-1")}
     assert kinds == {"date_conflict", "obligation_conflict"}
     date_conflict = next(f for f in list_findings("case-1") if f["kind"] == "date_conflict")

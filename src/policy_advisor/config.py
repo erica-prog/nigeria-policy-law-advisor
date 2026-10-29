@@ -140,11 +140,11 @@ class Settings(BaseSettings):
     #   {"claude-sonnet-4-6": {"input_per_million": 3.0, "output_per_million": 15.0}}
     # Empty leaves estimated_usd NULL in the ledger; token counts are always kept.
     otel_exporter: str = "none"
-    # Bulk analysis (docs/33). Triage with the cheaper model, escalate flagged
-    # documents to the escalation model (blank = ANTHROPIC_MODEL); jobs over
-    # BULK_BATCH_THRESHOLD documents use the Batch API; a job stops at its
-    # token ceiling and waits to be resumed; a record below the confidence
-    # floor is flagged for escalation and review.
+    # Bulk analysis (docs/33). Triage with the cheaper model; a record below the
+    # confidence floor is re-read by the escalation model (blank =
+    # ANTHROPIC_MODEL), and one that reports risk clauses is flagged for review
+    # only (docs/39 D11); jobs over BULK_BATCH_THRESHOLD documents use the
+    # Batch API; a job stops at its token ceiling and waits to be resumed.
     bulk_triage_model: str = "claude-haiku-5-5"
     bulk_escalation_model: str = ""
     bulk_batch_threshold: int = 50

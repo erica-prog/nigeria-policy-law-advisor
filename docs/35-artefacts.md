@@ -38,6 +38,13 @@ position, or the failing fields) without quoting the reply. The runner allows fo
 beyond the tool budget so a run that spends its budget can still hand in. The first
 nightly run (2026-10-28) ended all three drafts without an outline before this change.
 
+A memo's sections are named in the same instruction (`drafting_prompt`): Question, Short
+answer, Authority, Analysis and Next steps, from the drafting playbook's `output_sections`,
+with an analysis in several parts split into sections headed "Analysis: " and the part's
+subject. The playbook block of the system prompt names them too, but as headings for "the
+answer", and on the third nightly run both memos used topic headings instead. A deck gets
+no named sections until the lawyer review settles what a deck must hold (docs/39).
+
 ## The provenance manifest
 
 One entry per cited source per paragraph, in the plugin's fields: proposition,

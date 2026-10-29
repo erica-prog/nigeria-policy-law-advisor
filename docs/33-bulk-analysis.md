@@ -29,8 +29,10 @@ zero. Schemas are versioned and a record is stored with the version that produce
 ## Tiering and the ceiling (D3)
 
 Every document is first read by the triage model (`BULK_TRIAGE_MODEL`, the cheaper
-one). A record below the confidence floor, or one that reports risk clauses, is read again
-by the escalation model, and the better record is kept. Before every model call the
+one). A record below the confidence floor is read again by the escalation model, and the
+better record is kept. A record that reports risk clauses is flagged for the lawyer's review
+but not read again (docs/39 D11: on the paired nightly run the second read added no F1 for
+about 1.8 times the tokens). Before every model call the
 worker estimates the call (document characters over four plus an output allowance) and
 pauses the job when the estimate would cross the ceiling: status `paused_ceiling`, no
 failure, no spend. A lawyer resumes it with a higher ceiling (`POST .../resume`). Spend is

@@ -93,6 +93,23 @@ DRAFT_PLAYBOOK = Playbook(
 )
 
 
+def drafting_prompt(instruction: str, kind: str) -> str:
+    """The user turn of a drafting run. A memo's sections are named here, in
+    the outline instruction the model acts on: on the third nightly run
+    (docs/39 §9a) they sat only in the system prompt, as headings for "the
+    answer", and both memos used topic headings instead. A deck gets none
+    until the lawyer review settles what a deck must hold."""
+    prompt = f"{instruction}\n\n{OUTLINE_INSTRUCTIONS}"
+    if kind in ("memo", "both"):
+        prompt += (
+            "\n\nGive the outline these sections, in this order and with these headings: "
+            + "; ".join(DRAFT_PLAYBOOK.output_sections)
+            + ". Where the analysis has several parts, give each part its own section in place"
+            ' of the single Analysis section, headed "Analysis: " and the part\'s subject.'
+        )
+    return prompt
+
+
 @dataclass
 class DraftResult:
     artefact: ArtefactRecord
@@ -165,7 +182,7 @@ class DraftingAgent:
         ):
             submitted: list[Outline] = []
             result = await self._agent.arun(
-                f"{instruction}\n\n{OUTLINE_INSTRUCTIONS}",
+                drafting_prompt(instruction, kind),
                 matter_id=matter_id,
                 username=username,
                 jurisdiction=jurisdiction,
