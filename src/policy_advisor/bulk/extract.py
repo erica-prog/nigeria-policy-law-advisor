@@ -110,16 +110,22 @@ class CeilingReached(RuntimeError):
     pass
 
 
+PARTIAL_DOCUMENTS = ("excerpt", "schedule")
+
+
 def lacks_risk_clauses(record: dict[str, Any]) -> bool:
-    """A complete agreement that reports no risk clause. Every complete
-    contract has at least a termination or governing-law clause, so an empty
-    list means the read missed them: on the third and fourth nightly runs the
-    triage model returned none for a contract whose gaps and obligations
-    discussed four (docs/39 §9a). Excerpts and schedules may have none."""
+    """A contract that reports no risk clause. Every whole contract has at
+    least a termination or governing-law clause, so an empty list means the
+    read missed them: on the third and fourth nightly runs the triage model
+    returned none for a contract whose gaps and obligations discussed four
+    (docs/39 §9a). An excerpt or a single schedule may truly have none. The
+    classification is not otherwise trusted here: the same model called that
+    contract "other" and a complete lease an excerpt (fifth run)."""
+    kind = str(record.get("classification") or "").lower()
     return (
         "risk_clauses" in record
         and not record["risk_clauses"]
-        and str(record.get("classification") or "").lower().startswith("complete")
+        and not any(partial in kind for partial in PARTIAL_DOCUMENTS)
     )
 
 

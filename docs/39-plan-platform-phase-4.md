@@ -336,7 +336,8 @@ Still owed for P4-A:
 
 - the deck's expected sections;
 - classification: the triage model calls complete agreements an excerpt or "other" (F1
-  0.833 in all three runs), which also limits the no-risk re-read;
+  0.833 in all three runs). The no-risk re-read no longer asks for "complete"; it skips
+  only an excerpt or a schedule (`platform/phase-4-a-6`);
 - what a party's `role` holds: the schema's examples (Buyer, Supplier, Licensor) invite a
   category, the key holds the defined term, and neither model filled `defined_as`;
 - `BULK_ESCALATION_MODEL` is blank, so escalation falls back to `ANTHROPIC_MODEL`
@@ -351,7 +352,8 @@ Still owed for P4-A:
   on `;`, and the prompt asks for one locator per bracket. Confirm on the next nightly
   run that faithfulness is 12 of 12;
 - the CourtListener and GovInfo secrets;
-- a US faithfulness measurement;
+- a US faithfulness measurement: the nightly US step runs generation from
+  `platform/phase-4-a-6`; read the first figure from the next run;
 - a live Batch API run.
 
 A smaller defect: `research_finished` logs `citations: 0` for every drafting run, because
