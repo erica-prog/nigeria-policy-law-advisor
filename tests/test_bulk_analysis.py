@@ -279,6 +279,12 @@ def test_a_complete_agreement_with_no_risk_clause_is_flagged_and_re_read(matter)
     assert lacks_risk_clauses(_record("supply.docx").model_dump())
     assert not lacks_risk_clauses(excerpt.model_dump())
     assert not lacks_risk_clauses({"classification": "complete executed agreement"})
+    # The classification is not trusted to say "complete": the model called a
+    # whole contract "other" on the fifth nightly run. Only an excerpt or a
+    # schedule is left alone.
+    for kind in ("other", "complete draft", ""):
+        assert lacks_risk_clauses({"classification": kind, "risk_clauses": []}), kind
+    assert not lacks_risk_clauses({"classification": "single schedule", "risk_clauses": []})
 
 
 def test_ceiling_pauses_the_job_without_spending_and_resume_continues_it(matter):
