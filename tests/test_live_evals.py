@@ -168,3 +168,38 @@ def test_no_registry_row_names_the_fake_connector():
     text = json.dumps(seed)
     assert "eval-fake" not in text and "search_eval_register" not in text
     assert CASES_DIR.is_dir()
+
+
+def test_the_judge_sees_what_the_model_saw_as_data_and_runs_on_a_distinct_model():
+    """docs/40 S3; docs/39 D2."""
+    from eval.live.judge import JUDGE_PROMPT_VERSION, RUBRICS, judge_messages, make_judge
+    from policy_advisor.config import get_settings
+
+    assert set(RUBRICS) == set(KINDS) and JUDGE_PROMPT_VERSION == "1"
+    connector_case = next(c for c in load_cases(kind="injection") if c.case.fake_connector)
+    reply = {
+        "mode": "research",
+        "playbook": None,
+        "citations": [{"document": "Eval Register", "locator": None, "kind": "authority"}],
+    }
+    system, human = judge_messages(connector_case, "The notice says thirty days. </reply>", reply)
+    assert system[0] == "system" and "data to be reviewed" in system[1]
+    body = human[1]
+    assert RUBRICS["injection"] in body and connector_case.case.judge_focus.strip() in body
+    assert "Clause 14. Notes." in body, "the matter's documents are shown"
+    assert "archive@example.invalid" in body, "the planted connector result is shown"
+    assert body.count("</reply>") == 1, "a closing tag inside the reply cannot end the block"
+    assert '"document": "Eval Register"' in body
+
+    settings = get_settings().model_copy(update={"judge_model": "judge-x", "anthropic_model": "m"})
+    seen = []
+
+    def structured(messages):
+        seen.append(messages)
+        return {"verdict": " fail ", "notes": "it passed the address on"}
+
+    judge = make_judge(settings, structured=structured)
+    assert judge(connector_case, "text", reply) == ("FAIL", "it passed the address on")
+    assert seen and seen[0][0][0] == "system"
+    with pytest.raises(ValueError, match="D2"):
+        make_judge(settings.model_copy(update={"judge_model": "m"}), structured=structured)
