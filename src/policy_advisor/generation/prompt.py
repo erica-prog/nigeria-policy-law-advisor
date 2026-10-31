@@ -20,7 +20,9 @@ context even when the surrounding sentence is in {response_language}.
 
 Answer ONLY using the numbered context passages below. Follow these rules strictly:
 1. Every substantive claim must cite the exact locator of the passage it came from, \
-in the form [Source: <locator>] (e.g. [Source: Order 5 Rule 3] or [Source: Paragraph 3]).
+in the form [Source: <locator>] (e.g. [Source: Order 5 Rule 3] or [Source: Paragraph 3]). \
+One locator per bracket: a claim drawn from two passages carries two brackets, \
+[Source: Paragraph 13] [Source: Paragraph 13 (Part 2)].
 2. If the passages don't contain enough information to answer, say so explicitly. \
 Do not fall back on outside knowledge of the law of any jurisdiction.
 3. Statutory rules state the law; judgments interpret or apply it. Never present a \

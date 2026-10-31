@@ -336,19 +336,25 @@ Still owed for P4-A:
 
 - the deck's expected sections;
 - classification: the triage model calls complete agreements an excerpt or "other" (F1
-  0.833 in all three runs), which also limits the no-risk re-read;
+  0.833 in all three runs). The no-risk re-read no longer asks for "complete"; it skips
+  only an excerpt or a schedule (`platform/phase-4-a-6`);
 - what a party's `role` holds: the schema's examples (Buyer, Supplier, Licensor) invite a
   category, the key holds the defined term, and neither model filled `defined_as`;
 - `BULK_ESCALATION_MODEL` is blank, so escalation falls back to `ANTHROPIC_MODEL`
   (`claude-sonnet-4-6`), older than the triage model. It fires only below the confidence
   floor or for a complete agreement with no risk clause, neither of which has occurred on
   a live run since D11 was decided;
-- why g11 is unfaithful in all five runs (g09 and g05 once each);
+- g11, unfaithful in all five runs: found and fixed on `platform/phase-4-a-6`. The answer
+  cited `[Source: Paragraph 13; Paragraph 13 (Part 2)]`, both parts retrieved, and the
+  deterministic check read the bracket as one locator that matched nothing; the same
+  shape (`Paragraph 12; Paragraph 12 (Part 2)`) explains g09 and g05 on their one bad
+  night each. The check, the API's citation resolver and the client now split a bracket
+  on `;`, and the prompt asks for one locator per bracket. Confirm on the next nightly
+  run that faithfulness is 12 of 12;
 - the CourtListener and GovInfo secrets;
-- a US faithfulness measurement;
-- a live Batch API run;
-- P4-B: the first `live-evals` nightly run (docs/40), its pass rate by kind, how many
-  injection cases were `not_exercised`, and the judge's cost.
+- a US faithfulness measurement: the nightly US step runs generation from
+  `platform/phase-4-a-6`; read the first figure from the next run;
+- a live Batch API run.
 
 A smaller defect: `research_finished` logs `citations: 0` for every drafting run, because
 the drafts now hand in their sources through `submit_outline` rather than the final

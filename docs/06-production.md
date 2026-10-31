@@ -17,7 +17,9 @@ internal RAG demo: wrong-but-confident answers carry real professional risk.
 - **Citation existence check (no LLM needed):** parse the citations Claude's
   answer references (e.g., "Order 5 Rule 3") and verify each one appeared in
   the chunks actually passed into context. Cheap, deterministic, catches the
-  most dangerous failure mode (citing something that wasn't retrieved).
+  most dangerous failure mode (citing something that wasn't retrieved). One
+  bracket may name several locators separated by `;`; each is checked on its
+  own (the golden set's g11 failed five nights running before that was so).
 - **Claude-as-judge:** a second Claude call, given the answer and the
   retrieved context, asked to flag any claim *not* supported by the context.
   More expensive, catches subtler unsupported inference, not just bad

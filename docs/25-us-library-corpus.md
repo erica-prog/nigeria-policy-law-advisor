@@ -65,9 +65,11 @@ across the three families. Run it with:
 uv run python -m eval.run_golden_set --golden-set eval/golden_set_us.json --skip-generation
 ```
 
-CI runs that retrieval-only form as a gate at recall@8 ≥ 0.9. The generation and
-faithfulness run spends Claude calls and is done by hand from a machine with a
-server key; the docs/23 implementation record says whether it has been done yet.
+That retrieval-only form needs no key. The nightly workflow runs the set with generation,
+gated at recall@8 ≥ 0.9; the faithfulness figure is advisory. The generation and
+faithfulness run spends Claude calls; since 2026-10-30 the nightly workflow runs it
+(docs/39 §9a records the first measurement), and it can be run by hand from a machine
+with a server key.
 
 ## Provenance and licence
 
