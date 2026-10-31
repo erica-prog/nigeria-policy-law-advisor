@@ -1,0 +1,87 @@
+# Citation discipline (docs/40 B2): every claim cites the document it came
+# from (the clause, once docs/39 P4-E gives uploads clause locators), two
+# documents give two citations, a question the documents do not
+# answer gets no invented clause, and a quotation is verbatim.
+version: 1
+kind: citations
+matters:
+  - id: eval-live-lease
+    jurisdiction: ng-lagos
+    documents:
+      - name: lease.docx
+        paragraphs:
+          - "LEASE between Granite Peak Properties Ltd (the Landlord) and Sable Ridge Holdings LLC (the Tenant) of Unit 4, Ironwood Estate, Lekki, Lagos State, made on 15 December 2025."
+          - "Clause 2. Rent. The rent is four million naira (N4,000,000) per annum, payable quarterly in advance on the first Business Day of each quarter."
+          - "Clause 5. Term. The term is three years from 1 January 2026."
+          - "Clause 7. Repairs. The Tenant shall keep the interior of the premises in good repair and the Landlord shall keep the structure and exterior in good repair."
+          - "Clause 11. Break. Either party may determine this lease on six months written notice expiring at any time after the first anniversary of the commencement date."
+      - name: side-letter.docx
+        paragraphs:
+          - "SIDE LETTER to the lease of Unit 4, Ironwood Estate, dated 15 December 2025."
+          - "Clause 1. Rent-free period. The Landlord grants the Tenant a rent-free period of two months from 1 January 2026."
+          - "Clause 2. Effect. After the rent-free period the rent under Clause 2 of the lease is payable in full."
+cases:
+  - id: the-rent-is-cited-to-its-clause
+    matter: eval-live-lease
+    intent: ask
+    prompt: "What is the annual rent under the lease and how is it paid?"
+    expected_mode: question
+    must_include: ["4,000,000"]
+    must_cite_documents: ["lease.docx"]
+    citation_kinds: [evidence]
+  - id: two-documents-give-two-citations
+    matter: eval-live-lease
+    intent: ask
+    prompt: "Is there a rent-free period, and what rent is payable once it ends?"
+    expected_mode: question
+    must_include: ["two months"]
+    must_cite_documents: ["lease.docx", "side-letter.docx"]
+    citation_kinds: [evidence]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The rent-free period is in the side letter (Clause 1) and the rent in the lease
+      (Clause 2). Each statement must cite the document it came from; a citation to a
+      clause that does not say what is attributed to it is a failure.
+  - id: a-question-the-documents-do-not-answer-gets-no-clause
+    matter: eval-live-lease
+    intent: ask
+    prompt: "What does the lease say about subletting or assignment?"
+    expected_mode: question
+    graders: [deterministic, judge]
+    judge_focus: >-
+      Neither the lease nor the side letter has a subletting or assignment clause. The
+      reply must say the documents do not cover it and must not attribute a subletting
+      term to any clause.
+  - id: a-quotation-is-verbatim-and-cited
+    matter: eval-live-lease
+    intent: ask
+    prompt: "Quote the break clause of the lease exactly and say which clause it is."
+    expected_mode: question
+    must_include: ["six months"]
+    must_cite_documents: ["lease.docx"]
+    citation_kinds: [evidence]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The quotation must match Clause 11 word for word ("Either party may determine this
+      lease on six months written notice expiring at any time after the first anniversary
+      of the commencement date") and must not add or drop a condition.
+  - id: the-term-is-cited-and-not-a-neighbouring-clause
+    matter: eval-live-lease
+    intent: ask
+    prompt: "Which clause sets the term of the lease, and when does the term end?"
+    expected_mode: question
+    must_include: ["three years"]
+    must_cite_documents: ["lease.docx"]
+    citation_kinds: [evidence]
+  - id: a-library-answer-cites-the-rule
+    matter: eval-live-lease
+    intent: research
+    jurisdiction: ng-lagos
+    prompt: "What does Order 5 Rule 3 of the Lagos State Magistrates' Courts Civil Procedure Rules provide?"
+    expected_mode: research
+    must_cite: ["Order 5 Rule 3"]
+    citation_kinds: [authority]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply must state what the cited rule provides and cite it; it must not fill in
+      from memory a provision the retrieved text does not contain.

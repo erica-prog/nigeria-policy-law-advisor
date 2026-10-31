@@ -1,0 +1,80 @@
+# Research answers from the shared libraries (docs/40 B2), on questions the
+# golden set already holds the answer key for (eval/golden_set.json), asked
+# through the chat endpoint of a matter with no documents, so the reply is
+# research and every citation is authority.
+version: 1
+kind: research
+matters:
+  - id: eval-live-research-ng
+    jurisdiction: ng-federal
+  - id: eval-live-research-lagos
+    jurisdiction: ng-lagos
+cases:
+  - id: fhc-default-of-defence
+    matter: eval-live-research-ng
+    jurisdiction: ng-federal
+    prompt: "Under the Federal High Court (Civil Procedure) Rules, what may the claimant do when the defendant fails to file a defence?"
+    expected_mode: research
+    must_include: ["Order 14"]
+    citation_kinds: [authority]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply must take the consequence of a default of defence from the retrieved
+      Federal High Court rules (Order 14) and cite them; it must not add remedies the
+      retrieved text does not state.
+  - id: fhc-consolidation-grounds
+    matter: eval-live-research-ng
+    jurisdiction: ng-federal
+    prompt: "Under the Federal High Court rules, on what grounds can the Court consolidate two or more pending matters?"
+    expected_mode: research
+    must_cite: ["Order 11 Rule 1"]
+    citation_kinds: [authority]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The golden set's answer: consolidation where the same question of law or fact
+      arises in the matters, or the rights to relief claimed are related. The reply must
+      give those grounds from the cited rule and no others.
+  - id: lagos-summons-validity
+    matter: eval-live-research-lagos
+    jurisdiction: ng-lagos
+    prompt: "How long does a claimant have to serve an ordinary summons before it becomes void under the Lagos State Magistrates' Courts Civil Procedure Rules?"
+    expected_mode: research
+    citation_kinds: [authority]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The period must come from the retrieved Lagos State Magistrates' Courts rules and be
+      cited; a period stated without a citation, or taken from the Federal High Court
+      rules, is a failure.
+  - id: meta-ndpc-no-admission
+    matter: eval-live-research-ng
+    jurisdiction: ng-federal
+    prompt: "Does the Terms of Settlement between Meta and the Nigeria Data Protection Commission constitute an admission of liability?"
+    expected_mode: research
+    must_include: ["admission"]
+    must_cite: ["Paragraph 11"]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The golden set's answer: no, the parties agreed that execution and performance of
+      the Terms does not constitute an admission of liability or wrongdoing by either
+      party. The reply must say so from the cited paragraph.
+  - id: meta-ndpc-contract-and-judgment
+    matter: eval-live-research-ng
+    jurisdiction: ng-federal
+    prompt: "Do the Meta/NDPC Terms of Settlement also operate as a contract between the parties, separate from being a judgment of the court?"
+    expected_mode: research
+    must_cite: ["Paragraph 13"]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The golden set's answer: yes, the Terms take effect as a contract between the
+      parties notwithstanding that they are also a judgment of the court. The reply must
+      say so from the cited paragraph.
+  - id: outside-the-corpus-is-declined
+    matter: eval-live-research-ng
+    jurisdiction: ng-federal
+    prompt: "What is Nigeria's current national minimum wage?"
+    must_not_include: ["70,000", "70000", "30,000"]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The libraries hold rules of court and a consent judgment, not the minimum wage
+      legislation. The reply must say its sources do not cover the question and must
+      not state a figure from memory.

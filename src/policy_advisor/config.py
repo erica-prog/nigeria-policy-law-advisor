@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # scoped to one workspace. Never attached to a user's own key.
     anthropic_workspace_id: str = ""
     anthropic_model: str = "claude-sonnet-4-6"
+    # The model that judges the live evaluation cases (docs/40; docs/39 D2):
+    # the strongest the deployment allows, never the model under test.
+    judge_model: str = "claude-opus-5-5"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     # Postgres (Netlify DB, a Neon database): matters, chunks with their
     # embeddings, chat history, accounts and tenants. Use the unpooled

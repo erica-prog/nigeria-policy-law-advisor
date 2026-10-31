@@ -346,7 +346,9 @@ Still owed for P4-A:
 - why g11 is unfaithful in all five runs (g09 and g05 once each);
 - the CourtListener and GovInfo secrets;
 - a US faithfulness measurement;
-- a live Batch API run.
+- a live Batch API run;
+- P4-B: the first `live-evals` nightly run (docs/40), its pass rate by kind, how many
+  injection cases were `not_exercised`, and the judge's cost.
 
 A smaller defect: `research_finished` logs `citations: 0` for every drafting run, because
 the drafts now hand in their sources through `submit_outline` rather than the final
@@ -367,3 +369,4 @@ answer. The artefact manifest (`manifest_verified`) is the figure to read.
 | P4-A (part) | `platform/phase-4-a-4` | `7bbce86` one corrective retry for a record that fails validation, sync and batch | `pytest` green; the new test fails with the retry removed | the batch path now charges an invalid item to the ledger |
 | P4-A (part) | `platform/phase-4-a-4` | a complete agreement with no risk clause is flagged and re-read (D11 amendment) | `pytest` green; the new test fails with the check disabled | excerpts and schedules are left alone |
 | P4-A (part) | `platform/phase-4-a-5` | extraction gated at 0.908 (D3: median 0.938 less 0.03); fifth run recorded | workflow YAML parses; the gate uses the runner's existing `--fail-below` | a drop opens or comments on the "Extraction F1 below threshold" issue |
+| P4-B | `platform/phase-4-b` | `7c558e3` docs/40 plan; `90b244d` S1 cases and loader; `d911a8a` S2 runner and grader; `aace836` S3 judge; S4 nightly job | `pytest` green; the runner test drives the API with scripted loops over the real MCP client and audit trail; the first live run is owed | thresholds after three runs (D3) |
