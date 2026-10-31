@@ -160,3 +160,8 @@ Ready within scope. Next action: S1 on branch `platform/phase-4-b`.
 
 | Slice | Commit | Verification | Notes |
 |---|---|---|---|
+| plan | `7c558e3` | reviewed against docs/39 D1 to D3 | |
+| S1 | `90b244d` | `tests/test_live_evals.py`: every file loads, 30 cases over five kinds, seven refusals by path, the fake connector plants its text inside a data block through the real MCP client, no registry row names it | uploads cite by document until P4-E |
+| S2 | `d911a8a` | `tests/test_live_evals_runner.py`: eleven scripted cases over the API harness prove each deterministic check, `not_exercised`, the judge order and the report fields | the ledger field is read for the run's own user |
+| S3 | `aace836` | `tests/test_live_evals.py`: the judge sees the prompt, documents, planted result and reply as data; a same-model judge is refused | `JUDGE_MODEL` default `claude-opus-5-5` |
+| S4 | the last commit of `platform/phase-4-b` | the workflow parses; the first nightly run is owed and will be recorded in docs/39 §9a | advisory until D3 |

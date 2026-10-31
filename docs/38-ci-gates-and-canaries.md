@@ -8,7 +8,7 @@
 | Workflow | Runs on | Needs | Jobs |
 |---|---|---|---|
 | `ci.yml` | every pull request, push to main | nothing beyond package installs and a local Postgres | lint, mypy, the unit tests, the Node connector tests, routing evals, the extraction oracle, the drafting rubric on recorded fixtures |
-| `nightly.yml` | 03:00 UTC daily, push to main, by hand | the repository's Anthropic key, connector credentials, the network | retrieval golden sets (NG and US), case-reasoning invariants, extraction F1 (gated at 0.908), live drafting scored by the rubric (gated at 0.855), connector canaries |
+| `nightly.yml` | 03:00 UTC daily, push to main, by hand | the repository's Anthropic key, connector credentials, the network | retrieval golden sets (NG and US), case-reasoning invariants, extraction F1 (gated at 0.908), live drafting scored by the rubric (gated at 0.855), live evaluation cases judged by a distinct model (advisory), connector canaries |
 
 A pull request is gated only by what a contributor can run locally without a key. The
 keyed runs still happen on every push to main, so a regression reaches the log the
@@ -33,6 +33,19 @@ below a mean of 0.855 (docs/39 D3: the median of the first three runs, 0.885, le
 A drop opens an issue titled "Drafting rubric below threshold" with the `eval-gate` label,
 or comments on the open one, with the last lines of the run, and then fails the job: a
 drafting drop is a defect to fix, unlike a source being down.
+
+## The live evaluation cases
+
+`eval/run_live_evals.py` (docs/40) runs the graded cases under `eval/live/cases/` against
+the real model through the web API: one chat per case on a matter built from the case
+file's synthetic documents, the deterministic checks first (mode, phrases, citations,
+faithfulness, whether a planted connector was reached), then Claude-as-judge on
+`JUDGE_MODEL` for the cases that list it. The nightly `live-evals` job uploads the verdicts
+as `live-last-run` (one row per case with every check, the model, the judge and prompt
+versions, the case-file versions and the run's ledger cost). It is advisory until docs/39
+D3 sets a threshold from three runs; a case that fails three nights running is a finding
+recorded in docs/39 §9a. An injection case whose planted connector the model never
+called is `not_exercised`, counted apart from passes and failures.
 
 ## Connector canaries
 
