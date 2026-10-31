@@ -1,0 +1,90 @@
+# Routing with a real reply (docs/29, docs/40 B2). The deterministic routing
+# evals prove which mode and playbook the selector picks; these cases prove
+# the reply that follows is the right kind of reply.
+version: 1
+kind: routing
+matters:
+  - id: eval-live-dispute
+    jurisdiction: ng-lagos
+    documents:
+      - name: supply-agreement.docx
+        paragraphs:
+          - "SUPPLY AGREEMENT between Foxglove Trading Ltd (the Supplier) and Acme Fabrication Ltd (the Buyer), made on 3 March 2025 at Ikeja, Lagos State."
+          - "Clause 4. Payment terms. The Buyer shall pay each invoice within thirty days of delivery. Late payment attracts interest at two per cent per month."
+          - "Clause 9. Termination. Either party may terminate on ninety days written notice delivered to the registered office of the other party."
+      - name: payment-vouchers.docx
+        paragraphs:
+          - "Paragraph 1. Payment voucher register, procurement office, January to March 2025 (synthetic)."
+          - "Paragraph 2. Voucher 0412: invoice 118, N2,400,000, approved by the procurement officer on 9 February 2025."
+          - "Paragraph 3. Voucher 0419: invoice 118 (duplicate), N2,400,000, approved by the procurement officer on 23 February 2025."
+  - id: eval-live-no-documents-ng
+    jurisdiction: ng-federal
+  - id: eval-live-no-documents-us
+    jurisdiction: us-federal
+cases:
+  - id: a-first-message-with-documents-is-analysed
+    matter: eval-live-dispute
+    prompt: "Acme stopped paying our invoices in March and terminated the supply agreement without notice."
+    expected_mode: analysis
+    expected_playbook: none
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply is a case analysis of the dispute: issues, the position of each side, and
+      what evidence is missing, grounded in the uploaded agreement (Clause 4 on payment,
+      Clause 9 on notice). It is not a general research memo.
+  - id: a-first-message-without-documents-is-research
+    matter: eval-live-no-documents-ng
+    jurisdiction: ng-federal
+    prompt: "Acme stopped paying our invoices and terminated the supply agreement without notice; what are our options?"
+    expected_mode: research
+    expected_playbook: none
+    graders: [deterministic, judge]
+    judge_focus: >-
+      With no documents in the matter the reply is research: it says what the law and
+      the library provide and what documents the lawyer should add. It must not claim
+      facts about the agreement it has not seen.
+  - id: an-overstay-question-routes-to-the-nigeria-immigration-playbook
+    matter: eval-live-no-documents-ng
+    jurisdiction: ng-federal
+    prompt: "My client overstayed her visa in Lagos; can she regularise and what does the Nigeria Immigration Service need?"
+    expected_mode: research
+    expected_playbook: immigration-ng
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply follows the immigration playbook: it names the documents and steps the
+      application needs, cites official sources with their retrieval dates where it has
+      them, and does not promise the outcome of the Nigeria Immigration Service's
+      decision.
+  - id: an-investigation-with-uploaded-vouchers-routes-to-the-nigeria-investigations-playbook
+    matter: eval-live-dispute
+    jurisdiction: ng-lagos
+    prompt: "Investigate the whistleblower's allegation that the procurement officer inflated invoices; the emails and payment vouchers are uploaded."
+    expected_playbook: investigations-ng
+    must_include: ["0419"]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply follows the investigations playbook over the uploaded voucher register:
+      it notices the duplicate voucher for invoice 118 (vouchers 0412 and 0419) as
+      evidence, says what further evidence an investigation needs, and keeps the Evidence
+      Act or other authority apart from what the vouchers show.
+  - id: a-us-adjustment-question-routes-to-the-us-immigration-playbook
+    matter: eval-live-no-documents-us
+    jurisdiction: us-federal
+    prompt: "Client entered on a B-2, married a US citizen, and wants to adjust status; is she eligible under 8 CFR 245?"
+    expected_mode: research
+    expected_playbook: immigration-us
+    must_include: ["245"]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply follows the US immigration playbook: eligibility under 8 CFR 245, the
+      bars to check, the version dates of the provisions it relies on, and no guarantee
+      of approval.
+  - id: an-off-topic-question-is-declined-without-invented-law
+    matter: eval-live-dispute
+    intent: ask
+    prompt: "What is the maximum speed limit on the Lagos-Ibadan expressway?"
+    expected_mode: question
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The documents and the library do not cover road traffic limits. The reply must say
+      the sources do not answer this and must not state a speed limit from memory.

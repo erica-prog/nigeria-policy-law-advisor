@@ -55,6 +55,11 @@ case (a failing case is a finding, recorded in docs/39 §9a, and fixed in its ow
 - The drafting eval (`eval/run_drafting_eval.py`) is the pattern for a live runner:
   `last_run.json`, one row per case, a failed case recorded rather than hiding the rest,
   an artifact kept 30 days, `--fail-below` wired only once a threshold exists.
+- An uploaded contract of a few paragraphs is one chunk with the locator `Section 1`
+  (the generic chunker; `classify_document_type` knows statutes and judgments, not
+  contracts). A case can therefore ask that an upload be cited by document
+  (`must_cite_documents`), not by clause, until the clause parser of docs/39 P4-E lands;
+  library citations (`Order 11 Rule 1`, `Paragraph 13`) are checked by locator.
 - What inspection could not establish: how often the real model calls a fake connector
   tool when the question invites it (the injection-by-connector cases depend on it), and
   the judge's agreement with a lawyer (R1 in docs/39). Both are measured by running.
@@ -67,7 +72,7 @@ case (a failing case is a finding, recorded in docs/39 §9a, and fixed in its ow
 | D2 (docs/39) | Which model judges | Accepted | `JUDGE_MODEL`, default `claude-opus-5-5`, never the model under test; judge model and prompt version on every verdict. |
 | D3 (docs/39, amended) | Thresholds | Accepted | Median of the first three nightly runs less 0.03; advisory until then. |
 | L1 | Where cases live | Routine | `eval/live/cases/<kind>.yaml`, one file per kind, each with its own synthetic `matters` (documents as paragraphs) so a case file is self-contained and a lawyer can read it. |
-| L2 | The graders | Routine | `deterministic`: mode, playbook, `must_include`, `must_not_include`, `must_cite`, `must_not_cite`, `citation_kinds` (allowed kinds), `expect_faithful`. `judge`: the kind's fixed rubric plus the case's `judge_focus`, verdict PASS or FAIL with notes. `rubric` is accepted by the loader and reserved for a draft-scoring grader; no case uses it in this slice, and the runner refuses it rather than scoring nothing. |
+| L2 | The graders | Routine | `deterministic`: mode, playbook, `must_include`, `must_not_include`, `must_cite`, `must_not_cite` (locators, under the locator scheme), `must_cite_documents`, `citation_kinds` (allowed kinds), `expect_faithful`. `judge`: the kind's fixed rubric plus the case's `judge_focus`, verdict PASS or FAIL with notes. `rubric` is accepted by the loader and reserved for a draft-scoring grader; no case uses it in this slice, and the runner refuses it rather than scoring nothing. |
 | L3 | The planted instruction | Routine | A fake connector under `eval/live/` (same shape as the test fixture) with its own tool names, so it cannot shadow a registry connector; wired only by the runner, through `sources` and `specs`, never through the registry. The planted text asks for an action the product cannot take and a phrase a grader can look for. |
 | L4 | Cost | Routine | `--limit` caps cases per run (round-robin over kinds so every kind is sampled); the ledger difference for the `eval` user is printed and stored in `last_run.json`. The nightly run uses the full set while it is 30 cases; the cap is the lever if it grows. |
 | L5 | What a failing case means | Routine | A finding, not a build break, until thresholds bind: the job uploads the verdicts and reports; a case that fails three nights running is recorded in docs/39 §9a with its verdict notes and gets a fix in its own commit, as g11 did. |
@@ -76,7 +81,7 @@ case (a failing case is a finding, recorded in docs/39 §9a, and fixed in its ow
 
 | ID | Observable result | Basis |
 |---|---|---|
-| B1 | `eval/live/cases/*.yaml` load through one validated schema; a malformed case (unknown grader, `must_cite` on an analysis case, a matter a case names that is not defined) is refused with its path | D1; docs/29 shape |
+| B1 | `eval/live/cases/*.yaml` load through one validated schema; a malformed case (unknown grader, `expect_faithful` on an analysis case, a judged case without a focus, a matter a case names that is not defined) is refused with its path | D1; docs/29 shape |
 | B2 | At least 30 cases across injection (document and connector), evidence versus authority, citation discipline, routing with a real reply, research answers; each kind has at least five | docs/39 AC-2 |
 | B3 | `uv run python -m eval.run_live_evals` builds the app, logs in as `eval`, creates the case matters, uploads their documents, posts each prompt to `/chat`, grades the reply, writes `eval/live/last_run.json` with one row per case and `model`, `judge_model`, `judge_prompt_version`, `cases_version`, `ledger` on the run | D1, D2, L4 |
 | B4 | With the model loop and the judge replaced by scripted fakes, the runner's tests prove: a planted phrase in the reply fails `must_not_include`; a missing locator fails `must_cite`; an evidence citation where only authority is allowed fails `citation_kinds`; the wrong mode fails; a judge FAIL fails the case; the deterministic verdict is recorded before the judge is asked | L2 |
