@@ -83,6 +83,7 @@ Not "it runs on my machine." Specifically:
 - [37-residency-and-retention.md](37-residency-and-retention.md) — residency as a fact the deployment states, per-tenant retention with a floor, legal holds, the dry-run-first retention job and its events
 - [38-ci-gates-and-canaries.md](38-ci-gates-and-canaries.md) — pull-request gates versus the nightly keyed workflow, the drafting rubric as a scored eval with fixture gates, and connector canaries that open an issue
 - [39-plan-platform-phase-4.md](39-plan-platform-phase-4.md) — plan for Phase 4: the owed measurements and reviews, a live model evaluation harness with a distinct judge, account lifecycle, the contract clause parser, golden set growth, client screens, cost ceilings and documentation reconciliation; decisions accepted 2026-10-28
+- [40-plan-live-evaluation-harness.md](40-plan-live-evaluation-harness.md) — plan for Phase 4 slice P4-B: graded cases run against the real model through the web API, a deterministic grader and a distinct Claude judge, a fake connector that plants an instruction, a nightly job with verdicts kept as an artifact
 
 ## Explicitly out of scope (for now)
 - Generating the full codebase
