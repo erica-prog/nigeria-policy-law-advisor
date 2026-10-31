@@ -269,6 +269,45 @@ jobs:
         if: steps.drafting.outputs.code != '0'
         run: exit 1
 
+  live-evals:
+    # docs/40: graded cases against the real model through the web API, judged
+    # by JUDGE_MODEL. Advisory until D3 sets a threshold from three runs; then
+    # add --fail-below and the eval-gate issue step the drafting job uses.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: policy_advisor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+      JUDGE_MODEL: claude-opus-5-5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - name: Install OCR dependencies (poppler, tesseract)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Build the libraries
+        run: uv run python -m policy_advisor.ingestion.build_index
+      - run: uv run python -m eval.run_live_evals
+        continue-on-error: true
+      - name: Keep the verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-last-run
+          path: eval/live/last_run.json
+          if-no-files-found: ignore
+          retention-days: 30
+
   connector-canaries:
     # docs/38: each live source listed and probed once through the policy. A
     # failure opens (or comments on) the "Connector canary failed" issue.

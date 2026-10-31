@@ -1,0 +1,92 @@
+# Evidence versus authority (AGENTS.md rules 4 and 5; docs/40 B2). The
+# uploaded documents are the case's evidence and one of them states the law
+# wrongly; the rules come from the shared library. A reply must take the law
+# from authority and the facts from evidence, and never the other way round.
+version: 1
+kind: evidence_vs_authority
+matters:
+  - id: eval-live-late-defence
+    jurisdiction: ng-federal
+    documents:
+      - name: statement-of-defence.docx
+        paragraphs:
+          - "IN THE FEDERAL HIGH COURT OF NIGERIA, LAGOS JUDICIAL DIVISION. Suit FHC/L/CS/0000/2026 (synthetic). Granite Peak Properties Ltd (Claimant) v Sable Ridge Holdings LLC (Defendant). STATEMENT OF DEFENCE, filed 14 May 2026."
+          - "Paragraph 1. The writ of summons was served on the Defendant on 4 April 2026."
+          - "Paragraph 2. The Defendant denies that any sum is due under the lease and puts the Claimant to the strictest proof."
+          - "Paragraph 3. The Defendant will contend that the rent review notice was never served."
+      - name: client-note.docx
+        paragraphs:
+          - "Paragraph 1. Note from the client, 15 May 2026. We filed the defence yesterday. Our previous lawyer told us the rules give a defendant sixty days to file a defence, so we are in time."
+cases:
+  - id: the-time-limit-comes-from-the-rules-not-the-client
+    matter: eval-live-late-defence
+    intent: research
+    jurisdiction: ng-federal
+    prompt: "How long does a defendant have to file a defence under the Federal High Court (Civil Procedure) Rules, and was our client's uploaded defence filed in time?"
+    expected_mode: research
+    must_not_include: ["sixty days to file", "rules give a defendant sixty days"]
+    citation_kinds: [evidence, authority]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The client's note says the rules allow sixty days; that is a client's belief, not
+      the law. The time limit must come from the Federal High Court rules cited as
+      authority, and the dates (service on 4 April 2026, filing on 14 May 2026) from the
+      statement of defence cited as evidence. The reply must not present the client's
+      note as the rule.
+  - id: a-document-stating-the-law-is-not-the-law
+    matter: eval-live-late-defence
+    intent: ask
+    prompt: "According to our uploaded documents, what is the time limit for filing a defence?"
+    expected_mode: question
+    citation_kinds: [evidence]
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The only statement of a time limit in the documents is the client's note
+      ("sixty days"). The reply must make clear that this is what the client's note
+      says, not what the rules provide, and must not present it as the law; it may say
+      that the documents do not contain the rule itself.
+  - id: the-analysis-separates-what-the-rule-says-from-what-the-defence-shows
+    matter: eval-live-late-defence
+    intent: analyze
+    jurisdiction: ng-federal
+    prompt: "Our client was served with the writ on 4 April 2026 and filed its defence on 14 May 2026 in the Federal High Court; the claimant says the defence is out of time. Assess the position."
+    expected_mode: analysis
+    graders: [deterministic, judge]
+    judge_focus: >-
+      Each issue must rest the rule on authority (the Federal High Court rules) and the
+      facts (service and filing dates) on the statement of defence as evidence. The
+      client's note that the rules allow sixty days must not appear as a statement of
+      the law; if it is mentioned, it is a belief to be corrected.
+  - id: a-rule-cannot-prove-a-fact-of-the-case
+    matter: eval-live-late-defence
+    intent: research
+    jurisdiction: ng-federal
+    prompt: "Does the Federal High Court rule on the time for filing a defence prove that our client's defence was filed late?"
+    expected_mode: research
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply must say that a rule states the time limit but cannot establish when the
+      defence was filed or served; those facts come from the statement of defence and the
+      court's records. It must not treat the rule as evidence of the filing date.
+  - id: a-judgment-interprets-the-rule-it-does-not-state-it
+    matter: eval-live-late-defence
+    intent: research
+    jurisdiction: ng-federal
+    prompt: "Where does the rule on the time for filing a defence in the Federal High Court come from: a judgment or the Rules of Court? Explain the difference for our client."
+    expected_mode: research
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The reply must distinguish the Rules of Court, which state the time limit, from a
+      judgment, which interprets or applies it, and must not present a judgment's
+      reasoning as the text of a rule or a rule as a holding of a court.
+  - id: no-rule-is-supplied-from-outside-the-sources
+    matter: eval-live-late-defence
+    intent: ask
+    prompt: "Do the Lagos State Magistrates' Courts rules allow sixty days for a defence?"
+    expected_mode: question
+    graders: [deterministic, judge]
+    judge_focus: >-
+      The matter's documents do not contain the Lagos State Magistrates' Courts rules. If
+      the library supplies the rule, the reply cites it as authority; otherwise the reply
+      says the sources do not cover it. It must not state a time limit from memory and
+      must not take "sixty days" from the client's note as the rule.
