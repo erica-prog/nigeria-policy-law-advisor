@@ -64,11 +64,16 @@ function renderTextPart(body, text, citations, unsupported, onOpen) {
   for (const match of text.matchAll(SOURCE_TAG)) {
     sawTag = true;
     renderMarkdown(body, text.slice(last, match.index));
-    const citedAs = match[1].trim();
-    const ref = findCitation(citations, citedAs);
-    if (ref) body.append(citationChip(ref, onOpen, citedAs));
-    else if (unsupported.includes(citedAs)) body.append(unsupportedChip(citedAs));
-    else renderMarkdown(body, match[0]);
+    // One bracket may hold several locators ("Paragraph 13; Paragraph 13
+    // (Part 2)"); the backend resolves each, so each gets its own chip.
+    const parts = match[1].split(";").map((p) => p.trim()).filter(Boolean);
+    parts.forEach((citedAs, i) => {
+      if (i > 0) body.append(" ");
+      const ref = findCitation(citations, citedAs);
+      if (ref) body.append(citationChip(ref, onOpen, citedAs));
+      else if (unsupported.includes(citedAs)) body.append(unsupportedChip(citedAs));
+      else renderMarkdown(body, `[Source: ${citedAs}]`);
+    });
     last = match.index + match[0].length;
   }
   renderMarkdown(body, sawTag ? text.slice(last) : text);

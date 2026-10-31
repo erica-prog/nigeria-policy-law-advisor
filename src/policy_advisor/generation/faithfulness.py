@@ -10,8 +10,20 @@ from policy_advisor.jurisdictions.locators import is_supported
 LOCATOR_RE = re.compile(r"\[Source:\s*([^\]]+)\]")
 
 
+def split_citation(tag_body: str) -> list[str]:
+    """The locators in one [Source: ...] bracket. The prompt asks for one per
+    bracket, but a model that draws on two parts of one passage writes
+    "Paragraph 13; Paragraph 13 (Part 2)" (docs/39 §9a, g11 in five nightly
+    runs); read as one locator that cites nothing, read as two it cites both."""
+    return [part.strip() for part in tag_body.split(";") if part.strip()]
+
+
 def extract_cited_locators(answer_text: str) -> list[str]:
-    return [match.group(1).strip() for match in LOCATOR_RE.finditer(answer_text)]
+    return [
+        locator
+        for match in LOCATOR_RE.finditer(answer_text)
+        for locator in split_citation(match.group(1))
+    ]
 
 
 def is_supported_citation(cited_locator: str, available_locators: set[str]) -> bool:
@@ -25,5 +37,7 @@ def is_supported_citation(cited_locator: str, available_locators: set[str]) -> b
 def check_faithfulness(answer_text: str, retrieved_chunks) -> tuple[bool, list[str]]:
     available_locators = {chunk.metadata["locator"] for chunk in retrieved_chunks}
     cited = extract_cited_locators(answer_text)
-    unsupported = [locator for locator in cited if not is_supported_citation(locator, available_locators)]
+    unsupported = [
+        locator for locator in cited if not is_supported_citation(locator, available_locators)
+    ]
     return (len(unsupported) == 0, unsupported)

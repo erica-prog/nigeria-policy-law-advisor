@@ -49,3 +49,23 @@ def test_a_longer_rule_number_is_not_a_pinpoint_of_a_shorter_one():
     faithful, unsupported = check_faithfulness("Claim [Source: Order 5 Rule 30].", chunks)
     assert faithful is False
     assert unsupported == ["Order 5 Rule 30"]
+
+
+def test_a_bracket_citing_two_passages_is_two_citations_each_checked():
+    """g11 was unfaithful in five nightly runs (docs/39 §9a): the model cited
+    "[Source: Paragraph 13; Paragraph 13 (Part 2)]", both parts retrieved, and
+    the check read the bracket as one locator that matched nothing."""
+    text = "Both [Source: Paragraph 13; Paragraph 13 (Part 2)]. One [Source: Paragraph 11]."
+    assert extract_cited_locators(text) == ["Paragraph 13", "Paragraph 13 (Part 2)", "Paragraph 11"]
+    chunks = [
+        FakeChunk(metadata={"locator": "Paragraph 13"}),
+        FakeChunk(metadata={"locator": "Paragraph 13 (Part 2)"}),
+        FakeChunk(metadata={"locator": "Paragraph 11"}),
+    ]
+    assert check_faithfulness(text, chunks) == (True, [])
+    # Only the part that was never retrieved is flagged, by its own name.
+    faithful, unsupported = check_faithfulness(
+        "Claim [Source: Paragraph 13; Paragraph 99].", chunks
+    )
+    assert faithful is False and unsupported == ["Paragraph 99"]
+    assert extract_cited_locators("[Source: ; Paragraph 11 ;]") == ["Paragraph 11"]
